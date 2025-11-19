@@ -78,13 +78,15 @@ class ICLMusicGen(nn.Module):
         )
 
         # Apply to the language model component
-        if hasattr(self.model, 'lm'):
+        if hasattr(self.model, "lm"):
             self.model.lm = prepare_model_for_kbit_training(self.model.lm)
             self.model.lm = get_peft_model(self.model.lm, lora_config)
 
     def _enable_gradient_checkpointing(self):
         """Enable gradient checkpointing to save memory."""
-        if hasattr(self.model, 'lm') and hasattr(self.model.lm, 'gradient_checkpointing_enable'):
+        if hasattr(self.model, "lm") and hasattr(
+            self.model.lm, "gradient_checkpointing_enable"
+        ):
             self.model.lm.gradient_checkpointing_enable()
 
     def encode_audio(self, audio: torch.Tensor) -> torch.Tensor:
@@ -118,10 +120,12 @@ class ICLMusicGen(nn.Module):
         encoded_examples = []
         for text, audio in examples:
             audio_tokens = self.encode_audio(audio)
-            encoded_examples.append({
-                "text": text,
-                "audio_tokens": audio_tokens,
-            })
+            encoded_examples.append(
+                {
+                    "text": text,
+                    "audio_tokens": audio_tokens,
+                }
+            )
 
         return {
             "examples": encoded_examples,
@@ -193,14 +197,20 @@ class ICLMusicGen(nn.Module):
 
     def print_trainable_parameters(self):
         """Print the number of trainable parameters."""
-        if self.use_lora and hasattr(self.model, 'lm'):
-            trainable = sum(p.numel() for p in self.model.lm.parameters() if p.requires_grad)
+        if self.use_lora and hasattr(self.model, "lm"):
+            trainable = sum(
+                p.numel() for p in self.model.lm.parameters() if p.requires_grad
+            )
             total = sum(p.numel() for p in self.model.lm.parameters())
-            print(f"Trainable: {trainable:,} / {total:,} ({100 * trainable / total:.2f}%)")
+            print(
+                f"Trainable: {trainable:,} / {total:,} ({100 * trainable / total:.2f}%)"
+            )
         else:
             trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
             total = sum(p.numel() for p in self.parameters())
-            print(f"Trainable: {trainable:,} / {total:,} ({100 * trainable / total:.2f}%)")
+            print(
+                f"Trainable: {trainable:,} / {total:,} ({100 * trainable / total:.2f}%)"
+            )
 
     @torch.no_grad()
     def estimate_memory_usage(self) -> dict:

@@ -26,7 +26,7 @@ def get_audio_features(audio: np.ndarray, sample_rate: int = 32000) -> dict:
     rms = np.sqrt(np.mean(audio**2))
 
     fft = np.fft.rfft(audio)
-    freqs = np.fft.rfftfreq(len(audio), 1/sample_rate)
+    freqs = np.fft.rfftfreq(len(audio), 1 / sample_rate)
     magnitude = np.abs(fft)
 
     centroid = np.sum(freqs * magnitude) / (np.sum(magnitude) + 1e-8)
@@ -103,7 +103,7 @@ def generate_with_audio_context(
     if len(audio_context.shape) == 3:  # [batch, channels, samples]
         audio_context = audio_context.to(model.device)
 
-        with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+        with torch.amp.autocast("cuda", dtype=torch.bfloat16):
             # generate_continuation uses the audio as prefix
             # but we want to use it as CONTEXT not prefix
             # So we need a different approach...
@@ -141,6 +141,7 @@ def run_audio_encoded_icl():
     # Load model
     print("\nLoading MusicGen model...")
     from audiocraft.models import MusicGen
+
     model = MusicGen.get_pretrained("facebook/musicgen-small")
 
     output_dir = Path(__file__).parent.parent / "outputs" / "audio_encoded_icl"
@@ -165,29 +166,32 @@ def run_audio_encoded_icl():
     target_duration = 10  # seconds to generate
 
     for exp in experiments:
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print(f"Experiment: {exp['name']}")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
 
         # Step 1: Generate reference audio (the "example")
         print(f"\n1. Generating reference audio ({context_duration}s)...")
         print(f"   Prompt: {exp['reference_prompt']}")
 
-        model.set_generation_params(use_sampling=True, top_k=250, duration=context_duration)
+        model.set_generation_params(
+            use_sampling=True, top_k=250, duration=context_duration
+        )
 
-        with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-            reference_audio = model.generate([exp['reference_prompt']])
+        with torch.amp.autocast("cuda", dtype=torch.bfloat16):
+            reference_audio = model.generate([exp["reference_prompt"]])
 
         reference_features = get_audio_features(
-            reference_audio[0].cpu().float().numpy(),
-            model.sample_rate
+            reference_audio[0].cpu().float().numpy(), model.sample_rate
         )
 
         # Step 2: Encode reference to tokens
         print("\n2. Encoding reference audio to tokens...")
         encoded_tokens = encode_audio_to_tokens(model, reference_audio)
         print(f"   Encoded shape: {encoded_tokens.shape}")
-        print(f"   (batch={encoded_tokens.shape[0]}, codebooks={encoded_tokens.shape[1]}, seq_len={encoded_tokens.shape[2]})")
+        print(
+            f"   (batch={encoded_tokens.shape[0]}, codebooks={encoded_tokens.shape[1]}, seq_len={encoded_tokens.shape[2]})"
+        )
 
         # Step 3: Generate with audio context (ICL)
         print("\n3. Generating with audio context (ICL)...")
@@ -196,36 +200,40 @@ def run_audio_encoded_icl():
         # Use the reference audio as context for generation
         icl_audio = generate_with_audio_context(
             model,
-            exp['target_prompt'],
+            exp["target_prompt"],
             reference_audio,
             duration=target_duration,
         )
 
         icl_features = get_audio_features(
-            icl_audio[0].cpu().float().numpy(),
-            model.sample_rate
+            icl_audio[0].cpu().float().numpy(), model.sample_rate
         )
 
         # Step 4: Generate baseline (no audio context)
         print("\n4. Generating baseline (no audio context)...")
 
-        model.set_generation_params(use_sampling=True, top_k=250, duration=target_duration)
+        model.set_generation_params(
+            use_sampling=True, top_k=250, duration=target_duration
+        )
 
-        with torch.amp.autocast('cuda', dtype=torch.bfloat16):
-            baseline_audio = model.generate([exp['target_prompt']])
+        with torch.amp.autocast("cuda", dtype=torch.bfloat16):
+            baseline_audio = model.generate([exp["target_prompt"]])
 
         baseline_features = get_audio_features(
-            baseline_audio[0].cpu().float().numpy(),
-            model.sample_rate
+            baseline_audio[0].cpu().float().numpy(), model.sample_rate
         )
 
         # Step 5: Calculate distances
         icl_distance = compute_style_distance(reference_features, icl_features)
-        baseline_distance = compute_style_distance(reference_features, baseline_features)
-        improvement = (baseline_distance - icl_distance) / (baseline_distance + 1e-8) * 100
+        baseline_distance = compute_style_distance(
+            reference_features, baseline_features
+        )
+        improvement = (
+            (baseline_distance - icl_distance) / (baseline_distance + 1e-8) * 100
+        )
 
         result = {
-            "name": exp['name'],
+            "name": exp["name"],
             "encoded_shape": tuple(encoded_tokens.shape),
             "icl_distance": icl_distance,
             "baseline_distance": baseline_distance,
@@ -236,11 +244,19 @@ def run_audio_encoded_icl():
 
         # Print results
         print("\n5. Results:")
-        print(f"   Reference - RMS: {reference_features['rms']:.4f}, Centroid: {reference_features['centroid']:.1f} Hz")
-        print(f"   ICL       - RMS: {icl_features['rms']:.4f}, Centroid: {icl_features['centroid']:.1f} Hz")
-        print(f"   Baseline  - RMS: {baseline_features['rms']:.4f}, Centroid: {baseline_features['centroid']:.1f} Hz")
+        print(
+            f"   Reference - RMS: {reference_features['rms']:.4f}, Centroid: {reference_features['centroid']:.1f} Hz"
+        )
+        print(
+            f"   ICL       - RMS: {icl_features['rms']:.4f}, Centroid: {icl_features['centroid']:.1f} Hz"
+        )
+        print(
+            f"   Baseline  - RMS: {baseline_features['rms']:.4f}, Centroid: {baseline_features['centroid']:.1f} Hz"
+        )
         print("   ")
-        print(f"   Encoded tokens: {encoded_tokens.shape[2]} tokens ({context_duration}s audio)")
+        print(
+            f"   Encoded tokens: {encoded_tokens.shape[2]} tokens ({context_duration}s audio)"
+        )
         print(f"   ICL distance to reference: {icl_distance:.4f}")
         print(f"   Baseline distance to reference: {baseline_distance:.4f}")
         print(f"   Improvement: {improvement:+.1f}%")
@@ -276,8 +292,8 @@ def run_audio_encoded_icl():
     print("  - Baseline: standard generate without context")
     print("  - Fair: both generate same duration output")
 
-    icl_wins = sum(1 for r in results if r['icl_better'])
-    avg_improvement = np.mean([r['improvement_pct'] for r in results])
+    icl_wins = sum(1 for r in results if r["icl_better"])
+    avg_improvement = np.mean([r["improvement_pct"] for r in results])
 
     print("\nResults:")
     print(f"  Total experiments: {len(results)}")
@@ -286,8 +302,10 @@ def run_audio_encoded_icl():
 
     print("\nPer-experiment:")
     for r in results:
-        status = "✓" if r['icl_better'] else "✗"
-        print(f"  {status} {r['name']}: {r['improvement_pct']:+.1f}% (tokens: {r['encoded_shape'][2]})")
+        status = "✓" if r["icl_better"] else "✗"
+        print(
+            f"  {status} {r['name']}: {r['improvement_pct']:+.1f}% (tokens: {r['encoded_shape'][2]})"
+        )
 
     print(f"\nOutput: {output_dir}")
 

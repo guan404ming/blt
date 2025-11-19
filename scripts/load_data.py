@@ -48,10 +48,14 @@ def download_audio_clip(
     cmd = [
         "yt-dlp",
         "-x",  # Extract audio
-        "--audio-format", audio_format,
-        "--audio-quality", "0",  # Best quality
-        "-o", str(output_dir / f"{ytid}_full.%(ext)s"),
-        "--download-sections", f"*{start_s}-{end_s}",
+        "--audio-format",
+        audio_format,
+        "--audio-quality",
+        "0",  # Best quality
+        "-o",
+        str(output_dir / f"{ytid}_full.%(ext)s"),
+        "--download-sections",
+        f"*{start_s}-{end_s}",
         "--force-keyframes-at-cuts",
         "--no-playlist",
         "--quiet",
@@ -93,7 +97,9 @@ def download_musiccaps_audio(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     train_data = dataset["train"]
-    n_samples = len(train_data) if max_samples is None else min(max_samples, len(train_data))
+    n_samples = (
+        len(train_data) if max_samples is None else min(max_samples, len(train_data))
+    )
 
     stats = {"success": 0, "failed": 0, "skipped": 0}
 
