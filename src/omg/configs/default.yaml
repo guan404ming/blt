@@ -1,0 +1,61 @@
+# Default configuration for Audio ICL
+# Optimized for RTX 5070 Ti (16GB VRAM)
+
+model:
+  name: "facebook/musicgen-medium"  # 1.5B params, ~8GB base
+  dtype: "bfloat16"
+
+# LoRA configuration for parameter-efficient fine-tuning
+lora:
+  enabled: true
+  r: 16                    # LoRA rank
+  alpha: 32                # LoRA alpha
+  dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "out_proj"
+
+# Quantization for memory efficiency
+quantization:
+  enabled: true
+  load_in_4bit: true
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_quant_type: "nf4"
+
+# ICL specific settings
+icl:
+  max_examples: 2          # Number of ICL examples
+  max_audio_tokens: 750    # Tokens per audio example
+  max_text_tokens: 128     # Tokens per text description
+  separator_token: "<SEP>"
+
+# Training configuration
+training:
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  effective_batch_size: 8
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  max_epochs: 10
+  warmup_steps: 100
+  gradient_checkpointing: true
+
+# Audio settings
+audio:
+  sample_rate: 32000
+  duration: 10             # seconds
+  encodec_bandwidth: 3.0   # kbps (balance quality/compression)
+
+# Hardware optimization for RTX 5070 Ti
+hardware:
+  device: "cuda"
+  mixed_precision: true
+  compile_model: true      # torch.compile for speed
+
+# Logging
+logging:
+  use_wandb: true
+  project_name: "audio-icl"
+  log_every_n_steps: 10

@@ -1,0 +1,50 @@
+[project]
+name = "omg"
+version = "0.1.0"
+description = "Audio In-Context Learning for Text-to-Music Generation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.5.0",
+    "torchaudio>=2.5.0",
+    "torchvision>=0.20.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.30.0",
+    "peft>=0.10.0",
+    "bitsandbytes>=0.43.0",
+    "datasets>=2.19.0",
+    "einops>=0.8.0",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "numpy>=1.26.0,<2.0.0",
+    "scipy>=1.12.0",
+    "tqdm>=4.66.0",
+    "omegaconf>=2.3.0",
+    "hydra-core>=1.3.0",
+    "laion-clap>=1.1.5",
+    "wandb>=0.17.0",
+    "audiocraft",
+]
+
+[tool.uv.sources]
+# Install audiocraft from git to get latest fixes
+audiocraft = { git = "https://github.com/facebookresearch/audiocraft.git" }
+
+[tool.uv]
+# Override dependencies for compatibility
+override-dependencies = [
+    "av>=12.0.0",
+    "torch>=2.5.0",
+    "torchaudio>=2.5.0",
+    "torchvision>=0.20.0",
+    "xformers>=0.0.28",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "ipython>=8.24.0",
+    "jupyter>=1.0.0",
+]
