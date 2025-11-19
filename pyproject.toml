@@ -30,6 +30,11 @@ dependencies = [
 # Install audiocraft from git to get latest fixes
 audiocraft = { git = "https://github.com/facebookresearch/audiocraft.git" }
 
+[dependency-groups]
+dev = [
+    "yt-dlp>=2025.11.12",
+]
+
 [tool.uv]
 # Override dependencies for compatibility
 override-dependencies = [
