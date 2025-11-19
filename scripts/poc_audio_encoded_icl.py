@@ -184,13 +184,13 @@ def run_audio_encoded_icl():
         )
 
         # Step 2: Encode reference to tokens
-        print(f"\n2. Encoding reference audio to tokens...")
+        print("\n2. Encoding reference audio to tokens...")
         encoded_tokens = encode_audio_to_tokens(model, reference_audio)
         print(f"   Encoded shape: {encoded_tokens.shape}")
         print(f"   (batch={encoded_tokens.shape[0]}, codebooks={encoded_tokens.shape[1]}, seq_len={encoded_tokens.shape[2]})")
 
         # Step 3: Generate with audio context (ICL)
-        print(f"\n3. Generating with audio context (ICL)...")
+        print("\n3. Generating with audio context (ICL)...")
         print(f"   Target: {exp['target_prompt']}")
 
         # Use the reference audio as context for generation
@@ -207,7 +207,7 @@ def run_audio_encoded_icl():
         )
 
         # Step 4: Generate baseline (no audio context)
-        print(f"\n4. Generating baseline (no audio context)...")
+        print("\n4. Generating baseline (no audio context)...")
 
         model.set_generation_params(use_sampling=True, top_k=250, duration=target_duration)
 
@@ -235,11 +235,11 @@ def run_audio_encoded_icl():
         results.append(result)
 
         # Print results
-        print(f"\n5. Results:")
+        print("\n5. Results:")
         print(f"   Reference - RMS: {reference_features['rms']:.4f}, Centroid: {reference_features['centroid']:.1f} Hz")
         print(f"   ICL       - RMS: {icl_features['rms']:.4f}, Centroid: {icl_features['centroid']:.1f} Hz")
         print(f"   Baseline  - RMS: {baseline_features['rms']:.4f}, Centroid: {baseline_features['centroid']:.1f} Hz")
-        print(f"   ")
+        print("   ")
         print(f"   Encoded tokens: {encoded_tokens.shape[2]} tokens ({context_duration}s audio)")
         print(f"   ICL distance to reference: {icl_distance:.4f}")
         print(f"   Baseline distance to reference: {baseline_distance:.4f}")
@@ -279,7 +279,7 @@ def run_audio_encoded_icl():
     icl_wins = sum(1 for r in results if r['icl_better'])
     avg_improvement = np.mean([r['improvement_pct'] for r in results])
 
-    print(f"\nResults:")
+    print("\nResults:")
     print(f"  Total experiments: {len(results)}")
     print(f"  ICL wins: {icl_wins}/{len(results)}")
     print(f"  Average improvement: {avg_improvement:+.1f}%")
