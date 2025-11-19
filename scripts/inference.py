@@ -8,6 +8,6 @@ if __name__ == "__main__":
     prompt = "jazz improvisation with saxophone and keyboard interplay"
     generate_music(
         prompt,
-        duration=30,
+        duration=20,
         output_path="scripts/examples/output_baseline.wav",
     )

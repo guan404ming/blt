@@ -33,5 +33,5 @@ if __name__ == "__main__":
         prompt=prompt,
         examples=examples,
         output_path="scripts/examples/output_icl.wav",
-        duration=30,  # Must be longer than total example audio duration
+        duration=20,  # Must be longer than total example audio duration
     )
