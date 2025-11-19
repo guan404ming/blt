@@ -7,7 +7,7 @@ from omg.models import BaseMusicModel, MusicGenModel
 
 def generate_music(
     prompt: str,
-    examples: tuple[str, str] | None = None,
+    examples: list[tuple[str, str]] | None = None,
     output_path: str = "output.wav",
     duration: int = 8,
     model: BaseMusicModel | None = None,
@@ -16,7 +16,7 @@ def generate_music(
 
     Args:
         prompt: Text description of the music to generate
-        examples: Optional tuple of (description, audio_path) for in-context learning
+        examples: Optional list of (description, audio_path) tuples for in-context learning
         output_path: Path to save the generated audio
         duration: Approximate duration in seconds (50 tokens ≈ 1 second)
         model: Optional model instance. If None, uses MusicGenModel with default settings.

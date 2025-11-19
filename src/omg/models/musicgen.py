@@ -2,6 +2,7 @@
 
 import torch
 import torchaudio
+import soundfile as sf
 from transformers import AutoProcessor, MusicgenForConditionalGeneration
 
 from .base import BaseMusicModel
@@ -51,7 +52,17 @@ class MusicGenModel(BaseMusicModel):
         Returns:
             Preprocessed audio tensor [1, samples]
         """
-        audio, sr = torchaudio.load(audio_path)
+        # Use soundfile to load audio (avoids torchcodec dependency)
+        audio_np, sr = sf.read(audio_path)
+
+        # Convert to tensor and handle shape
+        audio = torch.from_numpy(audio_np).float()
+
+        # soundfile returns [samples] or [samples, channels]
+        if audio.dim() == 1:
+            audio = audio.unsqueeze(0)  # [1, samples]
+        else:
+            audio = audio.T  # [channels, samples]
 
         # Resample if necessary
         if sr != self._sampling_rate:

@@ -53,7 +53,7 @@ outputs/
 checkpoints/
 data/
 wandb/
-*.wav
+# *.wav
 *.mp3
 *.flac
 *.pt

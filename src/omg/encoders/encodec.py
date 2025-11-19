@@ -14,7 +14,9 @@ class EnCodecEncoder(BaseAudioEncoder):
     and compatible with MusicGen's internal encoder.
     """
 
-    def __init__(self, model_name: str = "facebook/encodec_32khz", device: str | None = None):
+    def __init__(
+        self, model_name: str = "facebook/encodec_32khz", device: str | None = None
+    ):
         """Initialize the EnCodec encoder.
 
         Args:
@@ -34,7 +36,7 @@ class EnCodecEncoder(BaseAudioEncoder):
 
         # Get sample rate from config
         self._sample_rate = self.model.config.sampling_rate
-        self._num_codebooks = self.model.config.num_codebooks
+        self._num_codebooks = self.model.config.num_quantizers
 
     def get_sample_rate(self) -> int:
         """Get the encoder's expected sample rate."""
@@ -44,7 +46,9 @@ class EnCodecEncoder(BaseAudioEncoder):
         """Get the number of codebooks used by the encoder."""
         return self._num_codebooks
 
-    def _resample_if_needed(self, audio: torch.Tensor, sample_rate: int) -> torch.Tensor:
+    def _resample_if_needed(
+        self, audio: torch.Tensor, sample_rate: int
+    ) -> torch.Tensor:
         """Resample audio to the encoder's sample rate if needed."""
         if sample_rate != self._sample_rate:
             resampler = torchaudio.transforms.Resample(sample_rate, self._sample_rate)
@@ -97,6 +101,8 @@ class EnCodecEncoder(BaseAudioEncoder):
 
         with torch.no_grad():
             # Decode using the model
-            audio_values = self.model.decode(tokens, audio_scales=[None] * tokens.shape[0])
+            audio_values = self.model.decode(
+                tokens, audio_scales=[None] * tokens.shape[0]
+            )
 
         return audio_values.audio_values
