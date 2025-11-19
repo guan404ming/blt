@@ -80,12 +80,16 @@ class MusicGenModel(BaseMusicModel):
             for description, audio_path in examples:
                 audio, sr = self._load_audio(audio_path)
                 # Encode audio to discrete tokens
-                codes = self.encoder.encode(audio, sr).float()  # [1, num_codebooks, seq_len]
+                codes = self.encoder.encode(
+                    audio, sr
+                ).float()  # [1, num_codebooks, seq_len]
 
                 # Create a compact, fixed-size representation using token statistics
                 mean_tokens = codes.mean(dim=-1).squeeze()
                 std_tokens = codes.std(dim=-1).squeeze()
-                stats_vec = torch.cat([mean_tokens, std_tokens]).cpu().numpy().round(2).tolist()
+                stats_vec = (
+                    torch.cat([mean_tokens, std_tokens]).cpu().numpy().round(2).tolist()
+                )
                 stats_str = " ".join(map(str, stats_vec))
 
                 example_prompts.append(
