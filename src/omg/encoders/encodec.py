@@ -56,7 +56,7 @@ class EnCodecEncoder(BaseAudioEncoder):
         return audio
 
     def encode(self, audio: torch.Tensor, sample_rate: int) -> torch.Tensor:
-        """Encode audio waveform to discrete tokens.
+        """Encode audio waveform to discrete tokens tensor.
 
         Args:
             audio: Audio waveform tensor [channels, samples] or [batch, channels, samples]
@@ -88,6 +88,27 @@ class EnCodecEncoder(BaseAudioEncoder):
 
         return codes
 
+    def encode_to_string(self, audio: torch.Tensor, sample_rate: int) -> str:
+        """Encode audio waveform to a string representation of its token statistics.
+
+        Args:
+            audio: Audio waveform tensor [channels, samples] or [batch, channels, samples]
+            sample_rate: Sample rate of the input audio
+
+        Returns:
+            A string representing the mean and std of the encoded tokens.
+        """
+        codes = self.encode(audio, sample_rate).float()  # [1, num_codebooks, seq_len]
+
+        # Calculate statistics over the time dimension
+        mean_tokens = codes.mean(dim=-1).squeeze()
+        std_tokens = codes.std(dim=-1).squeeze()
+
+        # Combine stats into a single flat list of numbers
+        stats_vec = torch.cat([mean_tokens, std_tokens]).cpu().numpy().round(2).tolist()
+        stats_str = " ".join(map(str, stats_vec))
+        return stats_str
+
     def decode(self, tokens: torch.Tensor) -> torch.Tensor:
         """Decode tokens back to audio waveform.
 
@@ -95,7 +116,7 @@ class EnCodecEncoder(BaseAudioEncoder):
             tokens: Encoded tokens tensor [batch, num_codebooks, seq_len]
 
         Returns:
-            Decoded audio waveform [batch, channels, samples]
+            Decoded audio waveform
         """
         tokens = tokens.to(self.device)
 

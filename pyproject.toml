@@ -32,6 +32,8 @@ audiocraft = { git = "https://github.com/facebookresearch/audiocraft.git" }
 
 [dependency-groups]
 dev = [
+    "librosa>=0.11.0",
+    "pretty-midi>=0.2.11",
     "yt-dlp>=2025.11.12",
 ]
 

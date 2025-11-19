@@ -7,6 +7,7 @@ from audiocraft.models import MusicGen
 
 from .base import BaseMusicModel
 from ..encoders.encodec import EnCodecEncoder
+from ..encoders.melody import MelodyEncoder
 
 
 class MusicGenModel(BaseMusicModel):
@@ -16,6 +17,7 @@ class MusicGenModel(BaseMusicModel):
         self,
         model_name: str = "facebook/musicgen-small",
         encodec_model_name: str = "facebook/encodec_32khz",
+        encoder_type: str = "encodec",
         device: str | None = None,
     ):
         """Initialize the MusicGen model.
@@ -23,14 +25,23 @@ class MusicGenModel(BaseMusicModel):
         Args:
             model_name: HuggingFace model name or path
             encodec_model_name: HuggingFace model name for EnCodec
+            encoder_type: Type of encoder to use ('encodec' or 'melody')
             device: Device to run on. If None, auto-detects.
         """
         self.model_name = model_name
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = MusicGen.get_pretrained(model_name, device=self.device)
-        self.encoder = EnCodecEncoder(encodec_model_name, device=self.device)
         self._sampling_rate = self.model.sample_rate
+
+        if encoder_type == "encodec":
+            self.prompt_encoder = EnCodecEncoder(encodec_model_name, device=self.device)
+            self._embedding_tag = "stats"
+        elif encoder_type == "melody":
+            self.prompt_encoder = MelodyEncoder()
+            self._embedding_tag = "melody"
+        else:
+            raise ValueError(f"Unknown encoder type: {encoder_type}")
 
     def get_sampling_rate(self) -> int:
         """Get the model's audio sampling rate."""
@@ -79,21 +90,10 @@ class MusicGenModel(BaseMusicModel):
             example_prompts = []
             for description, audio_path in examples:
                 audio, sr = self._load_audio(audio_path)
-                # Encode audio to discrete tokens
-                codes = self.encoder.encode(
-                    audio, sr
-                ).float()  # [1, num_codebooks, seq_len]
-
-                # Create a compact, fixed-size representation using token statistics
-                mean_tokens = codes.mean(dim=-1).squeeze()
-                std_tokens = codes.std(dim=-1).squeeze()
-                stats_vec = (
-                    torch.cat([mean_tokens, std_tokens]).cpu().numpy().round(2).tolist()
-                )
-                stats_str = " ".join(map(str, stats_vec))
+                embedding_str = self.prompt_encoder.encode_to_string(audio, sr)
 
                 example_prompts.append(
-                    f'<example description="{description}" stats="{stats_str}">'
+                    f'<example description="{description}" {self._embedding_tag}="{embedding_str}">'
                 )
 
             full_prompt = prompt + " " + " ".join(example_prompts)

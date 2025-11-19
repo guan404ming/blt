@@ -11,6 +11,7 @@ def generate_music(
     output_path: str = "output.wav",
     duration: int = 8,
     model: BaseMusicModel | None = None,
+    encoder_type: str = "encodec",
 ):
     """Generate music from a text prompt with optional audio examples.
 
@@ -20,13 +21,14 @@ def generate_music(
         output_path: Path to save the generated audio
         duration: Approximate duration in seconds (50 tokens ≈ 1 second)
         model: Optional model instance. If None, uses MusicGenModel with default settings.
+        encoder_type: Type of encoder to use for processing examples ('encodec' or 'melody').
 
     Returns:
         Path to the generated audio file
     """
     # Use default model if none provided
     if model is None:
-        model = MusicGenModel()
+        model = MusicGenModel(encoder_type=encoder_type)
 
     # Generate audio
     audio_tensor = model.generate(prompt, examples=examples, duration=duration)
