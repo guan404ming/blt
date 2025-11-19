@@ -1,5 +1,6 @@
 """Model implementations for Audio ICL."""
 
-from .icl_musicgen import ICLMusicGen
+from .base import BaseMusicModel
+from .musicgen import MusicGenModel
 
-__all__ = ["ICLMusicGen"]
+__all__ = ["BaseMusicModel", "MusicGenModel"]
