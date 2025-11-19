@@ -3,8 +3,6 @@
 from abc import ABC, abstractmethod
 import torch
 
-from omg.encoders import BaseAudioEncoder
-
 
 class BaseMusicModel(ABC):
     """Abstract base class for music generation models."""
@@ -16,11 +14,12 @@ class BaseMusicModel(ABC):
         examples: list[tuple[str, str]] | None = None,
         duration: int = 8,
     ) -> torch.Tensor:
-        """Generate music from a text prompt with optional audio examples.
+        """Generate music from a text prompt with optional example descriptions.
 
         Args:
             prompt: Text description of the music to generate
-            examples: Optional list of (description, audio_path) tuples for ICL
+            examples: Optional list of (description, audio_path) tuples.
+                      Only descriptions are used to build the prompt.
             duration: Approximate duration in seconds
 
         Returns:
@@ -34,14 +33,5 @@ class BaseMusicModel(ABC):
 
         Returns:
             Sampling rate in Hz
-        """
-        pass
-
-    @abstractmethod
-    def get_encoder(self) -> BaseAudioEncoder:
-        """Get the audio encoder used by this model.
-
-        Returns:
-            Audio encoder instance
         """
         pass

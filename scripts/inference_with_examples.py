@@ -32,6 +32,6 @@ if __name__ == "__main__":
     generate_music(
         prompt=prompt,
         examples=examples,
-        output_path="output_icl.wav",
-        duration=8,
+        output_path="scripts/examples/output_icl.wav",
+        duration=30,  # Must be longer than total example audio duration
     )
