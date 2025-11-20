@@ -11,7 +11,7 @@ if __name__ == "__main__":
     examples_dir = Path(__file__).parent / "examples"
 
     # Load the example descriptions
-    with open(examples_dir / "jass.json") as f:
+    with open(examples_dir / "jazz.json") as f:
         example_data = json.load(f)
 
     # Build examples list as (description, audio_path) tuples

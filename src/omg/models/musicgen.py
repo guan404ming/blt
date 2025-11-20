@@ -1,7 +1,6 @@
 """MusicGen model implementation with ICL support."""
 
 import torch
-import torchaudio
 import soundfile as sf
 from audiocraft.models import MusicGen
 
@@ -15,7 +14,7 @@ class MusicGenModel(BaseMusicModel):
 
     def __init__(
         self,
-        model_name: str = "facebook/musicgen-small",
+        model_name: str = "facebook/musicgen-medium",
         encodec_model_name: str = "facebook/encodec_32khz",
         encoder_type: str = "encodec",
         device: str | None = None,
@@ -96,9 +95,11 @@ class MusicGenModel(BaseMusicModel):
                     f'<example description="{description}" {self._embedding_tag}="{embedding_str}">'
                 )
 
-            full_prompt = prompt + " " + " ".join(example_prompts)
+            full_prompt = prompt + "\n" + " ".join(example_prompts)
         else:
             full_prompt = prompt
+
+        print(full_prompt)
 
         # Use standard generate with the augmented prompt
         with torch.amp.autocast("cuda", dtype=torch.bfloat16):
