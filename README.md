@@ -3,10 +3,6 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Structured In-Context Learning for Text-to-Music Generation**
->
-> *National Taiwan University*
-
 ## Overview
 
 **OMG** (Optimized Music Generation) is a modular pipeline for enhancing Text-to-Music generation. It integrates different optimization blocks that can be combined to improve MusicGen output quality.
@@ -14,19 +10,10 @@
 ### Pipeline Architecture
 
 ```
-                    ┌──────────────┐
-                    │   Retrieval  │
-                ┌──►│    (CLAP)    │──┐
-                │   └──────────────┘  │
-                │                     │
-┌─────────────┐ │   ┌──────────────┐  │   ┌─────────────┐     ┌──────────┐
-│   Prompt    │─┼──►│     RAG      │──┼──►│   MusicGen  │ ──► │  Output  │
-│             │ │   └──────────────┘  │   │ (ICL/LoRA)  │     │          │
-└─────────────┘ │                     │   └─────────────┘     └──────────┘
-                │   ┌──────────────┐  │
-                └──►│   Prompt     │──┘
-                    │ Enhancement  │
-                    └──────────────┘
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────┐
+│   Prompt    │ ──► │   Retrieval  │ ──► │   MusicGen  │ ──► │  Output  │
+│             │     │    (CLAP)    │     │    (ICL)    │     │          │
+└─────────────┘     └──────────────┘     └─────────────┘     └──────────┘
 ```
 
 ### Optimization Blocks
@@ -39,7 +26,7 @@
 | LoRA Fine-tuning | Parameter-efficient adaptation for specific styles | Planned |
 | Prompt Enhancement | LLM-based prompt refinement | Planned |
 | Audio Post-processing | Style transfer, mixing | Planned |
-| Evaluation | CLAP score, FAD metrics | Done |
+| Evaluation | CLAP score | Done |
 
 ## Setup
 
@@ -81,7 +68,7 @@ uv run python scripts/poc.py \
 ```bibtex
 @misc{omg2025,
     title={OMG: Optimized Music Generation with In-Context Learning},
-    author={},
+    author={Guan-Ming Chiu},
     year={2025},
     url={https://github.com/guan404ming/omg}
 }
