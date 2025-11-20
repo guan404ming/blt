@@ -51,10 +51,12 @@ def create_audio_caption_mapping(
         filename = f"{ytid}_{start_s}_{end_s}.wav"
 
         if filename in existing_files:
-            mappings.append({
-                "file": filename,
-                "description": caption,
-            })
+            mappings.append(
+                {
+                    "file": filename,
+                    "description": caption,
+                }
+            )
 
     # Sort by filename for consistency
     mappings.sort(key=lambda x: x["file"])
@@ -150,7 +152,7 @@ def main():
         print("=" * 50)
         for entry in mappings[:3]:
             print(f"\nFile: {entry['file']}")
-            desc = entry['description']
+            desc = entry["description"]
             if len(desc) > 100:
                 desc = desc[:100] + "..."
             print(f"Description: {desc}")
