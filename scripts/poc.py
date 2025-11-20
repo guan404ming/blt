@@ -4,12 +4,19 @@ with and without in-context examples.
 """
 
 import argparse
-import os
+import csv
 import sys
 import torch
 import soundfile as sf
 import json
+from datetime import datetime
 from pathlib import Path
+
+# Constants
+PROJECT_ROOT = Path(__file__).parent.parent
+AUDIO_CAPTIONS_PATH = PROJECT_ROOT / "data" / "audio_captions.json"
+EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "audio_captions_embeddings.pt"
+AUDIO_DIR = PROJECT_ROOT / "data" / "audio"
 
 # Constants
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -211,6 +218,12 @@ if __name__ == "__main__":
         help="Text prompt for music generation.",
     )
     parser.add_argument(
+        "--prompts-file",
+        type=str,
+        default=None,
+        help="Path to a text file with multiple prompts (one per line).",
+    )
+    parser.add_argument(
         "--duration",
         type=int,
         default=20,
@@ -219,14 +232,26 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="scripts/examples",
-        help="Directory to save the generated audio files.",
+        default="results",
+        help="Directory to save the generated audio files and scores.",
     )
     parser.add_argument(
         "--examples-json",
         type=str,
         default=None,
         help="Path to a JSON file with descriptions and audio file names for the examples. If not provided, uses automatic retrieval.",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="Number of top similar examples to retrieve for ICL (default: 3).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.7,
+        help="Minimum similarity score for an example to be included (default: 0.7).",
     )
     parser.add_argument(
         "--top-k",
@@ -248,73 +273,144 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Define output paths
-    baseline_output_path = os.path.join(args.output_dir, "POC_baseline.wav")
-    icl_output_path = os.path.join(args.output_dir, "POC_icl.wav")
+    # Get list of prompts
+    prompts = []
+    if args.prompts_file:
+        with open(args.prompts_file) as f:
+            prompts = [line.strip() for line in f if line.strip()]
+        print(f"Loaded {len(prompts)} prompts from {args.prompts_file}")
+    else:
+        prompts = [args.prompt]
 
-    # 1. Generate baseline audio
-    print("Generating baseline audio...")
-    run_generate_music(
-        prompt=args.prompt,
-        duration=args.duration,
-        output_path=baseline_output_path,
+    # Create output directory with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = Path(args.output_dir) / timestamp
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize CSV file for results
+    csv_path = output_dir / "scores.csv"
+    csv_file = open(csv_path, "w", newline="", encoding="utf-8")
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(
+        [
+            "prompt_id",
+            "prompt",
+            "baseline_score",
+            "icl_score",
+            "num_examples",
+            "baseline_audio",
+            "icl_audio",
+        ]
     )
-    print(f"Baseline audio generated at {baseline_output_path}")
 
-    # 2. Calculate CLAP score for baseline
-    print("Calculating CLAP score for baseline...")
-    baseline_score = get_clap_score(args.prompt, baseline_output_path)
-    print(f"CLAP score for baseline: {baseline_score:.4f}")
+    print(f"\nResults will be saved to: {output_dir}")
+    print(f"Scores will be saved to: {csv_path}")
+    print("=" * 60)
 
-    # 3. Generate and score in-context learning audio
-    if not args.no_icl:
-        print("\nGenerating in-context learning audio...")
+    # Process each prompt
+    for idx, prompt in enumerate(prompts):
+        prompt_id = f"{idx + 1:03d}"
+        print(f"\n[{prompt_id}/{len(prompts):03d}] Processing: {prompt[:50]}...")
 
-        examples = []
+        # Define output paths
+        baseline_output_path = output_dir / f"{prompt_id}_baseline.wav"
+        icl_output_path = output_dir / f"{prompt_id}_icl.wav"
 
-        if args.examples_json:
-            # Use provided JSON file
-            json_path = Path(args.examples_json)
-            examples_dir = json_path.parent
+        # 1. Generate baseline audio
+        print("Generating baseline audio...")
+        run_generate_music(
+            prompt=prompt,
+            duration=args.duration,
+            output_path=str(baseline_output_path),
+        )
+        print(f"Baseline audio generated at {baseline_output_path}")
 
-            if not json_path.exists():
-                print(
-                    f"Warning: JSON file not found at {json_path}. Skipping ICL generation."
-                )
+        # 2. Calculate CLAP score for baseline
+        print("Calculating CLAP score for baseline...")
+        baseline_score = get_clap_score(prompt, str(baseline_output_path))
+        print(f"CLAP score for baseline: {baseline_score:.4f}")
+
+        icl_score = None
+        num_examples = 0
+
+        # 3. Generate and score in-context learning audio
+        if not args.no_icl:
+            print("\nGenerating in-context learning audio...")
+
+            examples = []
+
+            if args.examples_json:
+                # Use provided JSON file
+                json_path = Path(args.examples_json)
+                examples_dir = json_path.parent
+
+                if not json_path.exists():
+                    print(
+                        f"Warning: JSON file not found at {json_path}. Skipping ICL generation."
+                    )
+                else:
+                    with open(json_path) as f:
+                        example_data = json.load(f)
+
+                    for item in example_data:
+                        audio_path = examples_dir / item["file"]
+                        if audio_path.exists():
+                            examples.append((item["description"], str(audio_path)))
+                        else:
+                            print(
+                                f"Warning: {audio_path} not found for example '{item['description']}'"
+                            )
             else:
-                with open(json_path) as f:
-                    example_data = json.load(f)
+                # Use automatic retrieval based on cosine similarity
+                print(
+                    f"Retrieving top-{args.top_k} examples based on cosine similarity..."
+                )
+                examples = get_top_k_examples(
+                    prompt, k=args.top_k, threshold=args.threshold
+                )
 
-                for item in example_data:
-                    audio_path = examples_dir / item["file"]
-                    if audio_path.exists():
-                        examples.append((item["description"], str(audio_path)))
-                    else:
-                        print(
-                            f"Warning: {audio_path} not found for example '{item['description']}'"
-                        )
-        else:
-            # Use automatic retrieval based on cosine similarity
-            print(f"Retrieving top-{args.top_k} examples based on cosine similarity...")
-            examples = get_top_k_examples(
-                args.prompt, k=args.top_k, threshold=args.threshold
-            )
+            num_examples = len(examples)
 
-        if not examples:
-            print("No valid in-context examples found. Skipping ICL generation.")
-        else:
-            run_generate_music(
-                prompt=args.prompt,
-                duration=args.duration,
-                output_path=icl_output_path,
-                examples=examples,
-            )
-            print(f"In-context learning audio generated at {icl_output_path}")
+            if not examples:
+                print("No valid in-context examples found. Skipping ICL generation.")
+            else:
+                run_generate_music(
+                    prompt=prompt,
+                    duration=args.duration,
+                    output_path=str(icl_output_path),
+                    examples=examples,
+                )
+                print(f"In-context learning audio generated at {icl_output_path}")
 
-            print("Calculating CLAP score for in-context learning...")
-            icl_score = get_clap_score(args.prompt, icl_output_path)
-            print(f"CLAP score for in-context learning: {icl_score:.4f}")
+                print("Calculating CLAP score for in-context learning...")
+                icl_score = get_clap_score(prompt, str(icl_output_path))
+                print(f"CLAP score for in-context learning: {icl_score:.4f}")
 
-            print("\nComparison:")
-            print(f"  - Baseline CLAP score: {baseline_score:.4f}")
-            print(f"  - ICL CLAP score:      {icl_score:.4f}")
+                print("\nComparison:")
+                print(f"  - Baseline CLAP score: {baseline_score:.4f}")
+                print(f"  - ICL CLAP score:      {icl_score:.4f}")
+
+        # Write to CSV
+        csv_writer.writerow(
+            [
+                prompt_id,
+                prompt,
+                f"{baseline_score:.4f}",
+                f"{icl_score:.4f}" if icl_score is not None else "",
+                num_examples,
+                baseline_output_path.name,
+                icl_output_path.name if icl_score is not None else "",
+            ]
+        )
+        csv_file.flush()
+
+    csv_file.close()
+
+    # Print summary
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    print(f"Total prompts processed: {len(prompts)}")
+    print(f"Results saved to: {output_dir}")
+    print(f"Scores saved to: {csv_path}")
+    print("=" * 60)
