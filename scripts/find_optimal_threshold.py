@@ -55,7 +55,7 @@ def find_optimal_threshold(csv_path: Path):
         print(f"  Avg baseline: {subset['baseline_score'].mean():.4f}")
         print(f"  Avg ICL:      {subset['icl_score'].mean():.4f}")
         print(f"  Avg diff:     {avg_diff:+.4f}")
-        print(f"  Win rate:     {improved}/{total} ({improvement_rate*100:.1f}%)")
+        print(f"  Win rate:     {improved}/{total} ({improvement_rate * 100:.1f}%)")
 
     print()
     print("=" * 80)
@@ -104,7 +104,7 @@ def find_optimal_threshold(csv_path: Path):
     print(f"If this strategy were applied:")
     print(f"  Would use ICL: {would_use_icl.sum()}/{len(df)} cases")
     print(
-        f"  Correct decisions: {correct_decisions.sum()}/{len(df)} ({correct_decisions.sum()/len(df)*100:.1f}%)"
+        f"  Correct decisions: {correct_decisions.sum()}/{len(df)} ({correct_decisions.sum() / len(df) * 100:.1f}%)"
     )
 
     # Show which prompts should use ICL

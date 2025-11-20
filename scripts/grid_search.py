@@ -100,9 +100,7 @@ def run_evaluation(top_k: int, threshold: float, duration: int, output_base: Pat
         csv_file.flush()
 
         icl_str = f"{icl_score:.4f}" if icl_score is not None else "N/A"
-        print(
-            f"  Base={baseline_score:.4f} | ICL={icl_str} | Examples={num_examples}"
-        )
+        print(f"  Base={baseline_score:.4f} | ICL={icl_str} | Examples={num_examples}")
 
     csv_file.close()
     return csv_path
@@ -238,7 +236,7 @@ def main():
     for i, result in enumerate(results, 1):
         print(
             f"{i:<6} {result['top_k']:<8} {result['threshold']:<8.2f} "
-            f"{result['avg_improvement']:+.4f}    {result['win_rate']*100:>5.1f}%       "
+            f"{result['avg_improvement']:+.4f}    {result['win_rate'] * 100:>5.1f}%       "
             f"{result['num_cases']:<8} {result['max_improvement']:+.4f}     {result['min_improvement']:+.4f}"
         )
 
@@ -250,7 +248,7 @@ def main():
     print(f"  Top-K: {best['top_k']}")
     print(f"  Threshold: {best['threshold']:.2f}")
     print(f"  Average improvement: {best['avg_improvement']:+.4f}")
-    print(f"  Win rate: {best['win_rate']*100:.1f}%")
+    print(f"  Win rate: {best['win_rate'] * 100:.1f}%")
     print(f"  Cases evaluated: {best['num_cases']}")
     print(f"  Max improvement: {best['max_improvement']:+.4f}")
     print(f"  Min degradation: {best['min_improvement']:+.4f}")
