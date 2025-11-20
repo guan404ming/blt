@@ -11,6 +11,12 @@ import soundfile as sf
 import json
 from pathlib import Path
 
+# Constants
+PROJECT_ROOT = Path(__file__).parent.parent
+AUDIO_CAPTIONS_PATH = PROJECT_ROOT / "data" / "audio_captions.json"
+EMBEDDINGS_PATH = PROJECT_ROOT / "data" / "audio_captions_embeddings.pt"
+AUDIO_DIR = PROJECT_ROOT / "data" / "audio"
+
 
 def get_clap_score(text, audio_file):
     """Calculates the CLAP score between a text prompt and an audio file."""
@@ -82,6 +88,118 @@ def run_generate_music(*args, **kwargs):
     sys.argv = original_argv
 
 
+def get_top_k_examples(
+    prompt: str, k: int = 3, threshold: float = 0.7
+) -> list[tuple[str, str]]:
+    """Retrieves top-k examples from audio_captions.json based on cosine similarity.
+
+    Uses pre-computed embeddings for fast retrieval.
+
+    Args:
+        prompt: The text prompt to match against descriptions
+        k: Number of top examples to return
+        threshold: Minimum similarity score to include an example (default: 0.7)
+
+    Returns:
+        List of tuples (description, audio_path) for the top-k most similar examples
+    """
+    original_argv = sys.argv
+    sys.argv = [original_argv[0]]
+
+    from transformers import AutoProcessor, ClapModel
+
+    # Load captions data
+    if not AUDIO_CAPTIONS_PATH.exists():
+        print(
+            f"Error: {AUDIO_CAPTIONS_PATH} not found. Run create_audio_caption_mapping.py first."
+        )
+        sys.argv = original_argv
+        return []
+
+    with open(AUDIO_CAPTIONS_PATH) as f:
+        captions_data = json.load(f)
+
+    if not captions_data:
+        print("No captions found in audio_captions.json")
+        sys.argv = original_argv
+        return []
+
+    # Load pre-computed embeddings if available
+    if EMBEDDINGS_PATH.exists():
+        print("Loading pre-computed embeddings...")
+        desc_embeds = torch.load(EMBEDDINGS_PATH, weights_only=True)
+    else:
+        print(f"Warning: Pre-computed embeddings not found at {EMBEDDINGS_PATH}")
+        print("Computing embeddings on-the-fly (this will be slow)...")
+        print("Run create_audio_caption_mapping.py to pre-compute embeddings.")
+
+        # Fall back to computing embeddings
+        model = ClapModel.from_pretrained("laion/clap-htsat-unfused")
+        processor = AutoProcessor.from_pretrained("laion/clap-htsat-unfused")
+        descriptions = [item["description"] for item in captions_data]
+        desc_inputs = processor(text=descriptions, return_tensors="pt", padding=True)
+
+        with torch.no_grad():
+            desc_embeds = model.get_text_features(**desc_inputs)
+        desc_embeds = desc_embeds / desc_embeds.norm(dim=-1, keepdim=True)
+
+    # Load CLAP model for prompt embedding only
+    model = ClapModel.from_pretrained("laion/clap-htsat-unfused")
+    processor = AutoProcessor.from_pretrained("laion/clap-htsat-unfused")
+
+    # Process prompt
+    prompt_inputs = processor(text=[prompt], return_tensors="pt", padding=True)
+
+    with torch.no_grad():
+        prompt_embeds = model.get_text_features(**prompt_inputs)
+
+    # Normalize prompt embedding
+    prompt_embeds = prompt_embeds / prompt_embeds.norm(dim=-1, keepdim=True)
+
+    # Calculate cosine similarities
+    similarities = torch.matmul(prompt_embeds, desc_embeds.T).squeeze(0)
+
+    # Get top-k indices
+    top_k_indices = torch.topk(
+        similarities, min(k, len(captions_data))
+    ).indices.tolist()
+
+    # Build result list
+    examples = []
+    print(f"\nTop-{k} similar examples for prompt: '{prompt}'")
+    print(f"Threshold: {threshold}")
+    print("=" * 60)
+
+    for i, idx in enumerate(top_k_indices):
+        item = captions_data[idx]
+        audio_path = AUDIO_DIR / item["file"]
+        similarity = similarities[idx].item()
+
+        # Skip examples below threshold
+        if similarity < threshold:
+            print(f"{i + 1}. Score: {similarity:.4f} (below threshold, skipped)")
+            continue
+
+        if audio_path.exists():
+            examples.append((item["description"], str(audio_path)))
+            desc_preview = (
+                item["description"][:80] + "..."
+                if len(item["description"]) > 80
+                else item["description"]
+            )
+            print(f"{i + 1}. Score: {similarity:.4f}")
+            print(f"   File: {item['file']}")
+            print(f"   Desc: {desc_preview}")
+        else:
+            print(f"Warning: Audio file not found: {audio_path}")
+
+    print("=" * 60)
+    print(f"Found {len(examples)} examples above threshold {threshold}")
+
+    sys.argv = original_argv
+    return examples
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate music and calculate CLAP score."
@@ -107,8 +225,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--examples-json",
         type=str,
-        default="scripts/examples/jazz.json",
-        help="Path to a JSON file with descriptions and audio file names for the examples.",
+        default=None,
+        help="Path to a JSON file with descriptions and audio file names for the examples. If not provided, uses automatic retrieval.",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="Number of top similar examples to retrieve for ICL (default: 3).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.7,
+        help="Minimum similarity score for an example to be included (default: 0.7).",
     )
     parser.add_argument(
         "--no-icl",
@@ -141,43 +271,50 @@ if __name__ == "__main__":
         print("\nGenerating in-context learning audio...")
 
         examples = []
-        json_path = Path(args.examples_json)
-        examples_dir = json_path.parent
 
-        if not json_path.exists():
-            print(
-                f"Warning: JSON file not found at {json_path}. Skipping ICL generation."
-            )
-        else:
-            with open(json_path) as f:
-                example_data = json.load(f)
+        if args.examples_json:
+            # Use provided JSON file
+            json_path = Path(args.examples_json)
+            examples_dir = json_path.parent
 
-            for item in example_data:
-                audio_path = examples_dir / item["file"]
-                if audio_path.exists():
-                    examples.append((item["description"], str(audio_path)))
-                else:
-                    print(
-                        f"Warning: {audio_path} not found for example '{item['description']}'"
-                    )
-
-            if not examples:
+            if not json_path.exists():
                 print(
-                    "No valid in-context examples found from the JSON file. Skipping ICL generation."
+                    f"Warning: JSON file not found at {json_path}. Skipping ICL generation."
                 )
             else:
-                run_generate_music(
-                    prompt=args.prompt,
-                    duration=args.duration,
-                    output_path=icl_output_path,
-                    examples=examples,
-                )
-                print(f"In-context learning audio generated at {icl_output_path}")
+                with open(json_path) as f:
+                    example_data = json.load(f)
 
-                print("Calculating CLAP score for in-context learning...")
-                icl_score = get_clap_score(args.prompt, icl_output_path)
-                print(f"CLAP score for in-context learning: {icl_score:.4f}")
+                for item in example_data:
+                    audio_path = examples_dir / item["file"]
+                    if audio_path.exists():
+                        examples.append((item["description"], str(audio_path)))
+                    else:
+                        print(
+                            f"Warning: {audio_path} not found for example '{item['description']}'"
+                        )
+        else:
+            # Use automatic retrieval based on cosine similarity
+            print(f"Retrieving top-{args.top_k} examples based on cosine similarity...")
+            examples = get_top_k_examples(
+                args.prompt, k=args.top_k, threshold=args.threshold
+            )
 
-                print("\nComparison:")
-                print(f"  - Baseline CLAP score: {baseline_score:.4f}")
-                print(f"  - ICL CLAP score:      {icl_score:.4f}")
+        if not examples:
+            print("No valid in-context examples found. Skipping ICL generation.")
+        else:
+            run_generate_music(
+                prompt=args.prompt,
+                duration=args.duration,
+                output_path=icl_output_path,
+                examples=examples,
+            )
+            print(f"In-context learning audio generated at {icl_output_path}")
+
+            print("Calculating CLAP score for in-context learning...")
+            icl_score = get_clap_score(args.prompt, icl_output_path)
+            print(f"CLAP score for in-context learning: {icl_score:.4f}")
+
+            print("\nComparison:")
+            print(f"  - Baseline CLAP score: {baseline_score:.4f}")
+            print(f"  - ICL CLAP score:      {icl_score:.4f}")
