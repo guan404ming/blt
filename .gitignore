@@ -53,6 +53,8 @@ outputs/
 checkpoints/
 data/
 wandb/
+results/
+grid_search_results/
 # *.wav
 *.mp3
 *.flac
