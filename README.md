@@ -26,6 +26,7 @@
 | LoRA Fine-tuning | Parameter-efficient adaptation for specific styles | Planned |
 | Prompt Enhancement | LLM-based prompt refinement | Planned |
 | Audio Post-processing | Style transfer, mixing | Planned |
+| Lyrics Translation | Translate lyrics for multilingual music generation | Planned |
 | Evaluation | CLAP score | Done |
 
 ## Setup

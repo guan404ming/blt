@@ -25,6 +25,16 @@ dependencies = [
     "wandb>=0.17.0",
     "audiocraft",
     "torchcodec>=0.8.1",
+    "pydantic-ai-slim[gemini]>=1.22.0",
+    "langchain>=0.3.27",
+    "langchain-community>=0.3.21",
+    "langchain-google-genai>=2.1.12",
+    "faiss-cpu>=1.13.0",
+    "pypinyin>=0.55.0",
+    "syllables>=1.1.4",
+    "python-dotenv>=1.2.1",
+    "google-genai>=1.52.0",
+    "pronouncing>=0.2.0",
 ]
 
 [tool.uv.sources]
