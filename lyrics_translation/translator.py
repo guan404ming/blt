@@ -24,7 +24,7 @@ class LyricsTranslator:
         use_cot: bool = False,
         max_retries: int = 3,
         auto_save: bool = False,
-        save_dir: Optional[str] = None
+        save_dir: Optional[str] = None,
     ):
         """
         初始化翻譯器
@@ -55,7 +55,7 @@ class LyricsTranslator:
         self.agent = Agent(
             model=model,
             output_type=self.result_type,
-            system_prompt=self._get_system_prompt()
+            system_prompt=self._get_system_prompt(),
         )
 
         # 工具
@@ -95,7 +95,7 @@ class LyricsTranslator:
         constraints: Optional[MusicConstraints] = None,
         auto_retry: bool = True,
         save_path: Optional[str] = None,
-        save_format: str = "json"
+        save_format: str = "json",
     ) -> LyricTranslation | CoTTranslation:
         """
         翻譯歌詞
@@ -123,7 +123,7 @@ class LyricsTranslator:
             source_lyrics=source_lyrics,
             source_lang=source_lang,
             target_lang=target_lang,
-            constraints=constraints
+            constraints=constraints,
         )
 
         # 3. 呼叫 LLM
@@ -136,11 +136,7 @@ class LyricsTranslator:
         # 5. 驗證與重試
         if auto_retry:
             translation = self._validate_and_retry(
-                translation,
-                constraints,
-                source_lyrics,
-                source_lang,
-                target_lang
+                translation, constraints, source_lyrics, source_lang, target_lang
             )
 
         # 6. 保存結果（如果啟用）
@@ -150,15 +146,13 @@ class LyricsTranslator:
                 save_path=save_path,
                 save_format=save_format,
                 source_lang=source_lang,
-                target_lang=target_lang
+                target_lang=target_lang,
             )
 
         return translation
 
     def _recalculate_syllables(
-        self,
-        translation: LyricTranslation | CoTTranslation,
-        target_lang: str
+        self, translation: LyricTranslation | CoTTranslation, target_lang: str
     ) -> LyricTranslation | CoTTranslation:
         """
         重新計算翻譯結果的實際音節數
@@ -187,7 +181,7 @@ class LyricsTranslator:
         source_lang: str,
         target_lang: str,
         constraints: MusicConstraints,
-        feedback: Optional[str] = None
+        feedback: Optional[str] = None,
     ) -> str:
         """構建翻譯 prompt"""
         prompt_parts = []
@@ -196,15 +190,17 @@ class LyricsTranslator:
             # 重試時包含反饋
             prompt_parts.append(f"【反饋】\n{feedback}\n")
 
-        prompt_parts.extend([
-            f"【原始歌詞】({source_lang})",
-            source_lyrics,
-            "",
-            f"【目標語言】{target_lang}",
-            "",
-            "【音樂約束】",
-            f"- 音節數: {constraints.syllable_counts}",
-        ])
+        prompt_parts.extend(
+            [
+                f"【原始歌詞】({source_lang})",
+                source_lyrics,
+                "",
+                f"【目標語言】{target_lang}",
+                "",
+                "【音樂約束】",
+                f"- 音節數: {constraints.syllable_counts}",
+            ]
+        )
 
         if constraints.rhyme_scheme:
             prompt_parts.append(f"- 押韻方案: {constraints.rhyme_scheme}")
@@ -212,10 +208,7 @@ class LyricsTranslator:
         if constraints.pause_positions:
             prompt_parts.append(f"- 停頓位置: {constraints.pause_positions}")
 
-        prompt_parts.extend([
-            "",
-            "請翻譯並確保滿足所有約束。"
-        ])
+        prompt_parts.extend(["", "請翻譯並確保滿足所有約束。"])
 
         return "\n".join(prompt_parts)
 
@@ -225,7 +218,7 @@ class LyricsTranslator:
         constraints: MusicConstraints,
         source_lyrics: str,
         source_lang: str,
-        target_lang: str
+        target_lang: str,
     ) -> LyricTranslation | CoTTranslation:
         """驗證翻譯並在必要時重試"""
         # 轉換為標準格式以進行驗證
@@ -235,7 +228,7 @@ class LyricsTranslator:
                 syllable_counts=translation.syllable_counts,
                 rhyme_endings=translation.rhyme_endings,
                 reasoning=translation.meaning_analysis,
-                constraint_satisfaction={}
+                constraint_satisfaction={},
             )
         else:
             lyric_translation = translation
@@ -260,7 +253,7 @@ class LyricsTranslator:
                 source_lang=source_lang,
                 target_lang=target_lang,
                 constraints=constraints,
-                feedback=feedback
+                feedback=feedback,
             )
 
             # 重試
@@ -277,7 +270,7 @@ class LyricsTranslator:
                     syllable_counts=translation.syllable_counts,
                     rhyme_endings=translation.rhyme_endings,
                     reasoning=translation.meaning_analysis,
-                    constraint_satisfaction={}
+                    constraint_satisfaction={},
                 )
             else:
                 lyric_translation = translation
@@ -297,7 +290,7 @@ class LyricsTranslator:
         save_path: Optional[str] = None,
         save_format: str = "json",
         source_lang: str = "Unknown",
-        target_lang: str = "Unknown"
+        target_lang: str = "Unknown",
     ) -> None:
         """
         保存翻譯結果

@@ -26,12 +26,12 @@ def main():
 
     # Read lyrics
     lyrics_file = "/home/gmchiu/Documents/Github/omg/擱淺.txt"
-    with open(lyrics_file, 'r', encoding='utf-8') as f:
+    with open(lyrics_file, "r", encoding="utf-8") as f:
         source_lyrics = f.read().strip()
 
     # Take first verse for demonstration (lines 1-6)
-    lines = source_lyrics.split('\n')
-    first_verse = '\n'.join(lines)
+    lines = source_lyrics.split("\n")
+    first_verse = "\n".join(lines)
 
     print("=" * 80)
     print("歌詞翻譯: 擱淺 (Jay Chou)")
@@ -41,9 +41,9 @@ def main():
     print()
 
     # Extract constraints
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("1. 自動提取音樂約束")
-    print("="*80)
+    print("=" * 80)
 
     extractor = FeatureExtractor(source_lang="Chinese", target_lang="English")
     constraints = extractor.extract_constraints(first_verse)
@@ -53,9 +53,9 @@ def main():
     print(f"停頓位置: {constraints.pause_positions}")
 
     # Zero-shot translation
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("2. Zero-shot 翻譯 (無 CoT)")
-    print("="*80)
+    print("=" * 80)
 
     translator = LyricsTranslator(
         model="gemini-2.5-pro",
@@ -63,14 +63,14 @@ def main():
         use_cot=False,
         max_retries=1,
         auto_save=True,
-        save_dir="outputs"
+        save_dir="outputs",
     )
 
     result = translator.translate(
         source_lyrics=first_verse,
         source_lang="Chinese",
         target_lang="English",
-        save_format="md"  # Save as Markdown
+        save_format="md",  # Save as Markdown
     )
 
     print("\n【翻譯結果】")
@@ -82,9 +82,9 @@ def main():
     print(f"\n【翻譯思路】\n{result.reasoning}")
 
     # CoT translation
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("3. Chain-of-Thought 翻譯")
-    print("="*80)
+    print("=" * 80)
 
     translator_cot = LyricsTranslator(
         model="gemini-2.5-pro",
@@ -92,14 +92,14 @@ def main():
         use_cot=True,
         max_retries=1,
         auto_save=True,
-        save_dir="outputs"
+        save_dir="outputs",
     )
 
     result_cot = translator_cot.translate(
         source_lyrics=first_verse,
         source_lang="Chinese",
         target_lang="English",
-        save_format="json"  # Save as JSON
+        save_format="json",  # Save as JSON
     )
 
     print("\n【Step 1: 意義分析】")
@@ -121,9 +121,9 @@ def main():
     for key, value in result_cot.self_verification.items():
         print(f"  - {key}: {value}")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("翻譯完成!")
-    print("="*80)
+    print("=" * 80)
 
 
 if __name__ == "__main__":

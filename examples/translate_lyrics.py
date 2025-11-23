@@ -34,9 +34,9 @@ Turn away and slam the door"""
     print()
 
     # 1. Zero-shot 翻譯 (基礎版)
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("1. Zero-shot 翻譯 (無 CoT)")
-    print("="*60)
+    print("=" * 60)
 
     translator = LyricsTranslator(
         model="gemini-2.5-flash",
@@ -44,14 +44,14 @@ Turn away and slam the door"""
         use_cot=False,
         max_retries=3,
         auto_save=True,
-        save_dir="outputs"
+        save_dir="outputs",
     )
 
     result = translator.translate(
         source_lyrics=source_lyrics,
         source_lang="English",
         target_lang="Chinese",
-        save_format="txt"  # Save as plain text
+        save_format="txt",  # Save as plain text
     )
 
     print("\n【翻譯結果】")
@@ -63,9 +63,9 @@ Turn away and slam the door"""
     print(f"\n【翻譯思路】\n{result.reasoning}")
 
     # 2. CoT 翻譯 (進階版)
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("2. Chain-of-Thought 翻譯")
-    print("="*60)
+    print("=" * 60)
 
     translator_cot = LyricsTranslator(
         model="gemini-2.5-flash",
@@ -73,14 +73,14 @@ Turn away and slam the door"""
         use_cot=True,
         max_retries=3,
         auto_save=True,
-        save_dir="outputs"
+        save_dir="outputs",
     )
 
     result_cot = translator_cot.translate(
         source_lyrics=source_lyrics,
         source_lang="English",
         target_lang="Chinese",
-        save_format="md"  # Save as Markdown
+        save_format="md",  # Save as Markdown
     )
 
     print("\n【Step 1: 意義分析】")
@@ -103,9 +103,9 @@ Turn away and slam the door"""
         print(f"  - {key}: {value}")
 
     # 3. 顯示自動提取的約束
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("3. 自動提取的音樂約束")
-    print("="*60)
+    print("=" * 60)
 
     extractor = FeatureExtractor(source_lang="English", target_lang="Chinese")
     constraints = extractor.extract_constraints(source_lyrics)
