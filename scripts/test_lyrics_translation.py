@@ -5,13 +5,10 @@ using the provided audio file and lyrics.
 """
 
 from pathlib import Path
-import sys
-
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from omg.lyrics_translation import LyricsTranslationPipeline
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 
 def main():
