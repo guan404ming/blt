@@ -10,8 +10,12 @@ from omg import synthesizer
 # Import Translators module
 from omg import translators
 
+# Import Pipeline module
+from omg import pipeline
+
 __all__ = [
     "generate_music",
     "synthesizer",
     "translators",
+    "pipeline",
 ]

@@ -24,7 +24,7 @@ os.environ["TORCHAUDIO_BACKEND"] = "soundfile"
 _original_argv = sys.argv[:]
 sys.argv = [sys.argv[0]]
 
-from omg.synthesizer import LyricsTranslationPipeline
+from omg.pipeline import CoverSongPipeline
 
 
 def main():
@@ -129,10 +129,10 @@ def main():
 
     # Initialize pipeline
     print("\n" + "=" * 60)
-    print("LYRICS TRANSLATION DEMO")
+    print("COVER SONG GENERATION DEMO")
     print("=" * 60)
 
-    pipeline = LyricsTranslationPipeline(
+    pipeline = CoverSongPipeline(
         separator_model=args.separator_model,
         aligner_model=args.aligner_model,
         output_dir=args.output_dir,
