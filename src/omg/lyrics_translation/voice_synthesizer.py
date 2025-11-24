@@ -12,6 +12,7 @@ from typing import Optional, List, Tuple
 from .lyrics_aligner import WordTiming
 import parselmouth
 from parselmouth.praat import call
+import soundfile as sf
 
 
 class VoiceSynthesizer:
@@ -76,8 +77,15 @@ class VoiceSynthesizer:
         print(f"Reference vocals: {reference_vocals_path}")
         print(f"Output path: {output_path}")
 
-        # Load reference audio
-        ref_waveform, ref_sr = torchaudio.load(reference_vocals_path)
+        # Load reference audio using soundfile (avoids torchcodec issues)
+        ref_audio, ref_sr = sf.read(reference_vocals_path)
+        # Convert to torch tensor
+        if len(ref_audio.shape) == 1:
+            # Mono audio
+            ref_waveform = torch.tensor(ref_audio, dtype=torch.float32).unsqueeze(0)
+        else:
+            # Multi-channel audio - keep as is
+            ref_waveform = torch.tensor(ref_audio, dtype=torch.float32).T
 
         # For now, we'll create a placeholder implementation
         # In production, you would:
@@ -101,12 +109,18 @@ class VoiceSynthesizer:
             old_word_timings,
         )
 
-        # Save output
-        torchaudio.save(
-            str(output_path),
-            synthesized_audio,
-            ref_sr,
-        )
+        # Save output using soundfile (avoids torchcodec issues)
+        # Convert tensor to numpy
+        audio_numpy = synthesized_audio.cpu().numpy()
+        # Handle different tensor shapes
+        if audio_numpy.ndim == 2:
+            # (channels, samples) -> (samples,) or (samples, channels)
+            if audio_numpy.shape[0] == 1:
+                audio_numpy = audio_numpy[0]  # Remove single channel dimension
+            else:
+                audio_numpy = audio_numpy.T  # (channels, samples) -> (samples, channels)
+
+        sf.write(str(output_path), audio_numpy, ref_sr)
 
         print(f"\n✓ Synthesized audio saved to: {output_path}")
         return str(output_path)
@@ -138,8 +152,42 @@ class VoiceSynthesizer:
         # - Time stretching to match new lyrics timing
         # - Voice conversion to match reference
 
-        print("\n📝 Basic modifications applied (placeholder)")
-        return waveform
+        try:
+            # Try to use TTS for synthesis
+            from TTS.api import TTS
+
+            print("\n🎤 Synthesizing new vocals with TTS...")
+
+            # Initialize TTS model - using a simple English model
+            device = self.device
+            gpu = (device == "cuda")
+
+            # Use a simpler TTS model for faster synthesis
+            tts_model = TTS(model_name="tts_models/en/ljspeech/glow-tts", gpu=gpu)
+
+            # Synthesize speech from new lyrics
+            synthesized_wav = tts_model.tts(text=new_lyrics)
+
+            # Convert to torch tensor
+            synthesized = torch.tensor(synthesized_wav, dtype=torch.float32)
+            if synthesized.ndim == 1:
+                synthesized = synthesized.unsqueeze(0)
+
+            # Resample if needed to match reference audio sample rate
+            if synthesized.shape[0] == 1:  # Mono audio
+                # Default TTS model outputs 22050 Hz, resample to match reference
+                tts_sr = 22050  # Default TTS output sample rate
+                if tts_sr != sample_rate:
+                    resampler = torchaudio.transforms.Resample(tts_sr, sample_rate)
+                    synthesized = resampler(synthesized)
+
+            print("✓ TTS synthesis completed")
+            return synthesized
+
+        except Exception as e:
+            print(f"\n⚠️  TTS synthesis not available ({type(e).__name__}: {e})")
+            print("Using reference audio as fallback...")
+            return waveform
 
     def extract_pitch_contour(
         self,
@@ -238,9 +286,20 @@ class VoiceSynthesizer:
         """
         print("Combining vocals with instrumental...")
 
-        # Load both tracks
-        vocals, vocals_sr = torchaudio.load(vocals_path)
-        instrumental, inst_sr = torchaudio.load(instrumental_path)
+        # Load both tracks using soundfile (avoids torchcodec issues)
+        vocals_np, vocals_sr = sf.read(vocals_path)
+        instrumental_np, inst_sr = sf.read(instrumental_path)
+
+        # Convert to torch tensors
+        if len(vocals_np.shape) == 1:
+            vocals = torch.tensor(vocals_np, dtype=torch.float32).unsqueeze(0)
+        else:
+            vocals = torch.tensor(vocals_np, dtype=torch.float32).T
+
+        if len(instrumental_np.shape) == 1:
+            instrumental = torch.tensor(instrumental_np, dtype=torch.float32).unsqueeze(0)
+        else:
+            instrumental = torch.tensor(instrumental_np, dtype=torch.float32).T
 
         # Resample if needed
         if vocals_sr != inst_sr:
@@ -268,10 +327,21 @@ class VoiceSynthesizer:
         if max_val > 1.0:
             mixed = mixed / max_val
 
-        # Save output
+        # Save output using soundfile (avoids torchcodec issues)
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        torchaudio.save(str(output_path), mixed, inst_sr)
+
+        # Convert tensor to numpy
+        mixed_numpy = mixed.cpu().numpy()
+        # Handle different tensor shapes
+        if mixed_numpy.ndim == 2:
+            # (channels, samples) -> (samples,) or (samples, channels)
+            if mixed_numpy.shape[0] == 1:
+                mixed_numpy = mixed_numpy[0]  # Remove single channel dimension
+            else:
+                mixed_numpy = mixed_numpy.T  # (channels, samples) -> (samples, channels)
+
+        sf.write(str(output_path), mixed_numpy, inst_sr)
 
         print(f"Combined audio saved to {output_path}")
         return str(output_path)

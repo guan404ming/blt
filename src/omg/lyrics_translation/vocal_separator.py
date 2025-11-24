@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Tuple, Optional
 import subprocess
 import tempfile
+import sys
 
 
 class VocalSeparator:
@@ -56,7 +57,7 @@ class VocalSeparator:
         # Run Demucs separation
         print(f"Separating audio using {self.model_name} model...")
         cmd = [
-            "python", "-m", "demucs.separate",
+            sys.executable, "-m", "demucs.separate",
             "-n", self.model_name,
             "-o", str(output_dir),
             "--two-stems", "vocals",  # Only separate vocals and instrumental

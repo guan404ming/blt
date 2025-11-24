@@ -5,6 +5,8 @@ import torchaudio
 from pathlib import Path
 from typing import List, Dict, Optional
 from dataclasses import dataclass
+import soundfile as sf
+from pypinyin import pinyin, Style
 from ctc_forced_aligner import (
     AlignmentSingleton,
     generate_emissions,
@@ -36,11 +38,12 @@ class LyricsAligner:
         language: Language code (e.g., 'eng', 'spa', 'fra', 'zho')
     """
 
-    def __init__(self):
+    def __init__(self, model_name: str = None, device: str = None):
         print("Loading alignment model using ctc_forced_aligner.AlignmentSingleton")
         aligner_instance = AlignmentSingleton()
         self.model = aligner_instance.alignment_model
         self.tokenizer = aligner_instance.alignment_tokenizer
+        self.device = device
 
     def align(
         self,
@@ -60,13 +63,17 @@ class LyricsAligner:
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        # Load audio
+        # Load audio using soundfile instead of torchaudio (avoids torchcodec issues)
         print(f"Loading audio from {audio_path}")
-        waveform, sample_rate = torchaudio.load(audio_path)
+        audio_data, sample_rate = sf.read(str(audio_path))
 
-        # Convert to mono if stereo
-        if waveform.shape[0] > 1:
-            waveform = waveform.mean(dim=0, keepdim=True)
+        # Convert to torch tensor
+        if len(audio_data.shape) == 1:
+            # Mono audio
+            waveform = torch.tensor(audio_data, dtype=torch.float32).unsqueeze(0)
+        else:
+            # Stereo or multi-channel - convert to mono
+            waveform = torch.tensor(audio_data, dtype=torch.float32).mean(dim=1, keepdim=True).T
 
         # Resample to 16kHz if needed (required by most alignment models)
         if sample_rate != 16000:
@@ -85,20 +92,43 @@ class LyricsAligner:
             batch_size=4,
         )
 
-        # Get token-level alignments
-        tokens_starred, text_starred = self.tokenizer(
-            text_raw=lyrics,
-            uroman_path=None,  # Auto-download if needed
-        )
+        # Convert Chinese lyrics to Pinyin for alignment (tokenizer only supports Latin characters)
+        # Get pinyin representation of the lyrics
+        pinyin_text = ""
+        for char in lyrics:
+            if '\u4e00' <= char <= '\u9fff':  # Check if Chinese character
+                py = pinyin(char, style=Style.NORMAL, heteronym=False)
+                if py and py[0]:
+                    pinyin_text += py[0][0].lower() + " "
+            elif char.isalpha():
+                # Keep alphabetic characters
+                pinyin_text += char.lower() + " "
+            elif char.isspace():
+                # Keep spaces to separate words
+                pinyin_text += " "
+            # Skip all other characters (punctuation, numbers, special chars like "-")
 
-        segments, scores, blank_id = get_alignments(
-            emissions,
-            tokens_starred,
-            self.tokenizer,
-        )
+        # Split pinyin into tokens
+        tokens_list = pinyin_text.split()
+        tokens_list = [t for t in tokens_list if t]  # Remove empty strings
 
-        # Get word-level spans
-        spans = get_spans(tokens_starred, segments, blank_id)
+        try:
+            segments, scores, blank_id = get_alignments(
+                emissions,
+                tokens_list,
+                self.tokenizer,
+            )
+
+            # Get word-level spans
+            spans = get_spans(tokens_list, segments, blank_id)
+        except (AssertionError, ValueError) as e:
+            # If alignment fails, use a simple approximation by splitting the audio evenly
+            print(f"Warning: Alignment failed ({e}). Using uniform time distribution.")
+            # Get the total audio duration
+            total_frames = emissions.shape[0]
+            stride = total_frames / len(words) if len(words) > 0 else total_frames
+            spans = [(int(i * stride), int((i + 1) * stride)) for i in range(len(words))]
+            scores = []
 
         # Convert to WordTiming objects
         word_timings = []

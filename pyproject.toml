@@ -39,6 +39,7 @@ dependencies = [
     "ctc-forced-aligner>=1.0.2",
     "openunmix>=1.3.0",
     "praat-parselmouth>=0.4.6",
+    "tts>=0.22.0",
 ]
 
 [tool.uv.sources]

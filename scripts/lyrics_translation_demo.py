@@ -15,6 +15,11 @@ import argparse
 from pathlib import Path
 import sys
 
+# Prevent laion_clap from parsing command line arguments during import
+# by temporarily removing sys.argv
+_original_argv = sys.argv[:]
+sys.argv = [sys.argv[0]]
+
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
@@ -23,6 +28,10 @@ from omg.lyrics_translation import LyricsTranslationPipeline
 
 
 def main():
+    # Restore the original sys.argv for argument parsing
+    global _original_argv
+    sys.argv = _original_argv
+
     parser = argparse.ArgumentParser(description="Lyrics Translation Pipeline Demo")
 
     parser.add_argument(
