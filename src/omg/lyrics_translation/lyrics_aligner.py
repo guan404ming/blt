@@ -85,56 +85,118 @@ class LyricsAligner:
             waveform = resampler(waveform)
             sample_rate = 16000
 
-        # Prepare text (split into words)
-        words = lyrics.strip().split()
-        print(f"Aligning {len(words)} words with audio...")
-
-        # Generate emissions
+        # Generate emissions first
         emissions, stride = generate_emissions(
             self.model,
             waveform.squeeze(),
             batch_size=4,
         )
 
+        # Prepare text for alignment - split by sentences/lines
+        clean_lyrics = lyrics.strip()
+
+        # Split by line breaks first to preserve sentence structure
+        lines = clean_lyrics.split("\n")
+        words = []
+
+        for line in lines:
+            # Skip empty lines
+            line = line.strip()
+            if not line:
+                continue
+            # Remove trailing punctuation for word extraction
+            line_for_words = line
+            for punct in [
+                "，",
+                "。",
+                "！",
+                "？",
+                "、",
+                "；",
+                "：",
+                '"',
+                "'",
+                """, """,
+                "-",
+            ]:
+                line_for_words = line_for_words.replace(punct, " ")
+
+            # Add the line as a complete unit
+            words.append(line)
+
+        if not words:
+            # Fallback: split by spaces if no line breaks
+            clean_lyrics = lyrics.strip()
+            for punct in [
+                "-",
+                "，",
+                "。",
+                "！",
+                "？",
+                "、",
+                "；",
+                "：",
+                '"',
+                "'",
+                """, """,
+                "、",
+            ]:
+                clean_lyrics = clean_lyrics.replace(punct, " ")
+            words = [w for w in clean_lyrics.split() if w]
+
+        print(f"Aligning {len(words)} sentences/lines with audio...")
+
         # Convert Chinese lyrics to Pinyin for alignment (tokenizer only supports Latin characters)
-        # Get pinyin representation of the lyrics
+        # Map each sentence/word to its pinyin tokens and track the mapping
         pinyin_text = ""
-        for char in lyrics:
-            if "\u4e00" <= char <= "\u9fff":  # Check if Chinese character
-                py = pinyin(char, style=Style.NORMAL, heteronym=False)
-                if py and py[0]:
-                    pinyin_text += py[0][0].lower() + " "
-            elif char.isalpha():
-                # Keep alphabetic characters
-                pinyin_text += char.lower() + " "
-            elif char.isspace():
-                # Keep spaces to separate words
-                pinyin_text += " "
-            # Skip all other characters (punctuation, numbers, special chars like "-")
+        word_to_token_indices = {}  # Maps word index to (start_token_idx, end_token_idx)
+        token_idx = 0
+
+        for word_idx, word in enumerate(words):
+            token_start = token_idx
+            word_pinyin = ""
+
+            for char in word:
+                if "\u4e00" <= char <= "\u9fff":  # Check if Chinese character
+                    py = pinyin(char, style=Style.NORMAL, heteronym=False)
+                    if py and py[0]:
+                        py_text = py[0][0].lower()
+                        word_pinyin += py_text + " "
+                        token_idx += 1
+                elif char.isalpha():
+                    # Keep alphabetic characters
+                    word_pinyin += char.lower() + " "
+                    token_idx += 1
+                elif char.isspace():
+                    # Keep spaces within sentence
+                    word_pinyin += " "
+                # Skip punctuation and other characters
+
+            # Only track if we have tokens for this sentence
+            if token_idx > token_start:
+                word_to_token_indices[word_idx] = (token_start, token_idx)
+            pinyin_text += word_pinyin + " "
 
         # Split pinyin into tokens
         tokens_list = pinyin_text.split()
         tokens_list = [t for t in tokens_list if t]  # Remove empty strings
 
-        try:
-            segments, scores, blank_id = get_alignments(
-                emissions,
-                tokens_list,
-                self.tokenizer,
-            )
+        # For sentence-level alignment, use uniform time distribution
+        # CTC-based alignment with pinyin tokens is unreliable for singing voice
+        print(f"Using uniform time distribution for sentence-level alignment")
+        print(
+            f"  ({len(tokens_list)} pinyin tokens extracted from {len(words)} sentences)"
+        )
 
-            # Get word-level spans
-            spans = get_spans(tokens_list, segments, blank_id)
-        except (AssertionError, ValueError) as e:
-            # If alignment fails, use a simple approximation by splitting the audio evenly
-            print(f"Warning: Alignment failed ({e}). Using uniform time distribution.")
-            # Get the total audio duration
-            total_frames = emissions.shape[0]
-            stride = total_frames / len(words) if len(words) > 0 else total_frames
-            spans = [
-                (int(i * stride), int((i + 1) * stride)) for i in range(len(words))
-            ]
-            scores = []
+        # Use uniform time distribution directly
+        total_frames = emissions.shape[0]
+        frame_stride = total_frames / len(words) if len(words) > 0 else total_frames
+        spans = [
+            (int(i * frame_stride), int((i + 1) * frame_stride))
+            for i in range(len(words))
+        ]
+        scores = []
+        alignment_successful = False
 
         # Convert to WordTiming objects
         word_timings = []
@@ -144,10 +206,12 @@ class LyricsAligner:
             start_sec = span[0] * stride / sample_rate
             end_sec = span[1] * stride / sample_rate
 
-            # Calculate average score for this word
-            word_score = (
-                scores[span[0] : span[1]].mean().item() if len(scores) > 0 else 1.0
-            )
+            # Calculate average score for this word if available
+            if len(scores) > 0 and span[0] < len(scores):
+                score_slice = scores[span[0] : min(span[1], len(scores))]
+                word_score = score_slice.mean().item() if len(score_slice) > 0 else 1.0
+            else:
+                word_score = 1.0
 
             word_timings.append(
                 WordTiming(
@@ -215,3 +279,108 @@ class LyricsAligner:
             print(f"... ({len(word_timings) - max_words} more words)")
 
         print("=" * 60)
+
+    def map_new_lyrics_to_timing(
+        self,
+        old_word_timings: List[WordTiming],
+        new_lyrics: str,
+    ) -> List[WordTiming]:
+        """Map new lyrics to the timing of old lyrics.
+
+        Maps new lyrics by sentences (split by newlines) to old lyrics timing.
+        New sentences start from the first old sentence's start time.
+
+        Args:
+            old_word_timings: Timing information from aligned old lyrics (sentences)
+            new_lyrics: New lyrics text to map to the timings (newline-separated sentences)
+
+        Returns:
+            List of WordTiming objects for new lyrics with old lyrics' timings
+        """
+        # Split new lyrics by newlines to get sentences
+        new_sentences = [
+            line.strip() for line in new_lyrics.strip().split("\n") if line.strip()
+        ]
+
+        if not new_sentences:
+            print("⚠️  No new sentences found")
+            return []
+
+        # If new and old have same number of sentences, direct mapping
+        if len(new_sentences) == len(old_word_timings):
+            print(
+                f"✓ Direct mapping: {len(new_sentences)} new sentences to {len(old_word_timings)} old timings"
+            )
+            return [
+                WordTiming(
+                    word=new_sentence,
+                    start=old_timing.start,
+                    end=old_timing.end,
+                    score=old_timing.score,
+                )
+                for new_sentence, old_timing in zip(new_sentences, old_word_timings)
+            ]
+
+        # If new sentences have fewer items, group them
+        if len(new_sentences) < len(old_word_timings):
+            print(
+                f"⚠️  Grouping: {len(new_sentences)} new sentences to {len(old_word_timings)} old timings"
+            )
+            sentences_per_group = len(old_word_timings) / len(new_sentences)
+            new_timings = []
+
+            for i, new_sentence in enumerate(new_sentences):
+                start_idx = int(i * sentences_per_group)
+                end_idx = int((i + 1) * sentences_per_group)
+                end_idx = min(end_idx, len(old_word_timings))
+
+                # Use timing from first and last sentence in this group
+                start_time = old_word_timings[start_idx].start
+                end_time = old_word_timings[end_idx - 1].end
+
+                new_timings.append(
+                    WordTiming(
+                        word=new_sentence,
+                        start=start_time,
+                        end=end_time,
+                        score=1.0,
+                    )
+                )
+
+            return new_timings
+
+        # If new sentences have more items, split them across timing intervals
+        print(
+            f"⚠️  Splitting: {len(new_sentences)} new sentences to {len(old_word_timings)} old timings"
+        )
+        new_timings = []
+
+        # Get total duration from first to last old timing
+        if old_word_timings:
+            total_start = old_word_timings[0].start
+            total_end = old_word_timings[-1].end
+            total_duration = total_end - total_start
+        else:
+            return []
+
+        # Distribute new sentences across the old timing span
+        time_per_sentence = (
+            total_duration / len(new_sentences)
+            if len(new_sentences) > 0
+            else total_duration
+        )
+
+        for i, new_sentence in enumerate(new_sentences):
+            start_time = total_start + i * time_per_sentence
+            end_time = start_time + time_per_sentence
+
+            new_timings.append(
+                WordTiming(
+                    word=new_sentence,
+                    start=start_time,
+                    end=end_time,
+                    score=1.0,
+                )
+            )
+
+        return new_timings

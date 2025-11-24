@@ -14,6 +14,10 @@ Usage:
 import argparse
 from pathlib import Path
 import sys
+import os
+
+# Disable torchcodec backend for torchaudio to avoid dependency
+os.environ["TORCHAUDIO_BACKEND"] = "soundfile"
 
 # Prevent laion_clap from parsing command line arguments during import
 # by temporarily removing sys.argv

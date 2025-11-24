@@ -46,6 +46,48 @@ class VoiceSynthesizer:
         print("Note: Full singing voice synthesis requires additional models")
         print("Consider using: seed-vc, so-vits-svc, or OpenVoice for production")
 
+    def _detect_language(self, text: str) -> str:
+        """Detect language from text and map to XTTS v2 supported languages.
+
+        XTTS v2 supports: ['en', 'es', 'fr', 'de', 'it', 'pt', 'pl', 'tr', 'ru', 'nl', 'cs', 'ar', 'zh-cn', 'hu', 'ko', 'ja', 'hi']
+
+        Args:
+            text: Text to detect language from
+
+        Returns:
+            Language code supported by XTTS v2
+        """
+        try:
+            from langdetect import detect
+
+            lang = detect(text)
+            # Map language codes to XTTS v2 supported languages
+            lang_mapping = {
+                "en": "en",
+                "es": "es",
+                "fr": "fr",
+                "de": "de",
+                "it": "it",
+                "pt": "pt",
+                "pl": "pl",
+                "tr": "tr",
+                "ru": "ru",
+                "nl": "nl",
+                "cs": "cs",
+                "ar": "ar",
+                "zh-cn": "zh-cn",
+                "zh-tw": "zh-cn",
+                "hu": "hu",
+                "ko": "ko",
+                "ja": "ja",
+                "hi": "hi",
+            }
+            detected = lang_mapping.get(lang, "en")  # Default to English if not found
+            return detected
+        except Exception as e:
+            print(f"Language detection failed: {e}. Defaulting to English.")
+            return "en"
+
     def synthesize_from_lyrics(
         self,
         new_lyrics: str,
@@ -179,18 +221,103 @@ class VoiceSynthesizer:
                 device = self.device
                 gpu = device == "cuda"
 
-                # Use multilingual XTTS v2 model that supports Chinese
-                tts_model = TTS(
-                    model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=gpu
-                )
+                # Fix for PyTorch 2.6+ weights_only safety and torchcodec issues
+                # Patch torch.load and torchaudio.load
+                original_torch_load = torch.load
+                original_torchaudio_load = torchaudio.load
 
-                # Synthesize speech from new lyrics with voice cloning
-                # Use TTS with speaker reference for better voice matching
-                synthesized_wav = tts_model.tts(
-                    text=new_lyrics,
-                    speaker_wav=reference_vocals_path,
-                    language="auto",  # Auto-detect language
-                )
+                def torch_load_patched(f, *args, **kwargs):
+                    # If weights_only is not specified, set it to False for model compatibility
+                    if "weights_only" not in kwargs:
+                        kwargs["weights_only"] = False
+                    return original_torch_load(f, *args, **kwargs)
+
+                def torchaudio_load_patched(filepath, *args, **kwargs):
+                    # Avoid torchcodec by using soundfile for all audio loading
+                    try:
+                        # Try original first
+                        return original_torchaudio_load(filepath, *args, **kwargs)
+                    except Exception as e:
+                        if "libtorchcodec" in str(e) or "FFmpeg" in str(e):
+                            # Use soundfile as fallback (silently)
+                            audio_data, sr = sf.read(filepath)
+                            audio_tensor = torch.tensor(audio_data, dtype=torch.float32)
+                            if audio_tensor.ndim == 1:
+                                audio_tensor = audio_tensor.unsqueeze(0)
+                            else:
+                                audio_tensor = audio_tensor.T
+                            return audio_tensor, sr
+                        raise
+
+                torch.load = torch_load_patched
+                torchaudio.load = torchaudio_load_patched
+
+                try:
+                    from TTS.api import TTS
+                    import os
+
+                    print("Loading Coqui XTTS-v2 model from Hugging Face...")
+
+                    # Set TTS home to avoid interactive prompts
+                    os.environ["TTS_HOME"] = str(Path.home() / ".tts")
+                    tts_home = Path.home() / ".tts"
+                    tts_home.mkdir(exist_ok=True)
+                    license_file = tts_home / "AGREES_NONCOMM_CPML.txt"
+                    license_file.touch()
+
+                    device = self.device
+                    gpu = device == "cuda"
+
+                    # Load Coqui XTTS-v2 model
+                    tts_model = TTS(
+                        model_name="tts_models/multilingual/multi-dataset/xtts_v2",
+                        gpu=gpu,
+                    )
+
+                    # Load reference speaker embedding
+                    print(f"Loading reference audio: {reference_vocals_path}")
+                    ref_audio, ref_sr = sf.read(reference_vocals_path)
+
+                    # Convert to mono if stereo
+                    if ref_audio.ndim > 1:
+                        ref_audio = np.mean(ref_audio, axis=1)
+
+                    # Resample to 22050 Hz if needed (XTTS expects 22050 Hz)
+                    if ref_sr != 22050:
+                        ref_audio = librosa.resample(
+                            ref_audio, orig_sr=ref_sr, target_sr=22050
+                        )
+
+                    # Save preprocessed reference audio
+                    import tempfile
+
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".wav", delete=False
+                    ) as tmp:
+                        temp_ref_path = tmp.name
+                    sf.write(temp_ref_path, ref_audio, 22050)
+
+                    # Detect language
+                    detected_lang = self._detect_language(new_lyrics)
+                    print(f"Detected language: {detected_lang}")
+
+                    # Synthesize speech with voice cloning
+                    print("Synthesizing speech with voice cloning...")
+                    synthesized_wav = tts_model.tts(
+                        text=new_lyrics,
+                        speaker_wav=temp_ref_path,
+                        language=detected_lang,
+                    )
+
+                    # Clean up temporary file
+                    os.remove(temp_ref_path)
+
+                    print("✓ XTTS v2 synthesis completed with voice cloning")
+
+                finally:
+                    # Restore original functions
+                    torch.load = original_torch_load
+                    torchaudio.load = original_torchaudio_load
 
                 # Convert to torch tensor
                 synthesized = torch.tensor(synthesized_wav, dtype=torch.float32)

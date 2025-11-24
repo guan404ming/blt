@@ -7,6 +7,33 @@ from typing import Tuple, Optional
 import subprocess
 import tempfile
 import sys
+import os
+
+# Monkey-patch torchaudio.save to use soundfile backend instead of torchcodec
+# This avoids the torchcodec dependency issue
+import soundfile as sf
+
+_original_torchaudio_save = torchaudio.save
+
+
+def _soundfile_save(filepath, src, sample_rate, **kwargs):
+    """Save audio using soundfile backend instead of torchcodec."""
+    import numpy as np
+
+    # Convert tensor to numpy and transpose if needed
+    if isinstance(src, torch.Tensor):
+        audio = src.cpu().numpy()
+        # torchaudio uses (channels, samples), soundfile uses (samples, channels)
+        if audio.ndim == 2 and audio.shape[0] < audio.shape[1]:
+            audio = audio.T
+    else:
+        audio = src
+
+    sf.write(filepath, audio, sample_rate)
+
+
+# Apply the monkey patch
+torchaudio.save = _soundfile_save
 
 
 class VocalSeparator:
@@ -56,26 +83,70 @@ class VocalSeparator:
 
         # Run Demucs separation
         print(f"Separating audio using {self.model_name} model...")
-        cmd = [
-            sys.executable,
-            "-m",
-            "demucs.separate",
-            "-n",
-            self.model_name,
-            "-o",
-            str(output_dir),
-            "--two-stems",
-            "vocals",  # Only separate vocals and instrumental
-            str(audio_path),
-        ]
 
-        if self.device == "cpu":
-            cmd.extend(["--device", "cpu"])
+        # Create a wrapper script that patches torchaudio.save before running demucs
+        wrapper_script = '''
+import sys
+import torch
+import torchaudio
+import soundfile as sf
+
+# Monkey-patch torchaudio.save to use soundfile instead of torchcodec
+def _soundfile_save(filepath, src, sample_rate, **kwargs):
+    """Save audio using soundfile backend instead of torchcodec."""
+    # Convert tensor to numpy
+    if isinstance(src, torch.Tensor):
+        audio = src.cpu().numpy()
+        # torchaudio uses (channels, samples), soundfile uses (samples, channels)
+        if audio.ndim == 2 and audio.shape[0] < audio.shape[1]:
+            audio = audio.T
+    else:
+        audio = src
+    sf.write(filepath, audio, sample_rate)
+
+torchaudio.save = _soundfile_save
+
+# Now run demucs
+from demucs.separate import main
+main()
+'''
+
+        # Write the wrapper script to a temporary file
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(wrapper_script)
+            wrapper_path = f.name
 
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Demucs separation failed: {e.stderr}") from e
+            # Build command to run demucs through our wrapper
+            cmd = [
+                sys.executable,
+                wrapper_path,
+                "-n",
+                self.model_name,
+                "-o",
+                str(output_dir),
+                "--two-stems",
+                "vocals",  # Only separate vocals and instrumental
+                str(audio_path),
+            ]
+
+            if self.device == "cpu":
+                cmd.extend(["--device", "cpu"])
+
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Demucs separation failed: {e.stderr}") from e
+        finally:
+            # Clean up the wrapper script
+            import os
+
+            try:
+                os.unlink(wrapper_path)
+            except:
+                pass
 
         # Find output files
         # Demucs creates: output_dir / model_name / audio_name / vocals.wav

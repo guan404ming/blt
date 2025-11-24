@@ -145,6 +145,21 @@ class LyricsTranslationPipeline:
         results["alignment"] = str(alignment_path)
         results["word_timings"] = word_timings
 
+        # Map new lyrics to old lyrics timing
+        print("\n" + "=" * 60)
+        print("STEP 2B: MAPPING NEW LYRICS TO ALIGNMENT")
+        print("=" * 60)
+
+        new_word_timings = self.aligner.map_new_lyrics_to_timing(
+            old_word_timings=word_timings,
+            new_lyrics=new_lyrics,
+        )
+
+        # Print new lyrics alignment (optional - for debugging)
+        self.aligner.print_alignment(new_word_timings, max_words=0)
+
+        results["new_word_timings"] = new_word_timings
+
         # Step 3: Synthesize new vocals
         print("\n" + "=" * 60)
         print("STEP 3: VOICE SYNTHESIS")
