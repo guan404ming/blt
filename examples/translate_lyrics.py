@@ -10,6 +10,7 @@ from omg.translators import LyricsTranslator, FeatureExtractor
 # Load .env file
 load_dotenv()
 
+
 def main():
     # Load API key
     api_key = os.getenv("GEMINI_API_KEY")
