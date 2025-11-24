@@ -57,10 +57,15 @@ class VocalSeparator:
         # Run Demucs separation
         print(f"Separating audio using {self.model_name} model...")
         cmd = [
-            sys.executable, "-m", "demucs.separate",
-            "-n", self.model_name,
-            "-o", str(output_dir),
-            "--two-stems", "vocals",  # Only separate vocals and instrumental
+            sys.executable,
+            "-m",
+            "demucs.separate",
+            "-n",
+            self.model_name,
+            "-o",
+            str(output_dir),
+            "--two-stems",
+            "vocals",  # Only separate vocals and instrumental
             str(audio_path),
         ]
 
@@ -70,9 +75,7 @@ class VocalSeparator:
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                f"Demucs separation failed: {e.stderr}"
-            ) from e
+            raise RuntimeError(f"Demucs separation failed: {e.stderr}") from e
 
         # Find output files
         # Demucs creates: output_dir / model_name / audio_name / vocals.wav

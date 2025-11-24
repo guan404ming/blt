@@ -33,9 +33,7 @@ def example_basic():
     """
 
     # Initialize pipeline
-    pipeline = LyricsTranslationPipeline(
-        output_dir="example_output"
-    )
+    pipeline = LyricsTranslationPipeline(output_dir="example_output")
 
     # Note: You need to provide your own audio file
     audio_path = "path/to/your/song.wav"
@@ -54,9 +52,7 @@ def example_basic():
 def example_from_files():
     """Example loading lyrics from files."""
 
-    pipeline = LyricsTranslationPipeline(
-        output_dir="example_output"
-    )
+    pipeline = LyricsTranslationPipeline(output_dir="example_output")
 
     # Load lyrics from files
     with open("old_lyrics.txt", "r", encoding="utf-8") as f:

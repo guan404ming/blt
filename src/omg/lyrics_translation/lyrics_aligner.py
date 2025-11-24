@@ -73,7 +73,11 @@ class LyricsAligner:
             waveform = torch.tensor(audio_data, dtype=torch.float32).unsqueeze(0)
         else:
             # Stereo or multi-channel - convert to mono
-            waveform = torch.tensor(audio_data, dtype=torch.float32).mean(dim=1, keepdim=True).T
+            waveform = (
+                torch.tensor(audio_data, dtype=torch.float32)
+                .mean(dim=1, keepdim=True)
+                .T
+            )
 
         # Resample to 16kHz if needed (required by most alignment models)
         if sample_rate != 16000:
@@ -96,7 +100,7 @@ class LyricsAligner:
         # Get pinyin representation of the lyrics
         pinyin_text = ""
         for char in lyrics:
-            if '\u4e00' <= char <= '\u9fff':  # Check if Chinese character
+            if "\u4e00" <= char <= "\u9fff":  # Check if Chinese character
                 py = pinyin(char, style=Style.NORMAL, heteronym=False)
                 if py and py[0]:
                     pinyin_text += py[0][0].lower() + " "
@@ -127,7 +131,9 @@ class LyricsAligner:
             # Get the total audio duration
             total_frames = emissions.shape[0]
             stride = total_frames / len(words) if len(words) > 0 else total_frames
-            spans = [(int(i * stride), int((i + 1) * stride)) for i in range(len(words))]
+            spans = [
+                (int(i * stride), int((i + 1) * stride)) for i in range(len(words))
+            ]
             scores = []
 
         # Convert to WordTiming objects
@@ -139,7 +145,9 @@ class LyricsAligner:
             end_sec = span[1] * stride / sample_rate
 
             # Calculate average score for this word
-            word_score = scores[span[0] : span[1]].mean().item() if len(scores) > 0 else 1.0
+            word_score = (
+                scores[span[0] : span[1]].mean().item() if len(scores) > 0 else 1.0
+            )
 
             word_timings.append(
                 WordTiming(
@@ -153,7 +161,9 @@ class LyricsAligner:
         print(f"Alignment complete! Aligned {len(word_timings)} words.")
         return word_timings
 
-    def get_alignment_dict(self, word_timings: List[WordTiming]) -> Dict[str, List[float]]:
+    def get_alignment_dict(
+        self, word_timings: List[WordTiming]
+    ) -> Dict[str, List[float]]:
         """Convert word timings to a dictionary format.
 
         Args:
@@ -162,9 +172,7 @@ class LyricsAligner:
         Returns:
             Dictionary mapping words to [start, end] times
         """
-        return {
-            wt.word: [wt.start, wt.end] for wt in word_timings
-        }
+        return {wt.word: [wt.start, wt.end] for wt in word_timings}
 
     def save_alignment(
         self,

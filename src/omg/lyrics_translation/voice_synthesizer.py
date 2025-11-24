@@ -114,7 +114,9 @@ class VoiceSynthesizer:
         print(f"Synthesized vocals duration: {synth_duration:.2f}s")
 
         # Time-stretch to match original duration
-        if abs(synth_duration - original_duration) > 0.1:  # Only stretch if significantly different
+        if (
+            abs(synth_duration - original_duration) > 0.1
+        ):  # Only stretch if significantly different
             # librosa.effects.time_stretch uses rate parameter as playback rate
             # To slow down (make longer), we need rate < 1
             stretch_rate = synth_duration / original_duration
@@ -175,17 +177,19 @@ class VoiceSynthesizer:
                 license_file.touch()
 
                 device = self.device
-                gpu = (device == "cuda")
+                gpu = device == "cuda"
 
                 # Use multilingual XTTS v2 model that supports Chinese
-                tts_model = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=gpu)
+                tts_model = TTS(
+                    model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=gpu
+                )
 
                 # Synthesize speech from new lyrics with voice cloning
                 # Use TTS with speaker reference for better voice matching
                 synthesized_wav = tts_model.tts(
                     text=new_lyrics,
                     speaker_wav=reference_vocals_path,
-                    language="auto"  # Auto-detect language
+                    language="auto",  # Auto-detect language
                 )
 
                 # Convert to torch tensor
@@ -213,11 +217,14 @@ class VoiceSynthesizer:
                     # For Chinese text, use a Chinese-specific TTS if available
                     # Otherwise, use glow-tts which has better compatibility
                     from TTS.api import TTS
+
                     device = self.device
-                    gpu = (device == "cuda")
+                    gpu = device == "cuda"
 
                     # Use glow-tts as fallback (more stable)
-                    tts_model = TTS(model_name="tts_models/en/ljspeech/glow-tts", gpu=gpu)
+                    tts_model = TTS(
+                        model_name="tts_models/en/ljspeech/glow-tts", gpu=gpu
+                    )
                     synthesized_wav = tts_model.tts(text=new_lyrics)
 
                     synthesized = torch.tensor(synthesized_wav, dtype=torch.float32)
@@ -227,7 +234,9 @@ class VoiceSynthesizer:
                     if synthesized.shape[0] == 1:
                         tts_sr = 22050
                         if tts_sr != sample_rate:
-                            resampler = torchaudio.transforms.Resample(tts_sr, sample_rate)
+                            resampler = torchaudio.transforms.Resample(
+                                tts_sr, sample_rate
+                            )
                             synthesized = resampler(synthesized)
 
                     print("✓ Fallback TTS synthesis completed")
@@ -349,7 +358,9 @@ class VoiceSynthesizer:
             vocals = torch.tensor(vocals_np, dtype=torch.float32).T
 
         if len(instrumental_np.shape) == 1:
-            instrumental = torch.tensor(instrumental_np, dtype=torch.float32).unsqueeze(0)
+            instrumental = torch.tensor(instrumental_np, dtype=torch.float32).unsqueeze(
+                0
+            )
         else:
             instrumental = torch.tensor(instrumental_np, dtype=torch.float32).T
 
@@ -391,7 +402,9 @@ class VoiceSynthesizer:
             if mixed_numpy.shape[0] == 1:
                 mixed_numpy = mixed_numpy[0]  # Remove single channel dimension
             else:
-                mixed_numpy = mixed_numpy.T  # (channels, samples) -> (samples, channels)
+                mixed_numpy = (
+                    mixed_numpy.T
+                )  # (channels, samples) -> (samples, channels)
 
         sf.write(str(output_path), mixed_numpy, inst_sr)
 

@@ -93,12 +93,14 @@ def main():
         print("\n" + "=" * 60)
 
         # Print alignment info
-        if 'word_timings' in results:
-            word_timings = results['word_timings']
+        if "word_timings" in results:
+            word_timings = results["word_timings"]
             print(f"\nAligned {len(word_timings)} words from original lyrics")
             print("First 5 word timings:")
             for i, wt in enumerate(word_timings[:5]):
-                print(f"  {i+1}. '{wt.word}' at {wt.start:.2f}s - {wt.end:.2f}s (score: {wt.score:.3f})")
+                print(
+                    f"  {i + 1}. '{wt.word}' at {wt.start:.2f}s - {wt.end:.2f}s (score: {wt.score:.3f})"
+                )
 
         print("\n" + "=" * 60)
         print("You can now listen to the generated cover song!")
@@ -110,6 +112,7 @@ def main():
         print("=" * 60)
         print(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
