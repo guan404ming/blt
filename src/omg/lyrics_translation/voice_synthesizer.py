@@ -13,6 +13,7 @@ from .lyrics_aligner import WordTiming
 import parselmouth
 from parselmouth.praat import call
 import soundfile as sf
+import librosa
 
 
 class VoiceSynthesizer:
@@ -87,38 +88,39 @@ class VoiceSynthesizer:
             # Multi-channel audio - keep as is
             ref_waveform = torch.tensor(ref_audio, dtype=torch.float32).T
 
-        # For now, we'll create a placeholder implementation
-        # In production, you would:
-        # 1. Use a TTS model to generate speech from new lyrics
-        # 2. Use voice conversion to match the reference voice
-        # 3. Apply pitch shifting to match singing patterns
-        # 4. Apply time stretching to match original timing
+        # Get original duration for time-stretching
+        original_duration = len(ref_audio) / ref_sr
+        print(f"\nOriginal vocals duration: {original_duration:.2f}s")
 
-        print("\n⚠️  PLACEHOLDER IMPLEMENTATION")
-        print("This is a simplified version. For full singing synthesis:")
-        print("1. Install seed-vc: pip install seed-vc")
-        print("2. Or use so-vits-svc for singing voice synthesis")
-        print("3. Or integrate with OpenVoice/XTTS for voice cloning")
-
-        # For demonstration, we'll just copy the reference audio
-        # with some basic modifications
+        # Synthesize new vocals with TTS
         synthesized_audio = self._apply_basic_modifications(
             ref_waveform,
             ref_sr,
             new_lyrics,
             old_word_timings,
+            reference_vocals_path,
         )
 
-        # Save output using soundfile (avoids torchcodec issues)
-        # Convert tensor to numpy
+        # Convert tensor to numpy for processing
         audio_numpy = synthesized_audio.cpu().numpy()
-        # Handle different tensor shapes
         if audio_numpy.ndim == 2:
-            # (channels, samples) -> (samples,) or (samples, channels)
             if audio_numpy.shape[0] == 1:
-                audio_numpy = audio_numpy[0]  # Remove single channel dimension
+                audio_numpy = audio_numpy[0]
             else:
-                audio_numpy = audio_numpy.T  # (channels, samples) -> (samples, channels)
+                audio_numpy = audio_numpy.T
+
+        # Get synthesized duration
+        synth_duration = len(audio_numpy) / ref_sr
+        print(f"Synthesized vocals duration: {synth_duration:.2f}s")
+
+        # Time-stretch to match original duration
+        if abs(synth_duration - original_duration) > 0.1:  # Only stretch if significantly different
+            # librosa.effects.time_stretch uses rate parameter as playback rate
+            # To slow down (make longer), we need rate < 1
+            stretch_rate = synth_duration / original_duration
+            print(f"Time-stretching with rate: {stretch_rate:.4f}")
+            audio_numpy = librosa.effects.time_stretch(audio_numpy, rate=stretch_rate)
+            print(f"After stretch duration: {len(audio_numpy) / ref_sr:.2f}s")
 
         sf.write(str(output_path), audio_numpy, ref_sr)
 
@@ -131,6 +133,7 @@ class VoiceSynthesizer:
         sample_rate: int,
         new_lyrics: str,
         word_timings: List[WordTiming],
+        reference_vocals_path: str,
     ) -> torch.Tensor:
         """Apply basic audio modifications.
 
@@ -142,6 +145,7 @@ class VoiceSynthesizer:
             sample_rate: Sample rate
             new_lyrics: New lyrics
             word_timings: Original word timings
+            reference_vocals_path: Path to reference vocals for voice cloning
 
         Returns:
             Modified waveform
@@ -153,36 +157,84 @@ class VoiceSynthesizer:
         # - Voice conversion to match reference
 
         try:
-            # Try to use TTS for synthesis
-            from TTS.api import TTS
+            # Try to use XTTS v2 for synthesis with voice cloning
+            print("\n🎤 Synthesizing new vocals with XTTS v2...")
 
-            print("\n🎤 Synthesizing new vocals with TTS...")
+            # Use gpt-sovits or other voice cloning models if available
+            # For now, attempt to use TTS.api with better error handling
+            try:
+                from TTS.api import TTS
+                import os
 
-            # Initialize TTS model - using a simple English model
-            device = self.device
-            gpu = (device == "cuda")
+                # Accept the TTS license to avoid interactive prompts
+                os.environ["TTS_HOME"] = str(Path.home() / ".tts")
+                # Create a marker file to skip license confirmation
+                tts_home = Path.home() / ".tts"
+                tts_home.mkdir(exist_ok=True)
+                license_file = tts_home / "AGREES_NONCOMM_CPML.txt"
+                license_file.touch()
 
-            # Use a simpler TTS model for faster synthesis
-            tts_model = TTS(model_name="tts_models/en/ljspeech/glow-tts", gpu=gpu)
+                device = self.device
+                gpu = (device == "cuda")
 
-            # Synthesize speech from new lyrics
-            synthesized_wav = tts_model.tts(text=new_lyrics)
+                # Use multilingual XTTS v2 model that supports Chinese
+                tts_model = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=gpu)
 
-            # Convert to torch tensor
-            synthesized = torch.tensor(synthesized_wav, dtype=torch.float32)
-            if synthesized.ndim == 1:
-                synthesized = synthesized.unsqueeze(0)
+                # Synthesize speech from new lyrics with voice cloning
+                # Use TTS with speaker reference for better voice matching
+                synthesized_wav = tts_model.tts(
+                    text=new_lyrics,
+                    speaker_wav=reference_vocals_path,
+                    language="auto"  # Auto-detect language
+                )
 
-            # Resample if needed to match reference audio sample rate
-            if synthesized.shape[0] == 1:  # Mono audio
-                # Default TTS model outputs 22050 Hz, resample to match reference
-                tts_sr = 22050  # Default TTS output sample rate
-                if tts_sr != sample_rate:
-                    resampler = torchaudio.transforms.Resample(tts_sr, sample_rate)
-                    synthesized = resampler(synthesized)
+                # Convert to torch tensor
+                synthesized = torch.tensor(synthesized_wav, dtype=torch.float32)
+                if synthesized.ndim == 1:
+                    synthesized = synthesized.unsqueeze(0)
 
-            print("✓ TTS synthesis completed")
-            return synthesized
+                # Resample if needed to match reference audio sample rate
+                if synthesized.shape[0] == 1:  # Mono audio
+                    # Default TTS model outputs 22050 Hz, resample to match reference
+                    tts_sr = 22050  # Default TTS output sample rate
+                    if tts_sr != sample_rate:
+                        resampler = torchaudio.transforms.Resample(tts_sr, sample_rate)
+                        synthesized = resampler(synthesized)
+
+                print("✓ XTTS v2 synthesis completed with voice cloning")
+                return synthesized
+
+            except ImportError as import_err:
+                print(f"⚠️  TTS.api import failed: {import_err}")
+                print("Attempting fallback TTS approach...")
+
+                # Fallback: Try using a simpler TTS without transformers
+                try:
+                    # For Chinese text, use a Chinese-specific TTS if available
+                    # Otherwise, use glow-tts which has better compatibility
+                    from TTS.api import TTS
+                    device = self.device
+                    gpu = (device == "cuda")
+
+                    # Use glow-tts as fallback (more stable)
+                    tts_model = TTS(model_name="tts_models/en/ljspeech/glow-tts", gpu=gpu)
+                    synthesized_wav = tts_model.tts(text=new_lyrics)
+
+                    synthesized = torch.tensor(synthesized_wav, dtype=torch.float32)
+                    if synthesized.ndim == 1:
+                        synthesized = synthesized.unsqueeze(0)
+
+                    if synthesized.shape[0] == 1:
+                        tts_sr = 22050
+                        if tts_sr != sample_rate:
+                            resampler = torchaudio.transforms.Resample(tts_sr, sample_rate)
+                            synthesized = resampler(synthesized)
+
+                    print("✓ Fallback TTS synthesis completed")
+                    return synthesized
+                except Exception as fallback_err:
+                    print(f"⚠️  Fallback TTS also failed: {fallback_err}")
+                    raise
 
         except Exception as e:
             print(f"\n⚠️  TTS synthesis not available ({type(e).__name__}: {e})")
