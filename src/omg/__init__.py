@@ -1,7 +1,17 @@
 """Optimized Music Generation"""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from omg.base import generate_music
 
-__all__ = ["generate_music"]
+# Import Synthesizer module (Singing Voice Synthesis)
+from omg import synthesizer
+
+# Import Translators module
+from omg import translators
+
+__all__ = [
+    "generate_music",
+    "synthesizer",
+    "translators",
+]

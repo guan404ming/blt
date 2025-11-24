@@ -24,7 +24,7 @@ os.environ["TORCHAUDIO_BACKEND"] = "soundfile"
 _original_argv = sys.argv[:]
 sys.argv = [sys.argv[0]]
 
-from omg.lyrics_translation import LyricsTranslationPipeline
+from omg.synthesizer import LyricsTranslationPipeline
 
 
 def main():
