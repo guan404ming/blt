@@ -1,0 +1,160 @@
+================================================================================ 
+     Current Translation Flow
+     ================================================================================
+
+     1. INITIALIZATION (translator.py:18-51)
+        └─ LyricsTranslator.__init__()
+           ├─ Load API key from environment (GEMINI_API_KEY)
+           ├─ Set GOOGLE_API_KEY for pydantic-ai
+           ├─ Choose output type: LyricTranslation (basic) or CoTTranslation (CoT)
+           ├─ Initialize PydanticAI Agent with:
+           │  ├─ Model: gemini-2.5-flash
+           │  ├─ Output type: Pydantic model for structured output
+           │  └─ System prompt: Role-specific instructions
+           ├─ Initialize FeatureExtractor (automatic constraint extraction)
+           └─ Initialize ConstraintValidator (validation & feedback)
+
+     2. TRANSLATION REQUEST (translator.py:83-132)
+        └─ translate(source_lyrics, source_lang, target_lang, constraints, auto_retry)
+           │
+           ├─ STEP 1: Extract Constraints (if not provided)
+           │  └─ FeatureExtractor.extract_constraints()
+           │     ├─ Split lyrics into lines
+           │     ├─ Count syllables per line (feature_extractor.py:53-91)
+           │     │  └─ For English: Use CMU Pronouncing Dictionary
+           │     │     ├─ pronouncing.phones_for_word() → get phonemes
+           │     │     ├─ pronouncing.syllable_count() → count syllables
+           │     │     └─ Fallback: vowel counting for unknown words
+           │     ├─ Detect rhyme scheme (feature_extractor.py:122-147)
+           │     │  └─ Extract rhyme endings → assign labels (A, B, C, ...)
+           │     └─ Infer pause positions from punctuation
+           │
+           ├─ STEP 2: Build Prompt (translator.py:134-170)
+           │  └─ _build_prompt()
+           │     ├─ Include feedback (if retry)
+           │     ├─ Original lyrics + source language
+           │     ├─ Target language
+           │     └─ Music constraints:
+           │        ├─ Syllable counts: [15, 9, 15, 11, 15, 12]
+           │        ├─ Rhyme scheme: ABCDEE
+           │        └─ Pause positions: [15, 24, 39, 50, 65, 77]
+           │
+           ├─ STEP 3: Call LLM (translator.py:117-119)
+           │  └─ agent.run_sync(user_prompt)
+           │     ├─ PydanticAI sends prompt to Gemini 2.5 Flash
+           │     ├─ Model generates structured response
+           │     └─ Returns Pydantic object (LyricTranslation or CoTTranslation)
+           │
+           └─ STEP 4: Validate & Retry (translator.py:172-238)
+              └─ _validate_and_retry() [if auto_retry=True]
+                 │
+                 ├─ Convert to standard format (if CoT)
+                 │
+                 ├─ VALIDATE (validator.py:17-68)
+                 │  └─ ConstraintValidator.validate()
+                 │     ├─ Check syllable counts (validator.py:70-99)
+                 │     │  └─ Compare actual vs. expected per line
+                 │     ├─ Check rhyme scheme (validator.py:101-148)
+                 │     │  └─ Verify same-group rhymes match
+                 │     ├─ Check word boundaries (validator.py:158-170)
+                 │     │  └─ TODO: Not yet implemented
+                 │     └─ Calculate overall score
+                 │
+                 ├─ RETRY LOOP (max 3 times)
+                 │  └─ If validation fails:
+                 │     ├─ Generate feedback (validator.py:172-182)
+                 │     │  └─ List specific errors with details
+                 │     ├─ Rebuild prompt with feedback
+                 │     ├─ Call LLM again
+                 │     └─ Revalidate
+                 │
+                 └─ RETURN RESULT
+                    ├─ ✓ All constraints satisfied
+                    └─ ⚠ Max retries reached (show final score)
+
+     ================================================================================
+     OUTPUT FORMATS
+     ================================================================================
+
+     A. LyricTranslation (Zero-shot mode)
+        ├─ translated_lines: list[str]
+        ├─ syllable_counts: list[int]
+        ├─ rhyme_endings: list[str]
+        ├─ reasoning: str
+        └─ constraint_satisfaction: dict[str, bool]
+
+     B. CoTTranslation (Chain-of-Thought mode)
+        ├─ meaning_analysis: str                    # Step 1
+        ├─ constraint_analysis: dict[str, str]      # Step 2
+        ├─ keyword_ideas: list[str]                 # Step 3
+        ├─ translated_lines: list[str]              # Step 4
+        ├─ self_verification: dict[str, str]        # Step 5
+        ├─ syllable_counts: list[int]
+        └─ rhyme_endings: list[str]
+
+     ================================================================================
+     KEY COMPONENTS
+     ================================================================================
+
+     1. Feature Extraction (feature_extractor.py)
+        ├─ Syllable counting (CMU Pronouncing Dictionary)
+        ├─ Rhyme detection (phonetic endings)
+        └─ Pause inference (punctuation-based)
+
+     2. Constraint Validation (validator.py)
+        ├─ Length validation (syllable accuracy)
+        ├─ Rhyme validation (pattern matching)
+        └─ Feedback generation (error descriptions)
+
+     3. LLM Integration (translator.py)
+        ├─ PydanticAI Agent (structured output)
+        ├─ Gemini 2.5 Flash (fast, accurate)
+        └─ System prompts (role + constraints)
+
+     4. Models (models.py)
+        ├─ MusicConstraints (input constraints)
+        ├─ LyricTranslation (basic output)
+        ├─ CoTTranslation (reasoning output)
+        └─ ValidationResult (validation feedback)
+
+     ================================================================================
+     EXAMPLE FLOW FOR "擱淺"
+     ================================================================================
+
+     Input:
+       久未放晴的天空 依舊留著妳的笑容
+       哭過 卻無法掩埋歉疚
+       ...
+
+     ↓ Extract Constraints
+       Syllables: [15, 9, 15, 11, 15, 12]
+       Rhyme: ABCDEE
+       Pauses: [15, 24, 39, 50, 65, 77]
+
+     ↓ Build Prompt
+       原始歌詞: [Chinese lyrics]
+       目標語言: English
+       音樂約束: [constraints]
+
+     ↓ LLM Translation (Attempt 1)
+       ⚠ Line 5: 16 syllables (expected 15)
+       ⚠ Line 6: 14 syllables (expected 12)
+
+     ↓ Generate Feedback
+       第5行音節數不符: 期望 15，實際 16
+       第6行音節數不符: 期望 12，實際 14
+
+     ↓ LLM Translation (Attempt 2)
+       ✓ Fixed Line 5: "failed vows" instead of "broken vows"
+       ✓ Fixed Line 6: Simplified to 12 syllables
+       ✓ Lines 5-6 rhyme: "vows" / "now"
+
+     ↓ Validation
+       Score: 100% (all constraints met)
+
+     ↓ Output
+       The sky that hasn't cleared for so long, still keeps your gentle smile.
+       I cried, but can't hide away my guilt.
+       ...
+
+     ================================================================================
