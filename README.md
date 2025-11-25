@@ -18,16 +18,16 @@
 
 ### Optimization Blocks
 
-| Block | Description | Status |
-|-------|-------------|--------|
-| CLAP Retrieval | Retrieve similar examples via embedding similarity | Done |
-| In-Context Learning | Condition generation on retrieved examples | Done |
-| RAG | Retrieval-augmented generation with external knowledge | Planned |
-| LoRA Fine-tuning | Parameter-efficient adaptation for specific styles | Planned |
-| Prompt Enhancement | LLM-based prompt refinement | Planned |
-| Audio Post-processing | Style transfer, mixing | Planned |
-| Lyrics Translation | Cover song generation with new lyrics | Done |
-| Evaluation | CLAP score | Done |
+| Block                 | Description                                            | Status  |
+| --------------------- | ------------------------------------------------------ | ------- |
+| CLAP Retrieval        | Retrieve similar examples via embedding similarity     | Done    |
+| In-Context Learning   | Condition generation on retrieved examples             | Done    |
+| RAG                   | Retrieval-augmented generation with external knowledge | Planned |
+| LoRA Fine-tuning      | Parameter-efficient adaptation for specific styles     | Planned |
+| Prompt Enhancement    | LLM-based prompt refinement                            | Planned |
+| Audio Post-processing | Style transfer, mixing                                 | Planned |
+| Lyrics Translation    | Cover song generation with new lyrics                  | Done    |
+| Evaluation            | CLAP score                                             | Done    |
 
 ## Setup
 
@@ -58,6 +58,7 @@ uv run python scripts/poc.py \
 ```
 
 **Parameters:**
+
 - `--prompt`: Text description for music generation
 - `--duration`: Audio length in seconds (default: 20)
 - `--top-k`: Number of examples to retrieve (default: 3)
@@ -77,11 +78,8 @@ uv run python scripts/poc.py \
 
 ## Acknowledgments
 
-- [MusicGen](https://github.com/facebookresearch/audiocraft) by Meta AI
-- [MusicCaps](https://huggingface.co/datasets/google/MusicCaps) by Google Research
 - [CLAP](https://github.com/LAION-AI/CLAP) by LAION AI
 
 ## License
 
 Apache License 2.0
-
