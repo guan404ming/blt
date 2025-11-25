@@ -16,8 +16,6 @@ os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
 class FeatureExtractor:
     """音樂特徵自動提取器"""
 
-    # IPA vowel pattern (包含所有常見的元音符號)
-    # Monophthongs: i, y, ɨ, ʉ, ɯ, u, ɪ, ʏ, ʊ, e, ø, ɘ, ɵ, ɤ, o, ə, ɛ, œ, ɜ, ɞ, ʌ, ɔ, æ, ɐ, a, ɶ, ɑ, ɒ
     IPA_VOWEL_PATTERN = r"[iɪeɛæaɑɒɔoʊuʉɨəɜɞʌyøœɶɐ]"
 
     def __init__(self, source_lang: str = "English", target_lang: str = "Chinese"):
@@ -95,20 +93,9 @@ class FeatureExtractor:
         """
         # 轉換為 IPA
         ipa_text = self._text_to_ipa(text, lang)
-
-        # 計算 IPA 中的元音數量（元音 = 音節核心）
-        return self._count_syllables_from_ipa(ipa_text)
-
-    def _count_syllables_from_ipa(self, ipa_text: str) -> int:
-        """
-        從 IPA 文本計算音節數
-
-        計算 IPA 中的元音符號數量來估計音節數。
-        每個元音通常代表一個音節核心。
-        """
-        # Find all vowels in the IPA text
         vowels = re.findall(self.IPA_VOWEL_PATTERN, ipa_text)
 
+        # 計算 IPA 中的元音數量（元音 = 音節核心）
         return len(vowels)
 
     def _detect_rhyme_scheme(self, lines: list[str], lang: str) -> str:
