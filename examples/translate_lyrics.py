@@ -76,5 +76,6 @@ def main():
     print(f"【韻腳】{result.rhyme_endings}")
     print(f"\n【翻譯思路】\n{result.reasoning}")
 
+
 if __name__ == "__main__":
     main()
