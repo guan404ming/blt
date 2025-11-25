@@ -1,57 +1,43 @@
+"""
+Text-to-IPA Conversion using Phonemizer + espeak-ng
+
+Installation:
+    uv pip install phonemizer
+    brew install espeak-ng
+
+Language support: 100+ languages via espeak-ng
+"""
+
+import os
 from phonemizer import phonemize
-from phonemizer.separator import Separator
 
-# 1. 英文範例 (English Example)
-english_text = "Love is a battlefield. We need to sing the song."
+# Set environment variables for phonemizer to find espeak-ng
+os.environ["PHONEMIZER_ESPEAK_PATH"] = "/opt/homebrew/bin/espeak-ng"
+os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
 
-# 參數解釋：
-# language='en': 指定輸入語言為英文。
-# backend='espeak': 使用支援最多語言的 eSpeak-ng 引擎。
-# strip=True: 移除輸出字符串兩端的空白。
-# separator: 定義音節和單詞之間的間隔。
-ipa_en = phonemize(
-    english_text,
-    language="en",
-    backend="espeak",
-    strip=True,
-    separator=Separator(phone=" ", word=" | ", syllable="-"),
-)
+# 1. 英文範例 (English - American)
+english_text = "Lyrics translation is a challenging task."
+ipa_en = phonemize(english_text, language="en-us", backend="espeak", strip=True)
 
-print("--- 英文 (English) ---")
+print("--- 英文 (English - en-us) ---")
 print(f"原文: {english_text}")
 print(f"IPA:  {ipa_en}")
-print("-" * 20)
+print("-" * 30)
 
-# 2. 中文範例 (Mandarin Example)
-# 註：中文的 G2P 轉換可能需要額外的配置或專門的庫以獲得更高的準確度
-# 但 eSpeak-ng 仍可以提供基礎轉換。
-chinese_text = "今天天氣很好，我們去公園玩吧。"
+# 2. 德文範例 (German)
+german_text = "Ich möchte ein Bier trinken."
+ipa_de = phonemize(german_text, language="de", backend="espeak", strip=True)
 
-ipa_zh = phonemize(
-    chinese_text,
-    language="zh",
-    backend="espeak",
-    strip=True,
-    separator=Separator(phone=" ", word=" | ", syllable="-"),
-)
+print("--- 德文 (German - de) ---")
+print(f"原文: {german_text}")
+print(f"IPA:  {ipa_de}")
+print("-" * 30)
 
-print("--- 中文 (Mandarin) ---")
-print(f"原文: {chinese_text}")
-print(f"IPA:  {ipa_zh}")
-print("-" * 20)
+# 3. 韓文範例 (Korean)
+korean_text = "감사합니다"  # 謝謝
+ipa_ko = phonemize(korean_text, language="ko", backend="espeak", strip=True)
 
-# 3. 日文範例 (Japanese Example)
-japanese_text = "おはようございます"
-
-ipa_ja = phonemize(
-    japanese_text,
-    language="ja",
-    backend="espeak",
-    strip=True,
-    separator=Separator(phone=" ", word=" | ", syllable="-"),
-)
-
-print("--- 日文 (Japanese) ---")
-print(f"原文: {japanese_text}")
-print(f"IPA:  {ipa_ja}")
-print("-" * 20)
+print("--- 韓文 (Korean - ko) ---")
+print(f"原文: {korean_text}")
+print(f"IPA:  {ipa_ko}")
+print("-" * 30)
