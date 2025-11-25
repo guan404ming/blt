@@ -15,11 +15,6 @@ dependencies = [
     "scipy>=1.12.0",
     "tqdm>=4.66.0",
     "laion-clap>=1.1.5",
-    "audiocraft",
-    "pydantic-ai-slim[gemini]>=1.22.0",
-    "langchain>=0.3.27",
-    "langchain-community>=0.3.21",
-    "langchain-google-genai>=2.1.12",
     "faiss-cpu>=1.13.0",
     "pypinyin>=0.55.0",
     "syllables>=1.1.4",
@@ -32,28 +27,11 @@ dependencies = [
     "praat-parselmouth>=0.4.6",
     "tts>=0.22.0",
     "langdetect>=1.0.9",
+    "pydantic-ai-slim>=1.22.0",
 ]
-
-[tool.uv.sources]
-# Install audiocraft from git to get latest fixes
-audiocraft = { git = "https://github.com/facebookresearch/audiocraft.git" }
 
 [dependency-groups]
-dev = [
-    "librosa>=0.11.0",
-    "pretty-midi>=0.2.11",
-    "yt-dlp>=2025.11.12",
-]
-
-[tool.uv]
-# Override dependencies for compatibility
-override-dependencies = [
-    "av>=12.0.0",
-    "torch>=2.5.0",
-    "torchaudio>=2.5.0",
-    "torchvision>=0.20.0",
-    "xformers>=0.0.28",
-]
+dev = ["librosa>=0.11.0", "pretty-midi>=0.2.11", "yt-dlp>=2025.11.12"]
 
 [project.optional-dependencies]
 dev = [

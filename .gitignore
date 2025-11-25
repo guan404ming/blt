@@ -53,7 +53,6 @@ htmlcov/
 outputs/
 checkpoints/
 data/
-wandb/
 results/
 grid_search_results/
 lyrics_translation_output/
