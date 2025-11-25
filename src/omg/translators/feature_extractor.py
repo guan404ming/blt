@@ -16,6 +16,10 @@ os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
 class FeatureExtractor:
     """音樂特徵自動提取器"""
 
+    # IPA vowel pattern (包含所有常見的元音符號)
+    # Monophthongs: i, y, ɨ, ʉ, ɯ, u, ɪ, ʏ, ʊ, e, ø, ɘ, ɵ, ɤ, o, ə, ɛ, œ, ɜ, ɞ, ʌ, ɔ, æ, ɐ, a, ɶ, ɑ, ɒ
+    IPA_VOWEL_PATTERN = r"[iɪeɛæaɑɒɔoʊuʉɨəɜɞʌyøœɶɐ]"
+
     def __init__(self, source_lang: str = "English", target_lang: str = "Chinese"):
         self.source_lang = source_lang
         self.target_lang = target_lang
@@ -102,11 +106,8 @@ class FeatureExtractor:
         計算 IPA 中的元音符號數量來估計音節數。
         每個元音通常代表一個音節核心。
         """
-        # IPA vowel pattern (包含所有常見的元音符號)
-        vowel_pattern = r"[iɪeɛæaɑɒɔoʊuʉɨəɜɞʌyøœɶɐ]"
-
         # Find all vowels in the IPA text
-        vowels = re.findall(vowel_pattern, ipa_text)
+        vowels = re.findall(self.IPA_VOWEL_PATTERN, ipa_text)
 
         return len(vowels)
 
@@ -138,36 +139,37 @@ class FeatureExtractor:
         return "".join(scheme)
 
     def _extract_rhyme_ending(self, text: str, lang: str) -> str:
-        """提取韻腳（末字或末音節）"""
+        """
+        提取韻腳 (使用 IPA)
+
+        將文本轉換為 IPA，然後提取最後的音節作為韻腳。
+        韻腳包含最後一個元音及其後的所有輔音。
+
+        Args:
+            text: 要提取韻腳的文本
+            lang: espeak-ng 語言代碼
+
+        Returns:
+            IPA 格式的韻腳
+        """
         text = text.strip()
-
-        if lang.lower() in ["chinese", "mandarin", "zh", "中文"]:
-            # 中文: 提取末字的韻母
-            try:
-                from pypinyin import lazy_pinyin, Style
-
-                words = re.findall(r"[\u4e00-\u9fff]", text)
-                if words:
-                    last_char = words[-1]
-                    pinyin = lazy_pinyin(last_char, style=Style.FINALS)
-                    return pinyin[0] if pinyin else last_char
-            except ImportError:
-                # Fallback: 直接返回末字
-                words = re.findall(r"[\u4e00-\u9fff]", text)
-                return words[-1] if words else ""
-
-        elif lang.lower() in ["english", "en"]:
-            # 英文: 提取末詞的韻母
-            # 使用更好的正則表達式來保留縮寫詞（contractions）
-            words = re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
-            if words:
-                last_word = words[-1]
-                # 簡單的韻腳檢測: 最後2-3個字母
-                return last_word[-3:] if len(last_word) >= 3 else last_word
+        if not text:
             return ""
 
-        words = text.split()
-        return words[-1] if words else ""
+        # 轉換為 IPA
+        ipa_text = self._text_to_ipa(text, lang)
+
+        # 找到所有元音的位置
+        vowel_matches = list(re.finditer(self.IPA_VOWEL_PATTERN, ipa_text))
+
+        if not vowel_matches:
+            return ""
+
+        # 提取從最後一個元音到字符串結尾的部分作為韻腳
+        last_vowel_pos = vowel_matches[-1].start()
+        rhyme_ending = ipa_text[last_vowel_pos:]
+
+        return rhyme_ending
 
     def _infer_pauses(self, lines: list[str]) -> list[int]:
         """基於標點符號推測停頓位置"""
