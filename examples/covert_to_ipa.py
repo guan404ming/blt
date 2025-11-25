@@ -36,6 +36,21 @@ def count_syllables_from_ipa(ipa_text):
     return len(vowels)
 
 
+# Examples with espeak-ng language codes
+# Common language codes:
+# - en-us: American English
+# - en-gb: British English
+# - de: German
+# - fr-fr: French
+# - es: Spanish
+# - it: Italian
+# - ja: Japanese
+# - ko: Korean
+# - cmn: Mandarin Chinese
+# - pt: Portuguese
+# - ru: Russian
+# Full list: https://github.com/espeak-ng/espeak-ng/blob/master/docs/languages.md
+
 # 1. 英文範例 (English - American)
 english_text = "Lyrics translation is a challenging task."
 ipa_en = phonemize(english_text, language="en-us", backend="espeak", strip=True)
@@ -76,6 +91,7 @@ test_cases = [
     ("Bonjour", "fr-fr"),
     ("Hola", "es"),
     ("Beautiful", "en-us"),
+    ("音樂翻譯", "cmn"),
 ]
 
 for text, lang in test_cases:

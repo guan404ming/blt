@@ -2,7 +2,7 @@
 
 import scipy.io.wavfile
 
-from omg.models import BaseMusicModel, MusicGenModel
+from omg.models import BaseMusicModel
 
 
 def generate_music(
