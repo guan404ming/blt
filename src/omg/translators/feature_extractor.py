@@ -3,13 +3,20 @@ Feature Extractor for Music Constraints
 自動提取音樂特徵（音節數、押韻、停頓位置）
 """
 
+import os
 import re
 from typing import Optional
 from .models import MusicConstraints
 
+# Set environment variables for phonemizer to find espeak-ng
+os.environ["PHONEMIZER_ESPEAK_PATH"] = "/opt/homebrew/bin/espeak-ng"
+os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
+
 
 class FeatureExtractor:
     """音樂特徵自動提取器"""
+
+    IPA_VOWEL_PATTERN = r"[iɪeɛæaɑɒɔoʊuʉɨəɜɞʌyøœɶɐ]"
 
     def __init__(self, source_lang: str = "English", target_lang: str = "Chinese"):
         self.source_lang = source_lang
@@ -52,84 +59,44 @@ class FeatureExtractor:
             pause_positions=pause_positions,
         )
 
+    def _text_to_ipa(self, text: str, lang: str) -> str:
+        """
+        將文本轉換為 IPA (國際音標)
+
+        使用 phonemizer + espeak-ng 進行多語言文本到 IPA 的轉換。
+
+        Args:
+            text: 要轉換的文本
+            lang: espeak-ng 語言代碼 (例如: 'en-us', 'de', 'fr-fr', 'ja', 'ko', 'cmn')
+
+        Returns:
+            IPA 格式的音標字符串
+        """
+        from phonemizer import phonemize
+
+        ipa_text = phonemize(text, language=lang, backend="espeak", strip=True)
+        return ipa_text
+
     def _count_syllables(self, text: str, lang: str) -> int:
-        """計算文本的音節數"""
-        if lang.lower() in ["chinese", "mandarin", "zh", "中文"]:
-            # 中文: 字符數 + 拉長音符號數量
-            chinese_chars = len(re.sub(r"[^\u4e00-\u9fff]", "", text))
-            # 計算拉長音符號 '-' 的數量
-            elongation_marks = text.count("-")
-            return chinese_chars + elongation_marks
+        """
+        計算文本的音節數 (使用 IPA-based 方法)
 
-        elif lang.lower() in ["english", "en"]:
-            # 英文: 使用 CMU Pronouncing Dictionary
-            try:
-                import pronouncing
+        使用 phonemizer + espeak-ng 將文本轉換為 IPA，然後計算元音數量來估計音節數。
+        這個方法支持多語言且更準確。
 
-                # 分詞並計算每個詞的音節數
-                # 使用更好的正則表達式來保留縮寫詞（contractions）
-                words = re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
-                total_syllables = 0
+        Args:
+            text: 要計算音節數的文本
+            lang: espeak-ng 語言代碼 (例如: 'en-us', 'de', 'fr-fr', 'ja', 'ko', 'cmn')
 
-                for word in words:
-                    # 獲取發音列表
-                    phones = pronouncing.phones_for_word(word)
+        Returns:
+            音節數量
+        """
+        # 轉換為 IPA
+        ipa_text = self._text_to_ipa(text, lang)
+        vowels = re.findall(self.IPA_VOWEL_PATTERN, ipa_text)
 
-                    if phones:
-                        # 使用第一個發音，計算音節數（音節 = 重音標記數）
-                        syllable_count = pronouncing.syllable_count(phones[0])
-                        total_syllables += syllable_count
-                    else:
-                        # 如果字典中沒有，使用簡單的元音計數法
-                        total_syllables += self._fallback_syllable_count(word)
-
-                return total_syllables
-
-            except ImportError:
-                # Fallback: 簡單的元音計數
-                words = re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
-                return sum(self._fallback_syllable_count(word) for word in words)
-
-        elif lang.lower() in ["japanese", "ja", "日文"]:
-            return self._count_syllables_japanese(text)
-
-        else:
-            return self._count_syllables_other(text)
-
-    def _fallback_syllable_count(self, word: str) -> int:
-        """簡單的元音計數法（備用）"""
-        word = word.lower()
-        vowels = "aeiouy"
-        count = 0
-        previous_was_vowel = False
-
-        for char in word:
-            is_vowel = char in vowels
-            if is_vowel and not previous_was_vowel:
-                count += 1
-            previous_was_vowel = is_vowel
-
-        # 調整: 以 'e' 結尾通常不發音（除非是單音節詞）
-        if word.endswith("e") and count > 1:
-            count -= 1
-
-        # 調整: 以 'le' 結尾通常發音
-        if word.endswith("le") and len(word) > 2 and word[-3] not in vowels:
-            count += 1
-
-        return max(1, count)
-
-    def _count_syllables_japanese(self, text: str) -> int:
-        """日文音節計數"""
-        # 日文: 假名數
-        # 簡化版: 統計字符數
-        return len(re.sub(r"[^\u3040-\u309f\u30a0-\u30ff]", "", text))
-
-    def _count_syllables_other(self, text: str) -> int:
-        """其他語言音節計數"""
-        # 其他語言: 使用空格分詞估算
-        words = text.split()
-        return len(words) * 2  # 粗略估計
+        # 計算 IPA 中的元音數量（元音 = 音節核心）
+        return len(vowels)
 
     def _detect_rhyme_scheme(self, lines: list[str], lang: str) -> str:
         """檢測押韻方案"""
@@ -159,38 +126,37 @@ class FeatureExtractor:
         return "".join(scheme)
 
     def _extract_rhyme_ending(self, text: str, lang: str) -> str:
-        """提取韻腳（末字或末音節）"""
+        """
+        提取韻腳 (使用 IPA)
+
+        將文本轉換為 IPA，然後提取最後的音節作為韻腳。
+        韻腳包含最後一個元音及其後的所有輔音。
+
+        Args:
+            text: 要提取韻腳的文本
+            lang: espeak-ng 語言代碼
+
+        Returns:
+            IPA 格式的韻腳
+        """
         text = text.strip()
-
-        if lang.lower() in ["chinese", "mandarin", "zh", "中文"]:
-            # 中文: 提取末字的韻母
-            try:
-                from pypinyin import lazy_pinyin, Style
-
-                words = re.findall(r"[\u4e00-\u9fff]", text)
-                if words:
-                    last_char = words[-1]
-                    pinyin = lazy_pinyin(last_char, style=Style.FINALS)
-                    return pinyin[0] if pinyin else last_char
-            except ImportError:
-                # Fallback: 直接返回末字
-                words = re.findall(r"[\u4e00-\u9fff]", text)
-                return words[-1] if words else ""
-
-        elif lang.lower() in ["english", "en"]:
-            # 英文: 提取末詞的韻母
-            # 使用更好的正則表達式來保留縮寫詞（contractions）
-            words = re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
-            if words:
-                last_word = words[-1]
-                # 簡單的韻腳檢測: 最後2-3個字母
-                return last_word[-3:] if len(last_word) >= 3 else last_word
+        if not text:
             return ""
 
-        else:
-            # 其他語言: 返回末詞
-            words = text.split()
-            return words[-1] if words else ""
+        # 轉換為 IPA
+        ipa_text = self._text_to_ipa(text, lang)
+
+        # 找到所有元音的位置
+        vowel_matches = list(re.finditer(self.IPA_VOWEL_PATTERN, ipa_text))
+
+        if not vowel_matches:
+            return ""
+
+        # 提取從最後一個元音到字符串結尾的部分作為韻腳
+        last_vowel_pos = vowel_matches[-1].start()
+        rhyme_ending = ipa_text[last_vowel_pos:]
+
+        return rhyme_ending
 
     def _infer_pauses(self, lines: list[str]) -> list[int]:
         """基於標點符號推測停頓位置"""
