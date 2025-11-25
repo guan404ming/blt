@@ -1,57 +1,71 @@
 """
-Example: Translate lyrics using PydanticAI + Gemini 2.0 Flash
-範例: 使用 PydanticAI + Gemini 2.0 Flash 翻譯歌詞
+Translate Jay Chou's "擱淺" (Stranded) lyrics
+Chinese → English translation with music constraints
 """
 
 import os
-import sys
+from dotenv import load_dotenv
+from omg.translators import LyricsTranslator, FeatureExtractor
 
-# Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from lyrics_translation import LyricsTranslator, FeatureExtractor
+# Load .env file
+load_dotenv()
 
 
 def main():
-    # 設定 API Key
+    # Load API key
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         print("請設定 GEMINI_API_KEY 環境變數")
         print("export GEMINI_API_KEY='your-api-key'")
         return
 
-    # 範例歌詞 (Let It Go 片段)
-    source_lyrics = """Let it go, let it go
-Can't hold it back anymore
-Let it go, let it go
-Turn away and slam the door"""
+    # Read lyrics
+    lyrics_file = "/home/gmchiu/Documents/Github/omg/擱淺.txt"
+    with open(lyrics_file, "r", encoding="utf-8") as f:
+        source_lyrics = f.read().strip()
 
-    print("=" * 60)
-    print("歌詞翻譯範例: Let It Go (英文 → 中文)")
-    print("=" * 60)
-    print("\n【原始歌詞】")
-    print(source_lyrics)
+    # Take first verse for demonstration (lines 1-6)
+    lines = source_lyrics.split("\n")
+    first_verse = "\n".join(lines)
+
+    print("=" * 80)
+    print("歌詞翻譯: 擱淺 (Jay Chou)")
+    print("=" * 80)
+    print("\n【原始歌詞】(中文)")
+    print(first_verse)
     print()
 
-    # 1. Zero-shot 翻譯 (基礎版)
-    print("\n" + "=" * 60)
-    print("1. Zero-shot 翻譯 (無 CoT)")
-    print("=" * 60)
+    # Extract constraints
+    print("\n" + "=" * 80)
+    print("1. 自動提取音樂約束")
+    print("=" * 80)
+
+    extractor = FeatureExtractor(source_lang="Chinese", target_lang="English")
+    constraints = extractor.extract_constraints(first_verse)
+
+    print(f"\n音節數: {constraints.syllable_counts}")
+    print(f"押韻方案: {constraints.rhyme_scheme}")
+    print(f"停頓位置: {constraints.pause_positions}")
+
+    # Zero-shot translation
+    print("\n" + "=" * 80)
+    print("2. Zero-shot 翻譯 (無 CoT)")
+    print("=" * 80)
 
     translator = LyricsTranslator(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-pro",
         api_key=api_key,
         use_cot=False,
-        max_retries=3,
+        max_retries=1,
         auto_save=True,
         save_dir="outputs",
     )
 
     result = translator.translate(
-        source_lyrics=source_lyrics,
-        source_lang="English",
-        target_lang="Chinese",
-        save_format="txt",  # Save as plain text
+        source_lyrics=first_verse,
+        source_lang="Chinese",
+        target_lang="English",
+        save_format="md",  # Save as Markdown
     )
 
     print("\n【翻譯結果】")
@@ -61,58 +75,6 @@ Turn away and slam the door"""
     print(f"\n【音節數】{result.syllable_counts}")
     print(f"【韻腳】{result.rhyme_endings}")
     print(f"\n【翻譯思路】\n{result.reasoning}")
-
-    # 2. CoT 翻譯 (進階版)
-    print("\n" + "=" * 60)
-    print("2. Chain-of-Thought 翻譯")
-    print("=" * 60)
-
-    translator_cot = LyricsTranslator(
-        model="gemini-2.5-flash",
-        api_key=api_key,
-        use_cot=True,
-        max_retries=3,
-        auto_save=True,
-        save_dir="outputs",
-    )
-
-    result_cot = translator_cot.translate(
-        source_lyrics=source_lyrics,
-        source_lang="English",
-        target_lang="Chinese",
-        save_format="md",  # Save as Markdown
-    )
-
-    print("\n【Step 1: 意義分析】")
-    print(result_cot.meaning_analysis)
-
-    print("\n【Step 2: 約束分析】")
-    for key, value in result_cot.constraint_analysis.items():
-        print(f"  - {key}: {value}")
-
-    print("\n【Step 3: 關鍵詞構思】")
-    for keyword in result_cot.keyword_ideas:
-        print(f"  - {keyword}")
-
-    print("\n【Step 4: 最終翻譯】")
-    for i, line in enumerate(result_cot.translated_lines, 1):
-        print(f"{i}. {line}")
-
-    print("\n【Step 5: 自我驗證】")
-    for key, value in result_cot.self_verification.items():
-        print(f"  - {key}: {value}")
-
-    # 3. 顯示自動提取的約束
-    print("\n" + "=" * 60)
-    print("3. 自動提取的音樂約束")
-    print("=" * 60)
-
-    extractor = FeatureExtractor(source_lang="English", target_lang="Chinese")
-    constraints = extractor.extract_constraints(source_lyrics)
-
-    print(f"\n音節數: {constraints.syllable_counts}")
-    print(f"押韻方案: {constraints.rhyme_scheme}")
-    print(f"停頓位置: {constraints.pause_positions}")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ Lyrics Translator using PydanticAI + Gemini 2.0 Flash
 
 import os
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 from pydantic_ai import Agent
 

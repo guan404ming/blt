@@ -11,12 +11,12 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import json
 
-from .vocal_separator import VocalSeparator
-from .lyrics_aligner import LyricsAligner
-from .voice_synthesizer import VoiceSynthesizer
+from omg.synthesizer.vocal_separator import VocalSeparator
+from omg.synthesizer.lyrics_aligner import LyricsAligner
+from omg.synthesizer.voice_synthesizer import VoiceSynthesizer
 
 
-class LyricsTranslationPipeline:
+class CoverSongPipeline:
     """End-to-end pipeline for generating cover songs with new lyrics.
 
     This pipeline takes:
@@ -47,7 +47,7 @@ class LyricsTranslationPipeline:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         print("=" * 60)
-        print("INITIALIZING LYRICS TRANSLATION PIPELINE")
+        print("INITIALIZING COVER SONG PIPELINE")
         print("=" * 60)
 
         # Initialize components

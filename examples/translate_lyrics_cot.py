@@ -4,16 +4,11 @@ Chinese → English translation with music constraints
 """
 
 import os
-import sys
 from dotenv import load_dotenv
+from omg.translators import LyricsTranslator, FeatureExtractor
 
 # Load .env file
 load_dotenv()
-
-# Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from lyrics_translation import LyricsTranslator, FeatureExtractor
 
 
 def main():
@@ -51,35 +46,6 @@ def main():
     print(f"\n音節數: {constraints.syllable_counts}")
     print(f"押韻方案: {constraints.rhyme_scheme}")
     print(f"停頓位置: {constraints.pause_positions}")
-
-    # Zero-shot translation
-    print("\n" + "=" * 80)
-    print("2. Zero-shot 翻譯 (無 CoT)")
-    print("=" * 80)
-
-    translator = LyricsTranslator(
-        model="gemini-2.5-pro",
-        api_key=api_key,
-        use_cot=False,
-        max_retries=1,
-        auto_save=True,
-        save_dir="outputs",
-    )
-
-    result = translator.translate(
-        source_lyrics=first_verse,
-        source_lang="Chinese",
-        target_lang="English",
-        save_format="md",  # Save as Markdown
-    )
-
-    print("\n【翻譯結果】")
-    for i, line in enumerate(result.translated_lines, 1):
-        print(f"{i}. {line}")
-
-    print(f"\n【音節數】{result.syllable_counts}")
-    print(f"【韻腳】{result.rhyme_endings}")
-    print(f"\n【翻譯思路】\n{result.reasoning}")
 
     # CoT translation
     print("\n" + "=" * 80)

@@ -15,6 +15,7 @@ import argparse
 from pathlib import Path
 import sys
 import os
+from omg.pipeline import CoverSongPipeline
 
 # Disable torchcodec backend for torchaudio to avoid dependency
 os.environ["TORCHAUDIO_BACKEND"] = "soundfile"
@@ -23,12 +24,6 @@ os.environ["TORCHAUDIO_BACKEND"] = "soundfile"
 # by temporarily removing sys.argv
 _original_argv = sys.argv[:]
 sys.argv = [sys.argv[0]]
-
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
-
-from omg.lyrics_translation import LyricsTranslationPipeline
 
 
 def main():
@@ -133,10 +128,10 @@ def main():
 
     # Initialize pipeline
     print("\n" + "=" * 60)
-    print("LYRICS TRANSLATION DEMO")
+    print("COVER SONG GENERATION DEMO")
     print("=" * 60)
 
-    pipeline = LyricsTranslationPipeline(
+    pipeline = CoverSongPipeline(
         separator_model=args.separator_model,
         aligner_model=args.aligner_model,
         output_dir=args.output_dir,
