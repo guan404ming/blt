@@ -28,6 +28,7 @@ dependencies = [
     "tts>=0.22.0",
     "langdetect>=1.0.9",
     "pydantic-ai-slim>=1.22.0",
+    "phonemizer>=3.3.0",
 ]
 
 [dependency-groups]
