@@ -47,34 +47,50 @@ def main():
     print(f"押韻方案: {constraints.rhyme_scheme}")
     print(f"停頓位置: {constraints.pause_positions}")
 
-    # Zero-shot translation
+    # CoT translation
     print("\n" + "=" * 80)
-    print("2. Zero-shot 翻譯 (無 CoT)")
+    print("3. Chain-of-Thought 翻譯")
     print("=" * 80)
 
-    translator = LyricsTranslator(
+    translator_cot = LyricsTranslator(
         model="gemini-2.5-pro",
         api_key=api_key,
-        use_cot=False,
+        use_cot=True,
         max_retries=1,
         auto_save=True,
         save_dir="outputs",
     )
 
-    result = translator.translate(
+    result_cot = translator_cot.translate(
         source_lyrics=first_verse,
         source_lang="Chinese",
         target_lang="English",
-        save_format="md",  # Save as Markdown
+        save_format="json",  # Save as JSON
     )
 
-    print("\n【翻譯結果】")
-    for i, line in enumerate(result.translated_lines, 1):
+    print("\n【Step 1: 意義分析】")
+    print(result_cot.meaning_analysis)
+
+    print("\n【Step 2: 約束分析】")
+    for key, value in result_cot.constraint_analysis.items():
+        print(f"  - {key}: {value}")
+
+    print("\n【Step 3: 關鍵詞構思】")
+    for keyword in result_cot.keyword_ideas:
+        print(f"  - {keyword}")
+
+    print("\n【Step 4: 最終翻譯】")
+    for i, line in enumerate(result_cot.translated_lines, 1):
         print(f"{i}. {line}")
 
-    print(f"\n【音節數】{result.syllable_counts}")
-    print(f"【韻腳】{result.rhyme_endings}")
-    print(f"\n【翻譯思路】\n{result.reasoning}")
+    print("\n【Step 5: 自我驗證】")
+    for key, value in result_cot.self_verification.items():
+        print(f"  - {key}: {value}")
+
+    print("\n" + "=" * 80)
+    print("翻譯完成!")
+    print("=" * 80)
+
 
 if __name__ == "__main__":
     main()
