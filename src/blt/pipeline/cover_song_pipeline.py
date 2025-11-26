@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import json
 
-from omg.synthesizer.vocal_separator import VocalSeparator
-from omg.synthesizer.lyrics_aligner import LyricsAligner
-from omg.synthesizer.voice_synthesizer import VoiceSynthesizer
+from blt.synthesizer.vocal_separator import VocalSeparator
+from blt.synthesizer.lyrics_aligner import LyricsAligner
+from blt.synthesizer.voice_synthesizer import VoiceSynthesizer
 
 
 class CoverSongPipeline:

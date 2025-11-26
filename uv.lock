@@ -129,6 +129,52 @@ wheels = [
 ]
 
 [[package]]
+name = "blt"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "ctc-forced-aligner" },
+    { name = "demucs" },
+    { name = "dotenv" },
+    { name = "librosa" },
+    { name = "numpy" },
+    { name = "phonemizer" },
+    { name = "praat-parselmouth" },
+    { name = "pydantic-ai-slim", extra = ["google"] },
+    { name = "pypinyin" },
+    { name = "soundfile" },
+    { name = "torch" },
+    { name = "torchaudio" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ctc-forced-aligner", specifier = ">=1.0.2" },
+    { name = "demucs", specifier = ">=4.0.1" },
+    { name = "dotenv", specifier = ">=0.9.9" },
+    { name = "librosa", specifier = ">=0.10.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
+    { name = "numpy", specifier = ">=1.26.0,<2.0.0" },
+    { name = "phonemizer", specifier = ">=3.3.0" },
+    { name = "praat-parselmouth", specifier = ">=0.4.6" },
+    { name = "pydantic-ai-slim", extras = ["google"], specifier = ">=1.22.0" },
+    { name = "pypinyin", specifier = ">=0.55.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
+    { name = "soundfile", specifier = ">=0.12.0" },
+    { name = "torch", specifier = ">=2.5.0" },
+    { name = "torchaudio", specifier = ">=2.5.0" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "cachetools"
 version = "6.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1149,52 +1195,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/09/48/6388f1bb9da707110
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/94/1843518e420fa3ed6919835845df698c7e27e183cb997394e4a670973a65/omegaconf-2.3.0-py3-none-any.whl", hash = "sha256:7b4df175cdb08ba400f45cae3bdcae7ba8365db4d165fc65fd04b050ab63b46b", size = 79500, upload-time = "2022-12-08T20:59:19.686Z" },
 ]
-
-[[package]]
-name = "omg"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "ctc-forced-aligner" },
-    { name = "demucs" },
-    { name = "dotenv" },
-    { name = "librosa" },
-    { name = "numpy" },
-    { name = "phonemizer" },
-    { name = "praat-parselmouth" },
-    { name = "pydantic-ai-slim", extra = ["google"] },
-    { name = "pypinyin" },
-    { name = "soundfile" },
-    { name = "torch" },
-    { name = "torchaudio" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ctc-forced-aligner", specifier = ">=1.0.2" },
-    { name = "demucs", specifier = ">=4.0.1" },
-    { name = "dotenv", specifier = ">=0.9.9" },
-    { name = "librosa", specifier = ">=0.10.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "numpy", specifier = ">=1.26.0,<2.0.0" },
-    { name = "phonemizer", specifier = ">=3.3.0" },
-    { name = "praat-parselmouth", specifier = ">=0.4.6" },
-    { name = "pydantic-ai-slim", extras = ["google"], specifier = ">=1.22.0" },
-    { name = "pypinyin", specifier = ">=0.55.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
-    { name = "soundfile", specifier = ">=0.12.0" },
-    { name = "torch", specifier = ">=2.5.0" },
-    { name = "torchaudio", specifier = ">=2.5.0" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "onnxruntime"

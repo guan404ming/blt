@@ -1,33 +1,17 @@
-# OMG: Optimized Music Generation
+# 🥪 BLT - Better Lyrics Translation
 
-[![Python 3.11](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-apache-yellow.svg)](https://opensource.org/license/apache-2-0)
 
 ## Overview
 
-**OMG** (Optimized Music Generation) is a modular pipeline for enhancing Text-to-Music generation. It integrates different optimization blocks that can be combined to improve MusicGen output quality.
+**BLT** is an AI-powered song translation tool that allows you to translate any song into another language. It features a smart lyrics translation engine that rewrites lyrics to fit the song's melody, rhythm, and rhyme scheme, and then synthesizes the vocals to match the original singer's voice.
 
-### Pipeline Architecture
+## Features
 
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────┐
-│   Prompt    │ ──► │   Retrieval  │ ──► │   MusicGen  │ ──► │  Output  │
-│             │     │    (CLAP)    │     │    (ICL)    │     │          │
-└─────────────┘     └──────────────┘     └─────────────┘     └──────────┘
-```
-
-### Optimization Blocks
-
-| Block                 | Description                                            | Status  |
-| --------------------- | ------------------------------------------------------ | ------- |
-| CLAP Retrieval        | Retrieve similar examples via embedding similarity     | Done    |
-| In-Context Learning   | Condition generation on retrieved examples             | Done    |
-| RAG                   | Retrieval-augmented generation with external knowledge | Planned |
-| LoRA Fine-tuning      | Parameter-efficient adaptation for specific styles     | Planned |
-| Prompt Enhancement    | LLM-based prompt refinement                            | Planned |
-| Audio Post-processing | Style transfer, mixing                                 | Planned |
-| Lyrics Translation    | Cover song generation with new lyrics                  | Done    |
-| Evaluation            | CLAP score                                             | Done    |
+- **BLT (Better Lyrics Translation)**: Automatically translates and adapts lyrics to target languages, ensuring they fit the original melody's syllable count and rhyme constraints.
+- **Voice Cloning**: Preserves the unique timbre and style of the original artist in the translated version.
+- **Multilingual Support**: Translate songs between any language supported by modern LLMs.
 
 ## Setup
 
@@ -37,48 +21,30 @@ source .venv/bin/activate
 uv sync
 ```
 
-## Data Preparation
-
-```bash
-# Download MusicCaps dataset and audio
-uv run python scripts/load_data.py
-
-# Create caption mappings and embeddings
-uv run python scripts/create_audio_caption_mapping.py
-```
-
 ## Usage
 
+To generate a translated cover song, use the `examples/gen_translated_song.py` script:
+
 ```bash
-uv run python scripts/poc.py \
-    --prompt "jazz with only saxophone and keyboard interplay" \
-    --duration 20 \
-    --top-k 3 \
-    --threshold 0.7
+uv run python examples/gen_translated_song.py \
+    --audio "path/to/your/song.mp3" \
+    --old-lyrics-file "path/to/original/lyrics.txt" \
+    --new-lyrics-file "path/to/new/lyrics.txt" \
+    --output-name "my_cover_song"
 ```
 
 **Parameters:**
 
-- `--prompt`: Text description for music generation
-- `--duration`: Audio length in seconds (default: 20)
-- `--top-k`: Number of examples to retrieve (default: 3)
-- `--threshold`: Minimum similarity score (default: 0.7)
-- `--no-icl`: Skip in-context learning
-
-## Citation
-
-```bibtex
-@misc{omg2025,
-    title={OMG: Optimized Music Generation with In-Context Learning},
-    author={Guan-Ming Chiu},
-    year={2025},
-    url={https://github.com/guan404ming/omg}
-}
-```
+- `--audio`: Path to the original song audio file.
+- `--old-lyrics-file`: Path to a text file containing the original lyrics.
+- `--new-lyrics-file`: Path to a text file containing the new lyrics.
+- `--output-name`: The name for the generated cover song files.
+- `--device`: The device to run the models on (`cuda` or `cpu`).
 
 ## Acknowledgments
 
-- [CLAP](https://github.com/LAION-AI/CLAP) by LAION AI
+- [Demucs](https://github.com/facebookresearch/demucs) by Facebook Research
+- [XTTS](https://github.com/coqui-ai/TTS) by Coqui AI
 
 ## License
 

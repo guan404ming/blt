@@ -1,1 +1,1 @@
-"""Tests package for omg"""
+"""Tests package for blt"""
