@@ -21,7 +21,6 @@ class LyricsTranslator:
         model: str = "gemini-2.5-flash",
         api_key: Optional[str] = None,
         use_cot: bool = False,
-        max_retries: int = 3,
         auto_save: bool = False,
         save_dir: Optional[str] = None,
     ):
@@ -46,9 +45,12 @@ class LyricsTranslator:
         # 選擇輸出模型
         self.result_type = CoTTranslation if use_cot else LyricTranslation
         self.use_cot = use_cot
-        self.max_retries = max_retries
         self.auto_save = auto_save
         self.save_dir = save_dir or "outputs"
+
+        # 工具
+        self.feature_extractor = FeatureExtractor()
+        self.validator = ConstraintValidator()
 
         # 初始化 Agent - pydantic-ai will infer Google provider from model name
         self.agent = Agent(
@@ -57,34 +59,130 @@ class LyricsTranslator:
             system_prompt=self._get_system_prompt(),
         )
 
-        # 工具
-        self.feature_extractor = FeatureExtractor()
-        self.validator = ConstraintValidator()
+        # 註冊驗證工具供 LLM 調用
+        self._register_validation_tools()
+
+    def _register_validation_tools(self):
+        """註冊驗證工具供 LLM 在生成過程中使用"""
+
+        def count_syllables_impl(text: str, language: str) -> int:
+            """
+            計算文本的音節數
+
+            Args:
+                text: 要計算音節數的文本
+                language: 語言代碼 (例如: 'en-us', 'cmn', 'ja', 'ko')
+
+            Returns:
+                音節數量
+            """
+            result = self.feature_extractor._count_syllables(text, language)
+            print(f"[TOOL] count_syllables('{text}', '{language}') = {result}")
+            return result
+
+        def check_rhyme_impl(text1: str, text2: str, language: str) -> dict:
+            """
+            檢查兩個文本是否押韻
+
+            Args:
+                text1: 第一個文本
+                text2: 第二個文本
+                language: 語言代碼 (例如: 'en-us', 'cmn', 'ja', 'ko')
+
+            Returns:
+                包含押韻檢查結果的字典:
+                - rhymes: 是否押韻 (bool)
+                - rhyme1: 第一個文本的韻腳
+                - rhyme2: 第二個文本的韻腳
+            """
+            rhyme1 = self.feature_extractor._extract_rhyme_ending(text1, language)
+            rhyme2 = self.feature_extractor._extract_rhyme_ending(text2, language)
+
+            # 判斷是否押韻
+            rhymes = bool(
+                rhyme1
+                and rhyme2
+                and (rhyme1 == rhyme2 or rhyme1 in rhyme2 or rhyme2 in rhyme1)
+            )
+
+            result = {"rhymes": rhymes, "rhyme1": rhyme1, "rhyme2": rhyme2}
+            print(f"[TOOL] check_rhyme('{text1}', '{text2}', '{language}') = {result}")
+            return result
+
+        def get_rhyme_ending_impl(text: str, language: str) -> str:
+            """
+            提取文本的韻腳
+
+            Args:
+                text: 要提取韻腳的文本
+                language: 語言代碼 (例如: 'en-us', 'cmn', 'ja', 'ko')
+
+            Returns:
+                韻腳字符串
+            """
+            result = self.feature_extractor._extract_rhyme_ending(text, language)
+            print(f"[TOOL] get_rhyme_ending('{text}', '{language}') = '{result}'")
+            return result
+
+        # 註冊工具
+        self.agent.tool_plain(count_syllables_impl)
+        self.agent.tool_plain(check_rhyme_impl)
+        self.agent.tool_plain(get_rhyme_ending_impl)
 
     def _get_system_prompt(self) -> str:
         """獲取系統 prompt"""
         if self.use_cot:
             return """你是專業的歌詞翻譯專家。
 
+你可以使用以下工具來驗證翻譯品質：
+- count_syllables(text, language): 計算文本的音節數
+- check_rhyme(text1, text2, language): 檢查兩個文本是否押韻
+- get_rhyme_ending(text, language): 提取文本的韻腳
+
 請按照以下步驟進行翻譯:
 1. 理解原文的核心意義和情感
 2. 分析音樂約束 (音節數、押韻、停頓)
 3. 構思符合約束的關鍵詞
 4. 組裝完整譯文
-5. 驗證是否滿足所有約束
+5. **【最重要】使用 count_syllables 工具驗證每一行的音節數 - 音節數必須完全符合，這是最高優先級的約束**
+6. 使用 check_rhyme 工具驗證押韻要求（押韻可以適度放寬，但盡量滿足）
+7. 如果音節數不符，必須調整翻譯並重新驗證，直到完全符合
 
-請以結構化格式輸出每個步驟的結果。"""
+約束優先級：
+⭐⭐⭐ 音節數（絕對必須符合，不可妥協）
+⭐⭐ 押韻（盡量滿足，可以適度放寬）
+⭐ 停頓位置（參考即可）
+
+請確保最終輸出的音節數完全符合要求，並以結構化格式輸出每個步驟的結果。"""
         else:
             return """你是專業的歌詞翻譯專家。
+
+你可以使用以下工具來驗證翻譯品質：
+- count_syllables(text, language): 計算文本的音節數
+- check_rhyme(text1, text2, language): 檢查兩個文本是否押韻
+- get_rhyme_ending(text, language): 提取文本的韻腳
+
+約束優先級：
+⭐⭐⭐ 音節數（絕對必須符合，不可妥協）- 這是最重要的約束
+⭐⭐ 押韻（盡量滿足，可以適度放寬）
+⭐ 停頓位置（參考即可）
 
 請將歌詞翻譯成目標語言，並遵守以下要求:
 1. 保持原意和情感
 2. 符合目標語言的自然表達
-3. 嚴格遵守音節數限制
-4. 在指定位置押韻
+3. **【絕對必須】嚴格遵守音節數限制 - 必須使用 count_syllables 工具驗證每一行，音節數必須完全符合**
+4. 在指定位置押韻 - 使用 check_rhyme 工具驗證押韻（可以適度放寬）
 5. 避免在音樂停頓處斷詞
 
-請以結構化格式輸出翻譯結果。"""
+工作流程：
+1. 草擬每一行的翻譯
+2. **【最重要】使用 count_syllables 驗證音節數是否完全符合要求**
+3. **如果音節數不符，必須調整翻譯並重新驗證，直到完全符合為止**
+4. 對需要押韻的行，使用 check_rhyme 驗證押韻（盡力而為，但音節數優先）
+5. 如果押韻不符但音節數正確，可以接受
+6. 確保所有行的音節數都完全符合後，輸出最終結果
+
+請以結構化格式輸出翻譯結果。音節數的準確性是評估翻譯品質的最重要指標。"""
 
     def translate(
         self,
@@ -92,7 +190,6 @@ class LyricsTranslator:
         source_lang: str,
         target_lang: str,
         constraints: Optional[MusicConstraints] = None,
-        auto_retry: bool = True,
         save_path: Optional[str] = None,
         save_format: str = "json",
     ) -> LyricTranslation | CoTTranslation:
@@ -132,11 +229,28 @@ class LyricsTranslator:
         # 4. 重新計算翻譯結果的實際音節數
         translation = self._recalculate_syllables(translation, target_lang)
 
-        # 5. 驗證與重試
-        if auto_retry:
-            translation = self._validate_and_retry(
-                translation, constraints, source_lyrics, source_lang, target_lang
+        # 5. 最終驗證並顯示結果（不進行自動重試，信任 LLM 的自我驗證）
+        self.validator.target_lang = target_lang
+        if isinstance(translation, CoTTranslation):
+            lyric_translation = LyricTranslation(
+                translated_lines=translation.translated_lines,
+                syllable_counts=translation.syllable_counts,
+                rhyme_endings=translation.rhyme_endings,
+                reasoning=translation.meaning_analysis,
+                constraint_satisfaction={},
             )
+        else:
+            lyric_translation = translation
+
+        validation_result = self.validator.validate(lyric_translation, constraints)
+
+        if validation_result.passed:
+            print("✓ 所有約束都已滿足")
+        else:
+            print(f"⚠ 約束滿足度: {validation_result.score:.2%}")
+            if validation_result.errors:
+                feedback = self.validator.generate_feedback(validation_result)
+                print(feedback)
 
         # 6. 保存結果（如果啟用）
         if save_path or self.auto_save:
@@ -210,78 +324,6 @@ class LyricsTranslator:
         prompt_parts.extend(["", "請翻譯並確保滿足所有約束。"])
 
         return "\n".join(prompt_parts)
-
-    def _validate_and_retry(
-        self,
-        translation: LyricTranslation | CoTTranslation,
-        constraints: MusicConstraints,
-        source_lyrics: str,
-        source_lang: str,
-        target_lang: str,
-    ) -> LyricTranslation | CoTTranslation:
-        """驗證翻譯並在必要時重試"""
-        # 轉換為標準格式以進行驗證
-        if isinstance(translation, CoTTranslation):
-            lyric_translation = LyricTranslation(
-                translated_lines=translation.translated_lines,
-                syllable_counts=translation.syllable_counts,
-                rhyme_endings=translation.rhyme_endings,
-                reasoning=translation.meaning_analysis,
-                constraint_satisfaction={},
-            )
-        else:
-            lyric_translation = translation
-
-        # 驗證
-        self.validator.target_lang = target_lang
-        validation_result = self.validator.validate(lyric_translation, constraints)
-
-        # 如果通過或達到最大重試次數，返回結果
-        retry_count = 0
-        while not validation_result.passed and retry_count < self.max_retries:
-            retry_count += 1
-            print(f"約束不滿足，正在重試 ({retry_count}/{self.max_retries})...")
-
-            # 生成反饋
-            feedback = self.validator.generate_feedback(validation_result)
-            print(feedback)
-
-            # 重新生成 prompt
-            user_prompt = self._build_prompt(
-                source_lyrics=source_lyrics,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                constraints=constraints,
-                feedback=feedback,
-            )
-
-            # 重試
-            result = self.agent.run_sync(user_prompt)
-            translation = result.output
-
-            # 重新計算音節數
-            translation = self._recalculate_syllables(translation, target_lang)
-
-            # 重新驗證
-            if isinstance(translation, CoTTranslation):
-                lyric_translation = LyricTranslation(
-                    translated_lines=translation.translated_lines,
-                    syllable_counts=translation.syllable_counts,
-                    rhyme_endings=translation.rhyme_endings,
-                    reasoning=translation.meaning_analysis,
-                    constraint_satisfaction={},
-                )
-            else:
-                lyric_translation = translation
-
-            validation_result = self.validator.validate(lyric_translation, constraints)
-
-        if validation_result.passed:
-            print("✓ 所有約束都已滿足")
-        else:
-            print(f"⚠ 達到最大重試次數，最終得分: {validation_result.score:.2%}")
-
-        return translation
 
     def _save_translation(
         self,

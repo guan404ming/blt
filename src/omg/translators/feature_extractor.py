@@ -163,6 +163,7 @@ class FeatureExtractor:
         # For Chinese, use pypinyin to get the final (韻母) of the last character
         if lang == "cmn":
             from pypinyin import pinyin, Style
+
             # Get the last character's pinyin final (without tone)
             if text:
                 # Get pinyin finals for all characters

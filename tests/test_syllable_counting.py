@@ -64,7 +64,9 @@ class TestSyllableCounting:
     def test_count_syllables_basic(self, extractor, text, lang, expected_count):
         """Test syllable counting for English, Chinese, and Japanese with basic words and phrases"""
         result = extractor._count_syllables(text, lang)
-        assert result == expected_count, f"Expected {expected_count} syllables for '{text}' ({lang}), got {result}"
+        assert result == expected_count, (
+            f"Expected {expected_count} syllables for '{text}' ({lang}), got {result}"
+        )
 
     @pytest.mark.parametrize(
         "text,lang,expected_count",
@@ -119,10 +121,14 @@ class TestSyllableCounting:
             ),
         ],
     )
-    def test_count_syllables_longer_sentences(self, extractor, text, lang, expected_count):
+    def test_count_syllables_longer_sentences(
+        self, extractor, text, lang, expected_count
+    ):
         """Test syllable counting for longer sentences in English, Chinese, and Japanese"""
         result = extractor._count_syllables(text, lang)
-        assert result == expected_count, f"Expected {expected_count} syllables for '{text}' ({lang}), got {result}"
+        assert result == expected_count, (
+            f"Expected {expected_count} syllables for '{text}' ({lang}), got {result}"
+        )
 
     @pytest.mark.parametrize(
         "text,lang",
@@ -140,7 +146,9 @@ class TestSyllableCounting:
         """Test that syllable counting handles punctuation correctly for all languages"""
         result = extractor._count_syllables(text, lang)
         # Should still return a positive count even with punctuation
-        assert result > 0, f"Expected positive syllable count for '{text}' ({lang}), got {result}"
+        assert result > 0, (
+            f"Expected positive syllable count for '{text}' ({lang}), got {result}"
+        )
 
     @pytest.mark.parametrize(
         "lang",
@@ -149,4 +157,6 @@ class TestSyllableCounting:
     def test_count_syllables_whitespace(self, extractor, lang):
         """Test syllable counting with whitespace-only input for all languages"""
         result = extractor._count_syllables("   ", lang)
-        assert result == 0, f"Expected 0 syllables for whitespace ({lang}), got {result}"
+        assert result == 0, (
+            f"Expected 0 syllables for whitespace ({lang}), got {result}"
+        )

@@ -56,7 +56,6 @@ def main():
         model="gemini-2.5-pro",
         api_key=api_key,
         use_cot=False,
-        max_retries=0,
         auto_save=True,
         save_dir="outputs",
     )

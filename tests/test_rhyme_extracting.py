@@ -42,7 +42,9 @@ class TestRhymeExtracting:
     def test_extract_rhyme_ending_basic(self, extractor, text, lang):
         """Test rhyme ending extraction returns non-empty string for valid input"""
         result = extractor._extract_rhyme_ending(text, lang)
-        assert len(result) > 0, f"Expected non-empty rhyme ending for '{text}' ({lang}), got '{result}'"
+        assert len(result) > 0, (
+            f"Expected non-empty rhyme ending for '{text}' ({lang}), got '{result}'"
+        )
 
     @pytest.mark.parametrize(
         "words,lang",
@@ -77,7 +79,9 @@ class TestRhymeExtracting:
     def test_extract_rhyme_ending_rhyming_groups(self, extractor, words, lang):
         """Test that rhyming word groups produce the same rhyme ending"""
         endings = [extractor._extract_rhyme_ending(word, lang) for word in words]
-        assert len(set(endings)) == 1, f"Expected all words in {words} to have same rhyme ending, got {endings}"
+        assert len(set(endings)) == 1, (
+            f"Expected all words in {words} to have same rhyme ending, got {endings}"
+        )
 
     @pytest.mark.parametrize(
         "lang",
@@ -86,7 +90,9 @@ class TestRhymeExtracting:
     def test_extract_rhyme_ending_empty_string(self, extractor, lang):
         """Test rhyme ending extraction handles empty string"""
         result = extractor._extract_rhyme_ending("", lang)
-        assert result == "", f"Expected empty rhyme ending for empty string ({lang}), got '{result}'"
+        assert result == "", (
+            f"Expected empty rhyme ending for empty string ({lang}), got '{result}'"
+        )
 
     def test_extract_rhyme_ending_with_punctuation(self, extractor):
         """Test rhyme ending extraction handles punctuation"""
@@ -96,5 +102,6 @@ class TestRhymeExtracting:
         result_punct2 = extractor._extract_rhyme_ending("cat.", "en-us")
 
         # All should produce same result
-        assert result_plain == result_punct1 == result_punct2, \
+        assert result_plain == result_punct1 == result_punct2, (
             f"Expected same rhyme ending regardless of punctuation, got {result_plain}, {result_punct1}, {result_punct2}"
+        )
