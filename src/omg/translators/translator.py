@@ -138,9 +138,9 @@ class LyricsTranslator:
 ⭐ 停頓位置（參考即可）
 
 請將歌詞翻譯成目標語言，並遵守以下要求:
-1. 保持原意和情感
-2. 符合目標語言的自然表達
-3. **【絕對必須】嚴格遵守音節數限制 - 必須使用 count_syllables 工具驗證每一行，音節數必須完全符合**
+1. **【絕對必須】嚴格遵守音節數限制 - 必須使用 count_syllables 工具驗證每一行，音節數必須完全符合**
+2. 保持原意和情感
+3. 符合目標語言的自然表達
 4. 在指定位置押韻 - 使用 check_rhyme 工具驗證押韻（可以適度放寬）
 5. 避免在音樂停頓處斷詞
 
@@ -207,9 +207,6 @@ class LyricsTranslator:
             print("✓ 所有約束都已滿足")
         else:
             print(f"⚠ 約束滿足度: {validation_result.score:.2%}")
-            if validation_result.errors:
-                feedback = self.validator.generate_feedback(validation_result)
-                print(feedback)
 
         # 6. 保存結果（如果啟用）
         if save_path or self.auto_save:

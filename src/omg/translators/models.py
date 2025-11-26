@@ -101,3 +101,4 @@ class ValidationResult(BaseModel):
     passed: bool = Field(description="是否通過所有約束驗證")
     errors: list[dict] = Field(default_factory=list, description="錯誤列表")
     score: float = Field(default=0.0, description="整體品質評分 (0-1)")
+    feedback: str = Field(description="本次回答之驗證反饋")

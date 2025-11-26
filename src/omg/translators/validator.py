@@ -67,8 +67,14 @@ class ConstraintValidator:
         # 音節數必須完全正確才算通過（其他約束可以有誤差）
         syllable_perfect = length_score == 1.0
         passed = syllable_perfect and len(errors) == 0
+        feedback = self._generate_feedback(passed, errors, overall_score)
 
-        return ValidationResult(passed=passed, errors=errors, score=overall_score)
+        return ValidationResult(
+            passed=passed,
+            errors=errors,
+            score=overall_score,
+            feedback=feedback,
+        )
 
     def _validate_length(
         self, actual_counts: list[int], target_counts: list[int]
@@ -178,18 +184,20 @@ class ConstraintValidator:
         # 暫時返回完美分數
         return 1.0, errors
 
-    def generate_feedback(self, validation_result: ValidationResult) -> str:
+    def _generate_feedback(
+        self, passed, errors, score
+    ) -> str:
         """根據驗證結果生成反饋文本"""
-        if validation_result.passed:
+        if passed:
             return "✓ 所有約束都已滿足"
 
         feedback_parts = ["翻譯存在以下問題需要修正:\n"]
 
         # 統計各類錯誤數量
-        length_errors = [e for e in validation_result.errors if e["type"] == "length"]
-        rhyme_errors = [e for e in validation_result.errors if e["type"] == "rhyme"]
+        length_errors = [e for e in errors if e["type"] == "length"]
+        rhyme_errors = [e for e in errors if e["type"] == "rhyme"]
         boundary_errors = [
-            e for e in validation_result.errors if e["type"] == "boundary"
+            e for e in errors if e["type"] == "boundary"
         ]
 
         # 添加統計摘要
@@ -226,6 +234,6 @@ class ConstraintValidator:
                 feedback_parts.append(f"  - {error['message']}")
 
         # 添加整體評分
-        feedback_parts.append(f"\n【整體評分】{validation_result.score:.2%}")
+        feedback_parts.append(f"\n【整體評分】{score:.2%}")
 
         return "\n".join(feedback_parts)
