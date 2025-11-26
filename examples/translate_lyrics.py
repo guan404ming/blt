@@ -13,10 +13,10 @@ load_dotenv()
 
 def main():
     # Load API key
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("請設定 GEMINI_API_KEY 環境變數")
-        print("export GEMINI_API_KEY='your-api-key'")
+        print("請設定 GOOGLE_API_KEY 環境變數")
+        print("export GOOGLE_API_KEY='your-api-key'")
         return
 
     # Read lyrics

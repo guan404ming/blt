@@ -36,9 +36,9 @@ class LyricsTranslator:
             auto_save: 是否自動保存翻譯結果
             save_dir: 保存目錄（若未提供則使用 'outputs'）
         """
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         if not self.api_key:
-            raise ValueError("Please provide GEMINI_API_KEY")
+            raise ValueError("Please provide GOOGLE_API_KEY")
 
         # Set API key in environment for pydantic-ai
         os.environ["GOOGLE_API_KEY"] = self.api_key

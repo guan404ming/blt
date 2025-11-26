@@ -16,6 +16,7 @@ dependencies = [
     "praat-parselmouth>=0.4.6",
     "pydantic-ai-slim>=1.22.0",
     "phonemizer>=3.3.0",
+    "dotenv>=0.9.9",
 ]
 
 [project.optional-dependencies]

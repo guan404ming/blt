@@ -4,7 +4,7 @@
 
      1. INITIALIZATION (translator.py:18-51)
         └─ LyricsTranslator.__init__()
-           ├─ Load API key from environment (GEMINI_API_KEY)
+           ├─ Load API key from environment (GOOGLE_API_KEY)
            ├─ Set GOOGLE_API_KEY for pydantic-ai
            ├─ Choose output type: LyricTranslation (basic) or CoTTranslation (CoT)
            ├─ Initialize PydanticAI Agent with:
