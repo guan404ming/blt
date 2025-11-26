@@ -14,7 +14,6 @@ dependencies = [
     "numpy>=1.26.0,<2.0.0",
     "scipy>=1.12.0",
     "tqdm>=4.66.0",
-    "laion-clap>=1.1.5",
     "faiss-cpu>=1.13.0",
     "pypinyin>=0.55.0",
     "syllables>=1.1.4",

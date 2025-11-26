@@ -1,6 +1,6 @@
 """
 Translate Jay Chou's "擱淺" (Stranded) lyrics
-Chinese → English translation with music constraints
+cmn → en translation with music constraints
 """
 
 import os
@@ -40,7 +40,7 @@ def main():
     print("1. 自動提取音樂約束")
     print("=" * 80)
 
-    extractor = FeatureExtractor(source_lang="Chinese", target_lang="English")
+    extractor = FeatureExtractor(source_lang="cmn", target_lang="en")
     constraints = extractor.extract_constraints(first_verse)
 
     print(f"\n音節數: {constraints.syllable_counts}")
@@ -63,8 +63,8 @@ def main():
 
     result_cot = translator_cot.translate(
         source_lyrics=first_verse,
-        source_lang="Chinese",
-        target_lang="English",
+        source_lang="cmn",
+        target_lang="en",
         save_format="json",  # Save as JSON
     )
 

@@ -1,6 +1,6 @@
 """
-Translate Jay Chou's "擱淺" (Stranded) lyrics
-Chinese → English translation with music constraints
+Translate Jay cmn's "擱淺" (Stranded) lyrics
+Chinese → en-us translation with music constraints
 """
 
 import os
@@ -20,7 +20,7 @@ def main():
         return
 
     # Read lyrics
-    lyrics_file = "/home/gmchiu/Documents/Github/omg/擱淺.txt"
+    lyrics_file = "擱淺.txt"
     with open(lyrics_file, "r", encoding="utf-8") as f:
         source_lyrics = f.read().strip()
 
@@ -40,7 +40,7 @@ def main():
     print("1. 自動提取音樂約束")
     print("=" * 80)
 
-    extractor = FeatureExtractor(source_lang="Chinese", target_lang="English")
+    extractor = FeatureExtractor(source_lang="cmn", target_lang="en-us")
     constraints = extractor.extract_constraints(first_verse)
 
     print(f"\n音節數: {constraints.syllable_counts}")
@@ -56,15 +56,15 @@ def main():
         model="gemini-2.5-pro",
         api_key=api_key,
         use_cot=False,
-        max_retries=1,
+        max_retries=0,
         auto_save=True,
         save_dir="outputs",
     )
 
     result = translator.translate(
         source_lyrics=first_verse,
-        source_lang="Chinese",
-        target_lang="English",
+        source_lang="cmn",
+        target_lang="en-us",
         save_format="md",  # Save as Markdown
     )
 
