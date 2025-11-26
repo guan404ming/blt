@@ -25,13 +25,16 @@ class MusicConstraints(BaseModel):
 class LyricTranslation(BaseModel):
     """標準歌詞翻譯輸出"""
 
-    translated_lines: list[str] = Field(description="逐行翻譯結果")
-    syllable_counts: list[int] = Field(description="每行的實際音節數")
-    rhyme_endings: list[str] = Field(description="每行的韻腳（末字或末音節）")
-    reasoning: str = Field(description="翻譯思路和考量")
-    constraint_satisfaction: dict[str, bool] = Field(
-        description="約束滿足情況",
-        default_factory=lambda: {"length": False, "rhyme": False, "boundary": False},
+    translated_lines: list[str] = Field(description="Translated lyrics line by line")
+    syllable_counts: list[int] = Field(
+        description="Syllable count per line (LLM outputs, we recalculate)"
+    )
+    rhyme_endings: list[str] = Field(
+        description="Rhyme ending per line (LLM outputs, we recalculate)"
+    )
+    reasoning: str = Field(description="Translation reasoning and considerations")
+    tool_call_stats: Optional[dict[str, int]] = Field(
+        default=None, description="Tool call statistics: {tool_name: call_count}"
     )
 
     def save(self, output_path: str | Path, format: str = "json") -> None:
@@ -75,6 +78,13 @@ class LyricTranslation(BaseModel):
 
             f.write(f"\n音節數: {self.syllable_counts}\n")
             f.write(f"韻腳: {self.rhyme_endings}\n\n")
+
+            if self.tool_call_stats:
+                f.write("工具調用統計:\n")
+                for tool_name, count in self.tool_call_stats.items():
+                    f.write(f"  - {tool_name}: {count}\n")
+                f.write("\n")
+
             f.write(f"翻譯思路:\n{self.reasoning}\n")
 
     def _save_markdown(self, output_path: Path) -> None:
@@ -91,6 +101,11 @@ class LyricTranslation(BaseModel):
             f.write(f"- **音節數**: {self.syllable_counts}\n")
             f.write(f"- **韻腳**: {self.rhyme_endings}\n")
 
+            if self.tool_call_stats:
+                f.write("\n## 工具調用統計\n\n")
+                for tool_name, count in self.tool_call_stats.items():
+                    f.write(f"- **{tool_name}**: {count}\n")
+
             f.write("\n## 翻譯思路\n\n")
             f.write(f"{self.reasoning}\n")
 
@@ -101,4 +116,3 @@ class ValidationResult(BaseModel):
     passed: bool = Field(description="是否通過所有約束驗證")
     errors: list[dict] = Field(default_factory=list, description="錯誤列表")
     score: float = Field(default=0.0, description="整體品質評分 (0-1)")
-    feedback: str = Field(description="本次回答之驗證反饋")
