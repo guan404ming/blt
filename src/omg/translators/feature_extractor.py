@@ -16,7 +16,11 @@ os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
 class FeatureExtractor:
     """音樂特徵自動提取器"""
 
-    IPA_VOWEL_PATTERN = r"[iɪeɛæaɑɒɔoʊuʉɨəɜɞʌyøœɶɐ]"
+    # IPA vowel pattern including diacritics (combining marks following base vowels)
+    # Base vowels + diacritics pattern to handle vowels like o̞, ɯᵝ
+    IPA_VOWEL_PATTERN = r"[iɪeɛæaäɑɒɔoʊuʉɨəɜɞʌyøœɶɐɚɝɯ][\u0300-\u036F\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]*"
+    # Common English diphthongs and triphthongs - match these first, then single vowels with optional length marker and diacritics
+    IPA_DIPHTHONG_PATTERN = r"(?:aɪ|eɪ|ɔɪ|aʊ|oʊ|ɪə|eə|ʊə|aɪə|aʊə|[iɪeɛæaäɑɒɔoʊuʉɨəɜɞʌyøœɶɐɚɝɯ][\u0300-\u036F\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]*ː?)"
 
     def __init__(self, source_lang: str = "English", target_lang: str = "Chinese"):
         self.source_lang = source_lang
@@ -81,8 +85,8 @@ class FeatureExtractor:
         """
         計算文本的音節數 (使用 IPA-based 方法)
 
-        使用 phonemizer + espeak-ng 將文本轉換為 IPA，然後計算元音數量來估計音節數。
-        這個方法支持多語言且更準確。
+        使用 phonemizer + espeak-ng 將文本轉換為 IPA，然後計算音節核心數量（元音群組）。
+        這個方法支持多語言且更準確。雙元音和長元音被視為單個音節核心。
 
         Args:
             text: 要計算音節數的文本
@@ -91,12 +95,25 @@ class FeatureExtractor:
         Returns:
             音節數量
         """
-        # 轉換為 IPA
-        ipa_text = self._text_to_ipa(text, lang)
-        vowels = re.findall(self.IPA_VOWEL_PATTERN, ipa_text)
+        # Preprocess: remove punctuation
+        punctuation_pattern = r"[,;.!?，。；！？、\s]+"
+        cleaned_text = re.sub(punctuation_pattern, "", text)
 
-        # 計算 IPA 中的元音數量（元音 = 音節核心）
-        return len(vowels) if lang != "cmn" else len(text)
+        if not cleaned_text:
+            return 0
+
+        # Chinese: each character is one syllable
+        if lang == "cmn":
+            return len(cleaned_text)
+
+        # 轉換為 IPA
+        ipa_text = self._text_to_ipa(cleaned_text, lang)
+
+        # 計算音節核心（vowel nuclei）
+        # 將連續的元音視為一個音節核心（處理雙元音、長元音等）
+        syllable_nuclei = re.findall(self.IPA_DIPHTHONG_PATTERN, ipa_text)
+
+        return len(syllable_nuclei)
 
     def _detect_rhyme_scheme(self, lines: list[str], lang: str) -> str:
         """檢測押韻方案"""
