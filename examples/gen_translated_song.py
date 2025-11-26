@@ -15,7 +15,7 @@ import argparse
 from pathlib import Path
 import sys
 import os
-from omg.pipeline import CoverSongPipeline
+from blt.pipeline import CoverSongPipeline
 
 # Disable torchcodec backend for torchaudio to avoid dependency
 os.environ["TORCHAUDIO_BACKEND"] = "soundfile"

@@ -5,7 +5,7 @@ Chinese → en-us translation with music constraints
 
 import os
 from dotenv import load_dotenv
-from omg.translators import LyricsTranslator, FeatureExtractor
+from blt.translators import LyricsTranslator, FeatureExtractor
 
 # Load .env file
 load_dotenv()
