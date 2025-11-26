@@ -53,11 +53,11 @@ class ConstraintValidator:
                     diff = actual - target
                     if diff > 0:
                         mismatches.append(
-                            f"Line {i+1}: {actual} syllables (need {diff} fewer)"
+                            f"Line {i + 1}: {actual} syllables (need {diff} fewer)"
                         )
                     else:
                         mismatches.append(
-                            f"Line {i+1}: {actual} syllables (need {abs(diff)} more)"
+                            f"Line {i + 1}: {actual} syllables (need {abs(diff)} more)"
                         )
             if mismatches:
                 feedback_parts.append("SYLLABLE MISMATCHES:\n" + "\n".join(mismatches))
@@ -77,7 +77,7 @@ class ConstraintValidator:
                         if not self._rhymes_with(base, rhyme_endings[idx]):
                             rhymes_valid = False
                             rhyme_issues.append(
-                                f"Lines {indices[0]+1} and {idx+1} (group '{label}'): '{rhyme_endings[indices[0]]}' vs '{rhyme_endings[idx]}' don't rhyme"
+                                f"Lines {indices[0] + 1} and {idx + 1} (group '{label}'): '{rhyme_endings[indices[0]]}' vs '{rhyme_endings[idx]}' don't rhyme"
                             )
 
             if rhyme_issues:

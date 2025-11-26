@@ -83,15 +83,19 @@ class LyricsTranslator:
             result = self.validator.verify_all_constraints(
                 lines, language, target_syllables, rhyme_scheme
             )
-            logger.info(f"   Result: syllables_match={result['syllables_match']}, rhymes_valid={result.get('rhymes_valid', 'N/A')}")
-            if result.get('feedback'):
+            logger.info(
+                f"   Result: syllables_match={result['syllables_match']}, rhymes_valid={result.get('rhymes_valid', 'N/A')}"
+            )
+            if result.get("feedback"):
                 logger.info(f"   Feedback:\n{result['feedback']}")
             return result
 
         def count_syllables(text: str, language: str) -> int:
             """Count syllables in single text. Use verify_all_constraints for multiple lines."""
             self.tool_call_stats["count_syllables"] += 1
-            logger.info(f"🔧 Tool called: count_syllables(text='{text[:30]}...', language={language})")
+            logger.info(
+                f"🔧 Tool called: count_syllables(text='{text[:30]}...', language={language})"
+            )
             result = self.validator.count_syllables(text, language)
             logger.info(f"   Result: {result} syllables")
             return result
@@ -99,7 +103,9 @@ class LyricsTranslator:
         def check_rhyme(text1: str, text2: str, language: str) -> dict:
             """Check if two texts rhyme. Returns: {"rhymes": bool, "rhyme1": str, "rhyme2": str}"""
             self.tool_call_stats["check_rhyme"] += 1
-            logger.info(f"🔧 Tool called: check_rhyme(text1='{text1[:20]}...', text2='{text2[:20]}...', language={language})")
+            logger.info(
+                f"🔧 Tool called: check_rhyme(text1='{text1[:20]}...', text2='{text2[:20]}...', language={language})"
+            )
             result = self.validator.check_rhyme(text1, text2, language)
             logger.info(f"   Result: rhymes={result['rhymes']}")
             return result

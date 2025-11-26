@@ -26,8 +26,12 @@ class LyricTranslation(BaseModel):
     """標準歌詞翻譯輸出"""
 
     translated_lines: list[str] = Field(description="Translated lyrics line by line")
-    syllable_counts: list[int] = Field(description="Syllable count per line (LLM outputs, we recalculate)")
-    rhyme_endings: list[str] = Field(description="Rhyme ending per line (LLM outputs, we recalculate)")
+    syllable_counts: list[int] = Field(
+        description="Syllable count per line (LLM outputs, we recalculate)"
+    )
+    rhyme_endings: list[str] = Field(
+        description="Rhyme ending per line (LLM outputs, we recalculate)"
+    )
     reasoning: str = Field(description="Translation reasoning and considerations")
     tool_call_stats: Optional[dict[str, int]] = Field(
         default=None, description="Tool call statistics: {tool_name: call_count}"

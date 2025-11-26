@@ -24,31 +24,36 @@ def main():
         description="Translate lyrics with music constraints preservation"
     )
     parser.add_argument(
-        "-f", "--lyrics-file",
+        "-f",
+        "--lyrics-file",
         type=str,
         default="/Users/wchiu/Documents/GitHub/blt/examples/lyrics-let-it-go.txt",
         help="Path to the lyrics file (default: lyrics-let-it-go.txt)",
     )
     parser.add_argument(
-        "-s", "--source-lang",
+        "-s",
+        "--source-lang",
         type=str,
         default="en-us",
         help="Source language code (default: en-us)",
     )
     parser.add_argument(
-        "-t", "--target-lang",
+        "-t",
+        "--target-lang",
         type=str,
         default="cmn",
         help="Target language code (default: cmn)",
     )
     parser.add_argument(
-        "-d", "--save-dir",
+        "-d",
+        "--save-dir",
         type=str,
         default="outputs",
         help="Directory to save translation results (default: outputs)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose logging (shows tool calls)",
     )
@@ -94,7 +99,9 @@ def main():
     print("1. 自動提取音樂約束")
     print("=" * 80)
 
-    extractor = FeatureExtractor(source_lang=args.source_lang, target_lang=args.target_lang)
+    extractor = FeatureExtractor(
+        source_lang=args.source_lang, target_lang=args.target_lang
+    )
     constraints = extractor.extract_constraints(first_verse)
 
     print(f"\n音節數: {constraints.syllable_counts}")
