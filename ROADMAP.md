@@ -532,82 +532,7 @@
   - ✅ 自動驗證範例的正確性
   - ✅ 易於管理和更新範例庫
 
-#### 3. **Chain-of-Thought (CoT) Prompting** (結合 structured output)
-- **目標**: 引導 LLM 逐步推理翻譯過程
-- **Structured CoT Schema**:
-  ```python
-  class CoTTranslation(BaseModel):
-      # 步驟 1: 理解
-      meaning_analysis: str = Field(description="原文核心意義和情感分析")
-
-      # 步驟 2: 約束分析
-      constraint_analysis: dict = Field(
-          description="音樂約束分析",
-          example={
-              "syllables": "需要7+8音節",
-              "rhyme": "AA押韻方案",
-              "pauses": "第3和第7位置需要詞邊界"
-          }
-      )
-
-      # 步驟 3: 關鍵詞構思
-      keyword_ideas: list[str] = Field(description="符合約束的關鍵詞候選")
-
-      # 步驟 4: 完整譯文
-      translated_lines: list[str] = Field(description="最終翻譯")
-
-      # 步驟 5: 自我驗證
-      self_verification: dict = Field(
-          description="約束滿足驗證",
-          example={
-              "length_check": "✓ 7+8音節",
-              "rhyme_check": "✓ 手/獸 AA押韻",
-              "boundary_check": "✓ 詞邊界正確"
-          }
-      )
-
-      # 元資料
-      syllable_counts: list[int]
-      rhyme_endings: list[str]
-
-  # 使用 CoT
-  translation = client.chat.completions.create(
-      model="gpt-4-turbo",
-      response_model=CoTTranslation,
-      messages=[
-          {"role": "system", "content": "請逐步推理翻譯過程"},
-          {"role": "user", "content": prompt}
-      ]
-  )
-
-  # 可檢視推理過程
-  print(translation.meaning_analysis)
-  print(translation.constraint_analysis)
-  print(translation.keyword_ideas)
-  print(translation.self_verification)
-  ```
-
-- **Prompt 設計**:
-  ```markdown
-  請按以下步驟翻譯,並以 JSON 格式輸出每個步驟的結果:
-
-  步驟 1: 理解原文的核心意義和情感
-  步驟 2: 分析音樂約束 (音節數、押韻、停頓)
-  步驟 3: 構思符合約束的關鍵詞
-  步驟 4: 組裝完整譯文
-  步驟 5: 驗證是否滿足所有約束
-
-  原文: {source_lyrics}
-  約束: {constraints}
-  ```
-
-- **優勢**:
-  - ✅ 提升複雜約束的遵守率
-  - ✅ 可追蹤推理過程
-  - ✅ 易於 debug 和改進
-  - ✅ LLM 自我驗證提升準確度
-
-#### 4. **Self-Consistency + Sampling**
+#### 3. **Self-Consistency + Sampling**
 - **目標**: 生成多個候選翻譯,選擇最佳結果
 - **實作方式**:
   ```python
@@ -630,7 +555,7 @@
   ```
 - **優勢**: 降低單次生成的隨機性,提升穩定性
 
-#### 5. **Iterative Refinement (Self-Critique)**
+#### 4. **Iterative Refinement (Self-Critique)**
 - **目標**: LLM 自我評估並改進翻譯
 - **流程**:
   ```markdown
@@ -650,14 +575,14 @@
   LLM: 生成改進版 v2
   ```
 
-#### 6. **Hybrid: RAG + CoT + Self-Consistency**
+#### 5. **Hybrid: RAG + Self-Consistency**
 - **完整流程**:
   ```
   Input Lyrics
        ↓
   1. RAG 檢索相似範例
        ↓
-  2. CoT Prompt (含範例)
+  2. 構建 Prompt (含範例)
        ↓
   3. 生成 N 個候選 (Self-Consistency)
        ↓
@@ -673,7 +598,7 @@
 2. **Phase 2** (品質提升): 加入 ICL (手動精選 3-5 個範例)
 3. **Phase 3** (自動化): 實作 RAG (動態檢索範例)
 4. **Phase 4** (穩定性): 加入 Self-Consistency (多候選評分)
-5. **Phase 5** (進階): CoT + Iterative Refinement
+5. **Phase 5** (進階): Iterative Refinement
 
 ### 後續研究方向
 - **多智能體協作**: 分別處理翻譯、押韻、潤飾的專門 agent

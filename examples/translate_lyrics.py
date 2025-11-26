@@ -49,13 +49,12 @@ def main():
 
     # Zero-shot translation
     print("\n" + "=" * 80)
-    print("2. Zero-shot 翻譯 (無 CoT)")
+    print("2. Zero-shot 翻譯")
     print("=" * 80)
 
     translator = LyricsTranslator(
         model="gemini-2.5-pro",
         api_key=api_key,
-        use_cot=False,
         auto_save=True,
         save_dir="outputs",
     )
