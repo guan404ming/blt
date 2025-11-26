@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic_ai import Agent
 
-from .models import LyricTranslation, CoTTranslation, MusicConstraints
+from .models import LyricTranslation, MusicConstraints
 from .feature_extractor import FeatureExtractor
 from .validator import ConstraintValidator
 
@@ -20,7 +20,6 @@ class LyricsTranslator:
         self,
         model: str = "gemini-2.5-flash",
         api_key: Optional[str] = None,
-        use_cot: bool = False,
         auto_save: bool = False,
         save_dir: Optional[str] = None,
     ):
@@ -30,8 +29,6 @@ class LyricsTranslator:
         Args:
             model: Gemini 模型名稱
             api_key: Google AI API Key (若未提供則從環境變數讀取)
-            use_cot: 是否使用 Chain-of-Thought
-            max_retries: 約束不滿足時的最大重試次數
             auto_save: 是否自動保存翻譯結果
             save_dir: 保存目錄（若未提供則使用 'outputs'）
         """
@@ -42,9 +39,6 @@ class LyricsTranslator:
         # Set API key in environment for pydantic-ai
         os.environ["GOOGLE_API_KEY"] = self.api_key
 
-        # 選擇輸出模型
-        self.result_type = CoTTranslation if use_cot else LyricTranslation
-        self.use_cot = use_cot
         self.auto_save = auto_save
         self.save_dir = save_dir or "outputs"
 
@@ -55,7 +49,7 @@ class LyricsTranslator:
         # 初始化 Agent - pydantic-ai will infer Google provider from model name
         self.agent = Agent(
             model=model,
-            output_type=self.result_type,
+            output_type=LyricTranslation,
             system_prompt=self._get_system_prompt(),
         )
 
@@ -131,31 +125,7 @@ class LyricsTranslator:
 
     def _get_system_prompt(self) -> str:
         """獲取系統 prompt"""
-        if self.use_cot:
-            return """你是專業的歌詞翻譯專家。
-
-你可以使用以下工具來驗證翻譯品質：
-- count_syllables(text, language): 計算文本的音節數
-- check_rhyme(text1, text2, language): 檢查兩個文本是否押韻
-- get_rhyme_ending(text, language): 提取文本的韻腳
-
-請按照以下步驟進行翻譯:
-1. 理解原文的核心意義和情感
-2. 分析音樂約束 (音節數、押韻、停頓)
-3. 構思符合約束的關鍵詞
-4. 組裝完整譯文
-5. **【最重要】使用 count_syllables 工具驗證每一行的音節數 - 音節數必須完全符合，這是最高優先級的約束**
-6. 使用 check_rhyme 工具驗證押韻要求（押韻可以適度放寬，但盡量滿足）
-7. 如果音節數不符，必須調整翻譯並重新驗證，直到完全符合
-
-約束優先級：
-⭐⭐⭐ 音節數（絕對必須符合，不可妥協）
-⭐⭐ 押韻（盡量滿足，可以適度放寬）
-⭐ 停頓位置（參考即可）
-
-請確保最終輸出的音節數完全符合要求，並以結構化格式輸出每個步驟的結果。"""
-        else:
-            return """你是專業的歌詞翻譯專家。
+        return """你是專業的歌詞翻譯專家。
 
 你可以使用以下工具來驗證翻譯品質：
 - count_syllables(text, language): 計算文本的音節數
@@ -168,9 +138,9 @@ class LyricsTranslator:
 ⭐ 停頓位置（參考即可）
 
 請將歌詞翻譯成目標語言，並遵守以下要求:
-1. 保持原意和情感
-2. 符合目標語言的自然表達
-3. **【絕對必須】嚴格遵守音節數限制 - 必須使用 count_syllables 工具驗證每一行，音節數必須完全符合**
+1. **【絕對必須】嚴格遵守音節數限制 - 必須使用 count_syllables 工具驗證每一行，音節數必須完全符合**
+2. 保持原意和情感
+3. 符合目標語言的自然表達
 4. 在指定位置押韻 - 使用 check_rhyme 工具驗證押韻（可以適度放寬）
 5. 避免在音樂停頓處斷詞
 
@@ -192,7 +162,7 @@ class LyricsTranslator:
         constraints: Optional[MusicConstraints] = None,
         save_path: Optional[str] = None,
         save_format: str = "json",
-    ) -> LyricTranslation | CoTTranslation:
+    ) -> LyricTranslation:
         """
         翻譯歌詞
 
@@ -206,7 +176,7 @@ class LyricsTranslator:
             save_format: 保存格式 ("json", "txt", "md")
 
         Returns:
-            LyricTranslation 或 CoTTranslation: 翻譯結果
+            LyricTranslation: 翻譯結果
         """
         # 1. 提取約束（如果未提供）
         if constraints is None:
@@ -231,26 +201,12 @@ class LyricsTranslator:
 
         # 5. 最終驗證並顯示結果（不進行自動重試，信任 LLM 的自我驗證）
         self.validator.target_lang = target_lang
-        if isinstance(translation, CoTTranslation):
-            lyric_translation = LyricTranslation(
-                translated_lines=translation.translated_lines,
-                syllable_counts=translation.syllable_counts,
-                rhyme_endings=translation.rhyme_endings,
-                reasoning=translation.meaning_analysis,
-                constraint_satisfaction={},
-            )
-        else:
-            lyric_translation = translation
-
-        validation_result = self.validator.validate(lyric_translation, constraints)
+        validation_result = self.validator.validate(translation, constraints)
 
         if validation_result.passed:
             print("✓ 所有約束都已滿足")
         else:
             print(f"⚠ 約束滿足度: {validation_result.score:.2%}")
-            if validation_result.errors:
-                feedback = self.validator.generate_feedback(validation_result)
-                print(feedback)
 
         # 6. 保存結果（如果啟用）
         if save_path or self.auto_save:
@@ -265,8 +221,8 @@ class LyricsTranslator:
         return translation
 
     def _recalculate_syllables(
-        self, translation: LyricTranslation | CoTTranslation, target_lang: str
-    ) -> LyricTranslation | CoTTranslation:
+        self, translation: LyricTranslation, target_lang: str
+    ) -> LyricTranslation:
         """
         重新計算翻譯結果的實際音節數
 
@@ -327,7 +283,7 @@ class LyricsTranslator:
 
     def _save_translation(
         self,
-        translation: LyricTranslation | CoTTranslation,
+        translation: LyricTranslation,
         save_path: Optional[str] = None,
         save_format: str = "json",
         source_lang: str = "Unknown",
@@ -346,8 +302,9 @@ class LyricsTranslator:
         if save_path is None:
             # 自動生成文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            mode = "cot" if self.use_cot else "standard"
-            filename = f"translation_{source_lang}_to_{target_lang}_{mode}_{timestamp}.{save_format}"
+            filename = (
+                f"translation_{source_lang}_to_{target_lang}_{timestamp}.{save_format}"
+            )
             save_path = os.path.join(self.save_dir, filename)
 
         # 保存
