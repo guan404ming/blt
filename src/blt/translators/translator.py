@@ -1,9 +1,10 @@
 """
 Lyrics Translator using PydanticAI + Gemini 2.0 Flash
-核心翻譯器實作
+Core translator implementation
 """
 
 import os
+import time
 from datetime import datetime
 from typing import Optional
 from pydantic_ai import Agent
@@ -14,7 +15,7 @@ from .validator import ConstraintValidator
 
 
 class LyricsTranslator:
-    """歌詞翻譯器"""
+    """Lyrics translator with constraint validation"""
 
     def __init__(
         self,
@@ -24,13 +25,13 @@ class LyricsTranslator:
         save_dir: Optional[str] = None,
     ):
         """
-        初始化翻譯器
+        Initialize translator
 
         Args:
-            model: Gemini 模型名稱
-            api_key: Google AI API Key (若未提供則從環境變數讀取)
-            auto_save: 是否自動保存翻譯結果
-            save_dir: 保存目錄（若未提供則使用 'outputs'）
+            model: Gemini model name
+            api_key: Google AI API Key (reads from env if not provided)
+            auto_save: Auto-save translation results
+            save_dir: Save directory (defaults to 'outputs')
         """
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         if not self.api_key:
@@ -42,24 +43,24 @@ class LyricsTranslator:
         self.auto_save = auto_save
         self.save_dir = save_dir or "outputs"
 
-        # 工具箱 - ConstraintValidator 同時作為驗證器和工具箱
+        # Toolbox - ConstraintValidator serves as both validator and toolbox
         self.feature_extractor = FeatureExtractor()
         self.validator = ConstraintValidator()
 
-        # 初始化 Agent - pydantic-ai will infer Google provider from model name
+        # Initialize Agent - pydantic-ai will infer Google provider from model name
         self.agent = Agent(
             model=model,
             output_type=LyricTranslation,
             system_prompt=self._get_system_prompt(),
         )
 
-        # 從 ConstraintValidator 註冊工具供 LLM 調用
+        # Register tools from ConstraintValidator for LLM use
         self._register_tools_from_validator()
 
     def _register_tools_from_validator(self):
-        """從 ConstraintValidator 註冊工具供 LLM 調用"""
+        """Register tools from ConstraintValidator for LLM to call"""
 
-        # 包裝 validator 的方法為簡潔的工具函數
+        # Wrap validator methods as concise tool functions
         def verify_all_constraints(
             lines: list[str],
             language: str,
@@ -79,13 +80,13 @@ class LyricsTranslator:
             """Check if two texts rhyme. Returns: {"rhymes": bool, "rhyme1": str, "rhyme2": str}"""
             return self.validator.check_rhyme(text1, text2, language)
 
-        # 註冊工具到 Agent
+        # Register tools to Agent
         self.agent.tool_plain(verify_all_constraints)
         self.agent.tool_plain(count_syllables)
         self.agent.tool_plain(check_rhyme)
 
     def _get_system_prompt(self) -> str:
-        """獲取系統 prompt"""
+        """Get system prompt"""
         return """You are a professional lyrics translation expert specialized in singable translations.
 
 CONSTRAINT PRIORITIES (strictly enforced in this order):
@@ -104,7 +105,7 @@ WORKFLOW:
 3. If syllables_match=False, identify mismatches and adjust those specific lines
 4. Re-verify until syllables_match=True, then output
 
-Limit to 3 verification rounds. If still mismatched, output best attempt with reasoning."""
+Limit to 10 verification rounds. If still mismatched, output best attempt with reasoning."""
 
     def translate(
         self,
@@ -116,27 +117,28 @@ Limit to 3 verification rounds. If still mismatched, output best attempt with re
         save_format: str = "json",
     ) -> LyricTranslation:
         """
-        翻譯歌詞
+        Translate lyrics
 
         Args:
-            source_lyrics: 源語言歌詞
-            source_lang: 源語言
-            target_lang: 目標語言
-            constraints: 音樂約束（若未提供則自動提取）
-            auto_retry: 約束不滿足時是否自動重試
-            save_path: 保存路徑（覆蓋 auto_save 設定）
-            save_format: 保存格式 ("json", "txt", "md")
+            source_lyrics: Source language lyrics
+            source_lang: Source language
+            target_lang: Target language
+            constraints: Music constraints (auto-extracted if not provided)
+            save_path: Save path (overrides auto_save setting)
+            save_format: Save format ("json", "txt", "md")
 
         Returns:
-            LyricTranslation: 翻譯結果
+            LyricTranslation: Translation result
         """
-        # 1. 提取約束（如果未提供）
+        start_time = time.time()
+
+        # 1. Extract constraints (if not provided)
         if constraints is None:
             self.feature_extractor.source_lang = source_lang
             self.feature_extractor.target_lang = target_lang
             constraints = self.feature_extractor.extract_constraints(source_lyrics)
 
-        # 2. 構建 prompt
+        # 2. Build prompt
         user_prompt = self._build_prompt(
             source_lyrics=source_lyrics,
             source_lang=source_lang,
@@ -144,23 +146,32 @@ Limit to 3 verification rounds. If still mismatched, output best attempt with re
             constraints=constraints,
         )
 
-        # 3. 呼叫 LLM
+        # 3. Call LLM (only outputs translated_lines and reasoning)
         result = self.agent.run_sync(user_prompt)
         translation = result.output
 
-        # 4. 重新計算翻譯結果的實際音節數
-        translation = self._recalculate_syllables(translation, target_lang)
+        # 4. Calculate syllable counts and rhyme endings using validator
+        translation.syllable_counts = [
+            self.validator.count_syllables(line, target_lang)
+            for line in translation.translated_lines
+        ]
+        translation.rhyme_endings = [
+            self.validator.extractor._extract_rhyme_ending(line, target_lang)
+            for line in translation.translated_lines
+        ]
 
-        # 5. 最終驗證並顯示結果（不進行自動重試，信任 LLM 的自我驗證）
+        # 5. Validate and display result
         self.validator.target_lang = target_lang
         validation_result = self.validator.validate(translation, constraints)
 
-        if validation_result.passed:
-            print("✓ 所有約束都已滿足")
-        else:
-            print(f"⚠ 約束滿足度: {validation_result.score:.2%}")
+        elapsed_time = time.time() - start_time
 
-        # 6. 保存結果（如果啟用）
+        if validation_result.passed:
+            print(f"✓ All constraints satisfied (took {elapsed_time:.1f}s)")
+        else:
+            print(f"⚠ Score: {validation_result.score:.0%} (took {elapsed_time:.1f}s)")
+
+        # 6. Save result (if enabled)
         if save_path or self.auto_save:
             self._save_translation(
                 translation,
@@ -172,55 +183,23 @@ Limit to 3 verification rounds. If still mismatched, output best attempt with re
 
         return translation
 
-    def _recalculate_syllables(
-        self, translation: LyricTranslation, target_lang: str
-    ) -> LyricTranslation:
-        """
-        重新計算翻譯結果的實際音節數
-
-        Args:
-            translation: LLM 返回的翻譯結果
-            target_lang: 目標語言
-
-        Returns:
-            更新音節數後的翻譯結果
-        """
-        # 使用 FeatureExtractor 重新計算每行的音節數
-        actual_syllable_counts = [
-            self.feature_extractor._count_syllables(line, target_lang)
-            for line in translation.translated_lines
-        ]
-
-        # 更新翻譯結果中的音節數
-        translation.syllable_counts = actual_syllable_counts
-
-        return translation
-
     def _build_prompt(
         self,
         source_lyrics: str,
         source_lang: str,
         target_lang: str,
         constraints: MusicConstraints,
-        feedback: Optional[str] = None,
     ) -> str:
-        """構建翻譯 prompt"""
-        prompt_parts = []
-
-        if feedback:
-            prompt_parts.append(f"PREVIOUS ATTEMPT FEEDBACK:\n{feedback}\n")
-
-        prompt_parts.extend(
-            [
-                f"TRANSLATE FROM {source_lang} TO {target_lang}",
-                "",
-                "SOURCE LYRICS:",
-                source_lyrics,
-                "",
-                "CONSTRAINTS:",
-                f"• Syllable counts per line: {constraints.syllable_counts}",
-            ]
-        )
+        """Build translation prompt"""
+        prompt_parts = [
+            f"TRANSLATE FROM {source_lang} TO {target_lang}",
+            "",
+            "SOURCE LYRICS:",
+            source_lyrics,
+            "",
+            "CONSTRAINTS:",
+            f"• Syllable counts per line: {constraints.syllable_counts}",
+        ]
 
         if constraints.rhyme_scheme:
             prompt_parts.append(f"• Rhyme scheme: {constraints.rhyme_scheme}")
@@ -228,11 +207,9 @@ Limit to 3 verification rounds. If still mismatched, output best attempt with re
         if constraints.pause_positions:
             prompt_parts.append(f"• Pause positions: {constraints.pause_positions}")
 
-        prompt_parts.extend(
-            [
-                "",
-                "Translate ensuring all constraints are met. Verify each line's syllable count using count_syllables tool.",
-            ]
+        prompt_parts.append("")
+        prompt_parts.append(
+            "Translate ensuring all constraints are met. Verify each line's syllable count using count_syllables tool."
         )
 
         return "\n".join(prompt_parts)
@@ -246,23 +223,23 @@ Limit to 3 verification rounds. If still mismatched, output best attempt with re
         target_lang: str = "Unknown",
     ) -> None:
         """
-        保存翻譯結果
+        Save translation result
 
         Args:
-            translation: 翻譯結果
-            save_path: 保存路徑（若未提供則自動生成）
-            save_format: 保存格式
-            source_lang: 源語言
-            target_lang: 目標語言
+            translation: Translation result
+            save_path: Save path (auto-generated if not provided)
+            save_format: Save format
+            source_lang: Source language
+            target_lang: Target language
         """
         if save_path is None:
-            # 自動生成文件名
+            # Auto-generate filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = (
                 f"translation_{source_lang}_to_{target_lang}_{timestamp}.{save_format}"
             )
             save_path = os.path.join(self.save_dir, filename)
 
-        # 保存
+        # Save
         translation.save(save_path, format=save_format)
-        print(f"\n✓ 翻譯結果已保存至: {save_path}")
+        print(f"\n✓ Translation saved to: {save_path}")

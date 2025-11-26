@@ -25,14 +25,10 @@ class MusicConstraints(BaseModel):
 class LyricTranslation(BaseModel):
     """標準歌詞翻譯輸出"""
 
-    translated_lines: list[str] = Field(description="逐行翻譯結果")
-    syllable_counts: list[int] = Field(description="每行的實際音節數")
-    rhyme_endings: list[str] = Field(description="每行的韻腳（末字或末音節）")
-    reasoning: str = Field(description="翻譯思路和考量")
-    constraint_satisfaction: dict[str, bool] = Field(
-        description="約束滿足情況",
-        default_factory=lambda: {"length": False, "rhyme": False, "boundary": False},
-    )
+    translated_lines: list[str] = Field(description="Translated lyrics line by line")
+    syllable_counts: list[int] = Field(description="Syllable count per line (LLM outputs, we recalculate)")
+    rhyme_endings: list[str] = Field(description="Rhyme ending per line (LLM outputs, we recalculate)")
+    reasoning: str = Field(description="Translation reasoning and considerations")
 
     def save(self, output_path: str | Path, format: str = "json") -> None:
         """

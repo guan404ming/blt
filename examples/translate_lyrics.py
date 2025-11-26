@@ -53,7 +53,6 @@ def main():
     print("=" * 80)
 
     translator = LyricsTranslator(
-        model="gemini-2.5-pro",
         api_key=api_key,
         auto_save=True,
         save_dir="outputs",

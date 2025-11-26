@@ -33,9 +33,7 @@ class ConstraintValidator:
         }
         """
         # Count syllables
-        syllables = [
-            self.extractor._count_syllables(line, language) for line in lines
-        ]
+        syllables = [self.extractor._count_syllables(line, language) for line in lines]
         syllables_match = syllables == target_syllables
 
         # Extract rhyme endings
@@ -83,9 +81,7 @@ class ConstraintValidator:
     ) -> ValidationResult:
         """Simple validation for final result display."""
         # Check syllables
-        syllables_match = (
-            translation.syllable_counts == constraints.syllable_counts
-        )
+        syllables_match = translation.syllable_counts == constraints.syllable_counts
 
         # Check rhymes if needed
         rhymes_valid = True
@@ -98,9 +94,7 @@ class ConstraintValidator:
                 if len(indices) > 1:
                     base = translation.rhyme_endings[indices[0]]
                     for idx in indices[1:]:
-                        if not self._rhymes_with(
-                            base, translation.rhyme_endings[idx]
-                        ):
+                        if not self._rhymes_with(base, translation.rhyme_endings[idx]):
                             rhymes_valid = False
                             break
 
