@@ -42,7 +42,7 @@ class LyricsTranslator:
         self.auto_save = auto_save
         self.save_dir = save_dir or "outputs"
 
-        # 工具
+        # 工具箱 - ConstraintValidator 同時作為驗證器和工具箱
         self.feature_extractor = FeatureExtractor()
         self.validator = ConstraintValidator()
 
@@ -53,106 +53,58 @@ class LyricsTranslator:
             system_prompt=self._get_system_prompt(),
         )
 
-        # 註冊驗證工具供 LLM 調用
-        self._register_validation_tools()
+        # 從 ConstraintValidator 註冊工具供 LLM 調用
+        self._register_tools_from_validator()
 
-    def _register_validation_tools(self):
-        """註冊驗證工具供 LLM 在生成過程中使用"""
+    def _register_tools_from_validator(self):
+        """從 ConstraintValidator 註冊工具供 LLM 調用"""
 
-        def count_syllables_impl(text: str, language: str) -> int:
-            """
-            計算文本的音節數
-
-            Args:
-                text: 要計算音節數的文本
-                language: 語言代碼 (例如: 'en-us', 'cmn', 'ja', 'ko')
-
-            Returns:
-                音節數量
-            """
-            result = self.feature_extractor._count_syllables(text, language)
-            print(f"[TOOL] count_syllables('{text}', '{language}') = {result}")
-            return result
-
-        def check_rhyme_impl(text1: str, text2: str, language: str) -> dict:
-            """
-            檢查兩個文本是否押韻
-
-            Args:
-                text1: 第一個文本
-                text2: 第二個文本
-                language: 語言代碼 (例如: 'en-us', 'cmn', 'ja', 'ko')
-
-            Returns:
-                包含押韻檢查結果的字典:
-                - rhymes: 是否押韻 (bool)
-                - rhyme1: 第一個文本的韻腳
-                - rhyme2: 第二個文本的韻腳
-            """
-            rhyme1 = self.feature_extractor._extract_rhyme_ending(text1, language)
-            rhyme2 = self.feature_extractor._extract_rhyme_ending(text2, language)
-
-            # 判斷是否押韻
-            rhymes = bool(
-                rhyme1
-                and rhyme2
-                and (rhyme1 == rhyme2 or rhyme1 in rhyme2 or rhyme2 in rhyme1)
+        # 包裝 validator 的方法為簡潔的工具函數
+        def verify_all_constraints(
+            lines: list[str],
+            language: str,
+            target_syllables: list[int],
+            rhyme_scheme: str = "",
+        ) -> dict:
+            """Verify all constraints at once (most efficient). Returns: {"syllables": [int], "syllables_match": bool, "rhyme_endings": [str], "rhymes_valid": bool}"""
+            return self.validator.verify_all_constraints(
+                lines, language, target_syllables, rhyme_scheme
             )
 
-            result = {"rhymes": rhymes, "rhyme1": rhyme1, "rhyme2": rhyme2}
-            print(f"[TOOL] check_rhyme('{text1}', '{text2}', '{language}') = {result}")
-            return result
+        def count_syllables(text: str, language: str) -> int:
+            """Count syllables in single text. Use verify_all_constraints for multiple lines."""
+            return self.validator.count_syllables(text, language)
 
-        def get_rhyme_ending_impl(text: str, language: str) -> str:
-            """
-            提取文本的韻腳
+        def check_rhyme(text1: str, text2: str, language: str) -> dict:
+            """Check if two texts rhyme. Returns: {"rhymes": bool, "rhyme1": str, "rhyme2": str}"""
+            return self.validator.check_rhyme(text1, text2, language)
 
-            Args:
-                text: 要提取韻腳的文本
-                language: 語言代碼 (例如: 'en-us', 'cmn', 'ja', 'ko')
-
-            Returns:
-                韻腳字符串
-            """
-            result = self.feature_extractor._extract_rhyme_ending(text, language)
-            print(f"[TOOL] get_rhyme_ending('{text}', '{language}') = '{result}'")
-            return result
-
-        # 註冊工具
-        self.agent.tool_plain(count_syllables_impl)
-        self.agent.tool_plain(check_rhyme_impl)
-        self.agent.tool_plain(get_rhyme_ending_impl)
+        # 註冊工具到 Agent
+        self.agent.tool_plain(verify_all_constraints)
+        self.agent.tool_plain(count_syllables)
+        self.agent.tool_plain(check_rhyme)
 
     def _get_system_prompt(self) -> str:
         """獲取系統 prompt"""
-        return """你是專業的歌詞翻譯專家。
+        return """You are a professional lyrics translation expert specialized in singable translations.
 
-你可以使用以下工具來驗證翻譯品質：
-- count_syllables(text, language): 計算文本的音節數
-- check_rhyme(text1, text2, language): 檢查兩個文本是否押韻
-- get_rhyme_ending(text, language): 提取文本的韻腳
+CONSTRAINT PRIORITIES (strictly enforced in this order):
+1. SYLLABLE COUNT (CRITICAL) - Must match exactly
+2. Rhyme scheme (IMPORTANT) - Match when possible, syllable count takes precedence
+3. Pause positions (OPTIONAL) - Guidance only
 
-約束優先級：
-⭐⭐⭐ 音節數（絕對必須符合，不可妥協）- 這是最重要的約束
-⭐⭐ 押韻（盡量滿足，可以適度放寬）
-⭐ 停頓位置（參考即可）
+EFFICIENT VERIFICATION:
+- Use verify_all_constraints(lines, language, target_syllables, rhyme_scheme) to check all lines at once
+- Only use count_syllables for individual line adjustments
+- Tool returns: syllables, syllables_match, rhyme_endings, rhymes_valid
 
-請將歌詞翻譯成目標語言，並遵守以下要求:
-1. **【絕對必須】嚴格遵守音節數限制 - 必須使用 count_syllables 工具驗證每一行，音節數必須完全符合**
-2. 保持原意和情感
-3. 符合目標語言的自然表達
-4. 在指定位置押韻 - 使用 check_rhyme 工具驗證押韻（可以適度放寬）
-5. 避免在音樂停頓處斷詞
+WORKFLOW:
+1. Draft all translations (prioritize syllable count over grammar perfection)
+2. Call verify_all_constraints to check entire translation
+3. If syllables_match=False, identify mismatches and adjust those specific lines
+4. Re-verify until syllables_match=True, then output
 
-工作流程：
-1. 草擬每一行的翻譯
-2. **【最重要】使用 count_syllables 驗證音節數是否完全符合要求**
-3. **如果音節數不符，必須調整翻譯並重新驗證，直到完全符合為止**
-4. 對需要押韻的行，使用 check_rhyme 驗證押韻（盡力而為，但音節數優先）
-5. 如果押韻不符但音節數正確，可以接受
-6. 確保所有行的音節數都完全符合後，輸出最終結果
-
-請以結構化格式輸出翻譯結果。音節數的準確性是評估翻譯品質的最重要指標。"""
+Limit to 3 verification rounds. If still mismatched, output best attempt with reasoning."""
 
     def translate(
         self,
@@ -256,28 +208,32 @@ class LyricsTranslator:
         prompt_parts = []
 
         if feedback:
-            # 重試時包含反饋
-            prompt_parts.append(f"【反饋】\n{feedback}\n")
+            prompt_parts.append(f"PREVIOUS ATTEMPT FEEDBACK:\n{feedback}\n")
 
         prompt_parts.extend(
             [
-                f"【原始歌詞】({source_lang})",
+                f"TRANSLATE FROM {source_lang} TO {target_lang}",
+                "",
+                "SOURCE LYRICS:",
                 source_lyrics,
                 "",
-                f"【目標語言】{target_lang}",
-                "",
-                "【音樂約束】",
-                f"- 音節數: {constraints.syllable_counts}",
+                "CONSTRAINTS:",
+                f"• Syllable counts per line: {constraints.syllable_counts}",
             ]
         )
 
         if constraints.rhyme_scheme:
-            prompt_parts.append(f"- 押韻方案: {constraints.rhyme_scheme}")
+            prompt_parts.append(f"• Rhyme scheme: {constraints.rhyme_scheme}")
 
         if constraints.pause_positions:
-            prompt_parts.append(f"- 停頓位置: {constraints.pause_positions}")
+            prompt_parts.append(f"• Pause positions: {constraints.pause_positions}")
 
-        prompt_parts.extend(["", "請翻譯並確保滿足所有約束。"])
+        prompt_parts.extend(
+            [
+                "",
+                "Translate ensuring all constraints are met. Verify each line's syllable count using count_syllables tool.",
+            ]
+        )
 
         return "\n".join(prompt_parts)
 
