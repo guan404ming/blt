@@ -302,7 +302,9 @@ class LyricsTranslator:
         if save_path is None:
             # 自動生成文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"translation_{source_lang}_to_{target_lang}_{timestamp}.{save_format}"
+            filename = (
+                f"translation_{source_lang}_to_{target_lang}_{timestamp}.{save_format}"
+            )
             save_path = os.path.join(self.save_dir, filename)
 
         # 保存

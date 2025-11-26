@@ -184,9 +184,7 @@ class ConstraintValidator:
         # 暫時返回完美分數
         return 1.0, errors
 
-    def _generate_feedback(
-        self, passed, errors, score
-    ) -> str:
+    def _generate_feedback(self, passed, errors, score) -> str:
         """根據驗證結果生成反饋文本"""
         if passed:
             return "✓ 所有約束都已滿足"
@@ -196,9 +194,7 @@ class ConstraintValidator:
         # 統計各類錯誤數量
         length_errors = [e for e in errors if e["type"] == "length"]
         rhyme_errors = [e for e in errors if e["type"] == "rhyme"]
-        boundary_errors = [
-            e for e in errors if e["type"] == "boundary"
-        ]
+        boundary_errors = [e for e in errors if e["type"] == "boundary"]
 
         # 添加統計摘要
         if length_errors:
