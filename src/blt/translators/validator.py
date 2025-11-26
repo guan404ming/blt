@@ -29,7 +29,8 @@ class ConstraintValidator:
             "syllables": [int],
             "syllables_match": bool,
             "rhyme_endings": [str],
-            "rhymes_valid": bool
+            "rhymes_valid": bool,
+            "feedback": str  # Improvement suggestions
         }
         """
         # Count syllables
@@ -41,26 +42,59 @@ class ConstraintValidator:
             self.extractor._extract_rhyme_ending(line, language) for line in lines
         ]
 
+        # Build feedback
+        feedback_parts = []
+
+        # Syllable feedback
+        if not syllables_match:
+            mismatches = []
+            for i, (actual, target) in enumerate(zip(syllables, target_syllables)):
+                if actual != target:
+                    diff = actual - target
+                    if diff > 0:
+                        mismatches.append(
+                            f"Line {i+1}: {actual} syllables (need {diff} fewer)"
+                        )
+                    else:
+                        mismatches.append(
+                            f"Line {i+1}: {actual} syllables (need {abs(diff)} more)"
+                        )
+            if mismatches:
+                feedback_parts.append("SYLLABLE MISMATCHES:\n" + "\n".join(mismatches))
+
         # Check rhyme scheme
         rhymes_valid = True
+        rhyme_issues = []
         if rhyme_scheme:
             rhyme_groups = {}
             for i, label in enumerate(rhyme_scheme):
                 rhyme_groups.setdefault(label, []).append(i)
 
-            for indices in rhyme_groups.values():
+            for label, indices in rhyme_groups.items():
                 if len(indices) > 1:
                     base = rhyme_endings[indices[0]]
                     for idx in indices[1:]:
                         if not self._rhymes_with(base, rhyme_endings[idx]):
                             rhymes_valid = False
-                            break
+                            rhyme_issues.append(
+                                f"Lines {indices[0]+1} and {idx+1} (group '{label}'): '{rhyme_endings[indices[0]]}' vs '{rhyme_endings[idx]}' don't rhyme"
+                            )
+
+            if rhyme_issues:
+                feedback_parts.append("RHYME ISSUES:\n" + "\n".join(rhyme_issues))
+
+        # Combine feedback
+        if feedback_parts:
+            feedback = "\n\n".join(feedback_parts)
+        else:
+            feedback = "All constraints satisfied!"
 
         return {
             "syllables": syllables,
             "syllables_match": syllables_match,
             "rhyme_endings": rhyme_endings,
             "rhymes_valid": rhymes_valid,
+            "feedback": feedback,
         }
 
     def count_syllables(self, text: str, language: str) -> int:

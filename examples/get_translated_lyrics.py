@@ -3,6 +3,7 @@ Translate lyrics with music constraints
 """
 
 import argparse
+import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -10,6 +11,12 @@ from blt.translators import LyricsTranslator, FeatureExtractor
 
 # Load .env file
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+)
 
 
 def main():
@@ -25,8 +32,8 @@ def main():
     parser.add_argument(
         "-s", "--source-lang",
         type=str,
-        default="eng",
-        help="Source language code (default: eng)",
+        default="en-us",
+        help="Source language code (default: en-us)",
     )
     parser.add_argument(
         "-t", "--target-lang",
@@ -40,8 +47,19 @@ def main():
         default="outputs",
         help="Directory to save translation results (default: outputs)",
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose logging (shows tool calls)",
+    )
 
     args = parser.parse_args()
+
+    # Set logging level based on verbose flag
+    if args.verbose:
+        logging.getLogger("blt.translators.translator").setLevel(logging.INFO)
+    else:
+        logging.getLogger("blt.translators.translator").setLevel(logging.WARNING)
 
     # Load API key
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -98,7 +116,7 @@ def main():
         source_lyrics=first_verse,
         source_lang=args.source_lang,
         target_lang=args.target_lang,
-        save_format="md",  # Save as Markdown
+        save_format="md",
     )
 
     print("\n【翻譯結果】")
@@ -107,6 +125,12 @@ def main():
 
     print(f"\n【音節數】{result.syllable_counts}")
     print(f"【韻腳】{result.rhyme_endings}")
+
+    if result.tool_call_stats:
+        print("\n【工具調用統計】")
+        for tool_name, count in sorted(result.tool_call_stats.items()):
+            print(f"  • {tool_name}: {count} 次")
+
     print(f"\n【翻譯思路】\n{result.reasoning}")
 
 

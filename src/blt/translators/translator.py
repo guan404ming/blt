@@ -3,8 +3,10 @@ Lyrics Translator using PydanticAI + Gemini 2.0 Flash
 Core translator implementation
 """
 
+import logging
 import os
 import time
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 from pydantic_ai import Agent
@@ -12,6 +14,9 @@ from pydantic_ai import Agent
 from .models import LyricTranslation, MusicConstraints
 from .feature_extractor import FeatureExtractor
 from .validator import ConstraintValidator
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 
 class LyricsTranslator:
@@ -47,6 +52,9 @@ class LyricsTranslator:
         self.feature_extractor = FeatureExtractor()
         self.validator = ConstraintValidator()
 
+        # Tool call tracking
+        self.tool_call_stats = defaultdict(int)
+
         # Initialize Agent - pydantic-ai will infer Google provider from model name
         self.agent = Agent(
             model=model,
@@ -60,25 +68,41 @@ class LyricsTranslator:
     def _register_tools_from_validator(self):
         """Register tools from ConstraintValidator for LLM to call"""
 
-        # Wrap validator methods as concise tool functions
+        # Wrap validator methods as concise tool functions with logging
         def verify_all_constraints(
             lines: list[str],
             language: str,
             target_syllables: list[int],
             rhyme_scheme: str = "",
         ) -> dict:
-            """Verify all constraints at once (most efficient). Returns: {"syllables": [int], "syllables_match": bool, "rhyme_endings": [str], "rhymes_valid": bool}"""
-            return self.validator.verify_all_constraints(
+            """Verify all constraints at once (most efficient). Returns: {"syllables": [int], "syllables_match": bool, "rhyme_endings": [str], "rhymes_valid": bool, "feedback": str}"""
+            self.tool_call_stats["verify_all_constraints"] += 1
+            logger.info(
+                f"🔧 Tool called: verify_all_constraints(lines={len(lines)}, language={language}, target_syllables={target_syllables})"
+            )
+            result = self.validator.verify_all_constraints(
                 lines, language, target_syllables, rhyme_scheme
             )
+            logger.info(f"   Result: syllables_match={result['syllables_match']}, rhymes_valid={result.get('rhymes_valid', 'N/A')}")
+            if result.get('feedback'):
+                logger.info(f"   Feedback:\n{result['feedback']}")
+            return result
 
         def count_syllables(text: str, language: str) -> int:
             """Count syllables in single text. Use verify_all_constraints for multiple lines."""
-            return self.validator.count_syllables(text, language)
+            self.tool_call_stats["count_syllables"] += 1
+            logger.info(f"🔧 Tool called: count_syllables(text='{text[:30]}...', language={language})")
+            result = self.validator.count_syllables(text, language)
+            logger.info(f"   Result: {result} syllables")
+            return result
 
         def check_rhyme(text1: str, text2: str, language: str) -> dict:
             """Check if two texts rhyme. Returns: {"rhymes": bool, "rhyme1": str, "rhyme2": str}"""
-            return self.validator.check_rhyme(text1, text2, language)
+            self.tool_call_stats["check_rhyme"] += 1
+            logger.info(f"🔧 Tool called: check_rhyme(text1='{text1[:20]}...', text2='{text2[:20]}...', language={language})")
+            result = self.validator.check_rhyme(text1, text2, language)
+            logger.info(f"   Result: rhymes={result['rhymes']}")
+            return result
 
         # Register tools to Agent
         self.agent.tool_plain(verify_all_constraints)
@@ -97,13 +121,15 @@ CONSTRAINT PRIORITIES (strictly enforced in this order):
 EFFICIENT VERIFICATION:
 - Use verify_all_constraints(lines, language, target_syllables, rhyme_scheme) to check all lines at once
 - Only use count_syllables for individual line adjustments
-- Tool returns: syllables, syllables_match, rhyme_endings, rhymes_valid
+- Tool returns: syllables, syllables_match, rhyme_endings, rhymes_valid, feedback
+- The 'feedback' field provides specific improvement suggestions for each mismatched line
 
 WORKFLOW:
 1. Draft all translations (prioritize syllable count over grammar perfection)
 2. Call verify_all_constraints to check entire translation
-3. If syllables_match=False, identify mismatches and adjust those specific lines
-4. Re-verify until syllables_match=True, then output
+3. Read the 'feedback' field to see exactly which lines need adjustment and by how much
+4. If syllables_match=False, adjust the specific lines mentioned in feedback
+5. Re-verify until syllables_match=True, then output
 
 Limit to 10 verification rounds. If still mismatched, output best attempt with reasoning."""
 
@@ -132,6 +158,9 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
         """
         start_time = time.time()
 
+        # Reset tool call stats for this translation
+        self.tool_call_stats.clear()
+
         # 1. Extract constraints (if not provided)
         if constraints is None:
             self.feature_extractor.source_lang = source_lang
@@ -147,8 +176,10 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
         )
 
         # 3. Call LLM (only outputs translated_lines and reasoning)
+        logger.info("🚀 Starting translation with LLM...")
         result = self.agent.run_sync(user_prompt)
         translation = result.output
+        logger.info("✅ LLM translation completed")
 
         # 4. Calculate syllable counts and rhyme endings using validator
         translation.syllable_counts = [
@@ -160,7 +191,10 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
             for line in translation.translated_lines
         ]
 
-        # 5. Validate and display result
+        # 5. Add tool call statistics to translation
+        translation.tool_call_stats = dict(self.tool_call_stats)
+
+        # 6. Validate and display result
         self.validator.target_lang = target_lang
         validation_result = self.validator.validate(translation, constraints)
 
@@ -171,7 +205,13 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
         else:
             print(f"⚠ Score: {validation_result.score:.0%} (took {elapsed_time:.1f}s)")
 
-        # 6. Save result (if enabled)
+        # Display tool call stats
+        if self.tool_call_stats:
+            print("\n📊 Tool Call Statistics:")
+            for tool_name, count in sorted(self.tool_call_stats.items()):
+                print(f"   {tool_name}: {count}")
+
+        # 7. Save result (if enabled)
         if save_path or self.auto_save:
             self._save_translation(
                 translation,
