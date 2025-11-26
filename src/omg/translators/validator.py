@@ -28,37 +28,47 @@ class ConstraintValidator:
             ValidationResult: 驗證結果
         """
         errors = []
-        scores = []
+        scores = {}  # 改用字典來儲存各項分數及權重
 
-        # 1. 驗證音節數
+        # 1. 驗證音節數（最高優先級）
         length_score, length_errors = self._validate_length(
             translation.syllable_counts, constraints.syllable_counts
         )
-        scores.append(length_score)
+        scores["syllable"] = {"score": length_score, "weight": 0.7}  # 70% 權重
         errors.extend(length_errors)
 
-        # 2. 驗證押韻
+        # 2. 驗證押韻（中等優先級，可以放寬）
         if constraints.rhyme_scheme:
             rhyme_score, rhyme_errors = self._validate_rhyme(
                 translation.rhyme_endings, constraints.rhyme_scheme
             )
-            scores.append(rhyme_score)
-            errors.extend(rhyme_errors)
+            scores["rhyme"] = {"score": rhyme_score, "weight": 0.2}  # 20% 權重
+            # 只有在押韻完全不符合時才加入錯誤（放寬要求）
+            if rhyme_score < 0.5:  # 只有低於 50% 才算錯誤
+                errors.extend(rhyme_errors)
 
-        # 3. 驗證詞邊界（如果有停頓要求）
+        # 3. 驗證詞邊界（最低優先級）
         if constraints.pause_positions:
             boundary_score, boundary_errors = self._validate_boundaries(
                 translation.translated_lines, constraints.pause_positions
             )
-            scores.append(boundary_score)
-            errors.extend(boundary_errors)
+            scores["boundary"] = {"score": boundary_score, "weight": 0.1}  # 10% 權重
+            # 詞邊界錯誤不計入總錯誤（僅作參考）
 
-        # 計算整體評分
-        overall_score = sum(scores) / len(scores) if scores else 0.0
-
-        return ValidationResult(
-            passed=len(errors) == 0, errors=errors, score=overall_score
+        # 計算加權平均分數
+        total_weight = sum(item["weight"] for item in scores.values())
+        overall_score = (
+            sum(item["score"] * item["weight"] for item in scores.values())
+            / total_weight
+            if total_weight > 0
+            else 0.0
         )
+
+        # 音節數必須完全正確才算通過（其他約束可以有誤差）
+        syllable_perfect = length_score == 1.0
+        passed = syllable_perfect and len(errors) == 0
+
+        return ValidationResult(passed=passed, errors=errors, score=overall_score)
 
     def _validate_length(
         self, actual_counts: list[int], target_counts: list[int]
