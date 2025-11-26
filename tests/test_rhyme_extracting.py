@@ -3,7 +3,7 @@ Tests for rhyme extraction functionality in FeatureExtractor
 """
 
 import pytest
-from omg.translators.feature_extractor import FeatureExtractor
+from blt.translators.feature_extractor import FeatureExtractor
 
 
 class TestRhymeExtracting:

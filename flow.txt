@@ -1,20 +1,19 @@
-================================================================================ 
+================================================================================
      Current Translation Flow
      ================================================================================
 
      1. INITIALIZATION (translator.py:18-51)
         └─ LyricsTranslator.__init__()
            ├─ Load API key from environment (GOOGLE_API_KEY)
-           ├─ Set GOOGLE_API_KEY for pydantic-ai
            ├─ Initialize PydanticAI Agent with:
-           │  ├─ Model: gemini-2.5-flash
+           │  ├─ Model: gemini-pro-flash
            │  ├─ Output type: LyricTranslation (Pydantic model for structured output)
            │  └─ System prompt: Role-specific instructions
            ├─ Initialize FeatureExtractor (automatic constraint extraction)
            └─ Initialize ConstraintValidator (validation & feedback)
 
      2. TRANSLATION REQUEST (translator.py:83-132)
-        └─ translate(source_lyrics, source_lang, target_lang, constraints, auto_retry)
+        └─ translate(source_lyrics, source_lang, target_lang, constraints)
            │
            ├─ STEP 1: Extract Constraints (if not provided)
            │  └─ FeatureExtractor.extract_constraints()
@@ -30,7 +29,6 @@
            │
            ├─ STEP 2: Build Prompt (translator.py:134-170)
            │  └─ _build_prompt()
-           │     ├─ Include feedback (if retry)
            │     ├─ Original lyrics + source language
            │     ├─ Target language
            │     └─ Music constraints:
@@ -40,34 +38,19 @@
            │
            ├─ STEP 3: Call LLM (translator.py:117-119)
            │  └─ agent.run_sync(user_prompt)
-           │     ├─ PydanticAI sends prompt to Gemini 2.5 Flash
+           │     ├─ PydanticAI sends prompt to Gemini Pro Flash
            │     ├─ Model generates structured response
            │     └─ Returns Pydantic object (LyricTranslation)
            │
-           └─ STEP 4: Validate & Retry (translator.py:172-238)
-              └─ _validate_and_retry() [if auto_retry=True]
-                 │
-                 ├─ VALIDATE (validator.py:17-68)
-                 │  └─ ConstraintValidator.validate()
-                 │     ├─ Check syllable counts (validator.py:70-99)
-                 │     │  └─ Compare actual vs. expected per line
-                 │     ├─ Check rhyme scheme (validator.py:101-148)
-                 │     │  └─ Verify same-group rhymes match
-                 │     ├─ Check word boundaries (validator.py:158-170)
-                 │     │  └─ TODO: Not yet implemented
-                 │     └─ Calculate overall score
-                 │
-                 ├─ RETRY LOOP (max 3 times)
-                 │  └─ If validation fails:
-                 │     ├─ Generate feedback (validator.py:172-182)
-                 │     │  └─ List specific errors with details
-                 │     ├─ Rebuild prompt with feedback
-                 │     ├─ Call LLM again
-                 │     └─ Revalidate
-                 │
-                 └─ RETURN RESULT
-                    ├─ ✓ All constraints satisfied
-                    └─ ⚠ Max retries reached (show final score)
+           ├─ STEP 4: Recalculate Syllables (translator.py:145-160)
+           │  └─ _recalculate_syllables()
+           │     └─ Recalculate syllable counts for the translated lyrics
+           │
+           └─ STEP 5: Validate & Display Results (translator.py:121-127)
+              └─ ConstraintValidator.validate()
+                 ├─ Check syllable counts
+                 ├─ Check rhyme scheme
+                 └─ Calculate overall score
 
      ================================================================================
      OUTPUT FORMATS
@@ -96,7 +79,7 @@
 
      3. LLM Integration (translator.py)
         ├─ PydanticAI Agent (structured output)
-        ├─ Gemini 2.5 Flash (fast, accurate)
+        ├─ Gemini Pro Flash (fast, accurate)
         └─ System prompts (role + constraints)
 
      4. Models (models.py)
@@ -123,18 +106,10 @@
        目標語言: English
        音樂約束: [constraints]
 
-     ↓ LLM Translation (Attempt 1)
-       ⚠ Line 5: 16 syllables (expected 15)
-       ⚠ Line 6: 14 syllables (expected 12)
-
-     ↓ Generate Feedback
-       第5行音節數不符: 期望 15，實際 16
-       第6行音節數不符: 期望 12，實際 14
-
-     ↓ LLM Translation (Attempt 2)
-       ✓ Fixed Line 5: "failed vows" instead of "broken vows"
-       ✓ Fixed Line 6: Simplified to 12 syllables
-       ✓ Lines 5-6 rhyme: "vows" / "now"
+     ↓ LLM Translation
+       ✓ Translated lines are generated
+       ✓ Syllable counts are recalculated
+       ✓ Rhyme endings are extracted
 
      ↓ Validation
        Score: 100% (all constraints met)
