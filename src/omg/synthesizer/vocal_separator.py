@@ -7,7 +7,6 @@ from typing import Tuple, Optional
 import subprocess
 import tempfile
 import sys
-import os
 
 # Monkey-patch torchaudio.save to use soundfile backend instead of torchcodec
 # This avoids the torchcodec dependency issue
@@ -18,7 +17,6 @@ _original_torchaudio_save = torchaudio.save
 
 def _soundfile_save(filepath, src, sample_rate, **kwargs):
     """Save audio using soundfile backend instead of torchcodec."""
-    import numpy as np
 
     # Convert tensor to numpy and transpose if needed
     if isinstance(src, torch.Tensor):
@@ -165,7 +163,7 @@ main()
                 f"Demucs did not create instrumental file at {instrumental_path}"
             )
 
-        print(f"Separation complete!")
+        print("Separation complete!")
         print(f"  Vocals: {vocals_path}")
         print(f"  Instrumental: {instrumental_path}")
 

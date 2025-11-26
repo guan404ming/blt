@@ -3,15 +3,13 @@
 import torch
 import torchaudio
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict
 from dataclasses import dataclass
 import soundfile as sf
 from pypinyin import pinyin, Style
 from ctc_forced_aligner import (
     AlignmentSingleton,
     generate_emissions,
-    get_alignments,
-    get_spans,
 )
 
 
@@ -183,7 +181,7 @@ class LyricsAligner:
 
         # For sentence-level alignment, use uniform time distribution
         # CTC-based alignment with pinyin tokens is unreliable for singing voice
-        print(f"Using uniform time distribution for sentence-level alignment")
+        print("Using uniform time distribution for sentence-level alignment")
         print(
             f"  ({len(tokens_list)} pinyin tokens extracted from {len(words)} sentences)"
         )

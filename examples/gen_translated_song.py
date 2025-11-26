@@ -21,7 +21,6 @@ from omg.pipeline import CoverSongPipeline
 os.environ["TORCHAUDIO_BACKEND"] = "soundfile"
 
 # Prevent laion_clap from parsing command line arguments during import
-# by temporarily removing sys.argv
 _original_argv = sys.argv[:]
 sys.argv = [sys.argv[0]]
 

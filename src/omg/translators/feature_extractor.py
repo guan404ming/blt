@@ -96,7 +96,7 @@ class FeatureExtractor:
         vowels = re.findall(self.IPA_VOWEL_PATTERN, ipa_text)
 
         # 計算 IPA 中的元音數量（元音 = 音節核心）
-        return len(vowels)
+        return len(vowels) if lang != "cmn" else len(text)
 
     def _detect_rhyme_scheme(self, lines: list[str], lang: str) -> str:
         """檢測押韻方案"""
