@@ -144,23 +144,35 @@ class FeatureExtractor:
 
     def _extract_rhyme_ending(self, text: str, lang: str) -> str:
         """
-        提取韻腳 (使用 IPA)
+        提取韻腳 (使用 IPA 或拼音)
 
         將文本轉換為 IPA，然後提取最後的音節作為韻腳。
-        韻腳包含最後一個元音及其後的所有輔音。
+        對於中文，使用拼音的韻母（final）作為韻腳。
 
         Args:
             text: 要提取韻腳的文本
             lang: espeak-ng 語言代碼
 
         Returns:
-            IPA 格式的韻腳
+            韻腳字符串
         """
         text = text.strip()
         if not text:
             return ""
 
-        # 轉換為 IPA
+        # For Chinese, use pypinyin to get the final (韻母) of the last character
+        if lang == "cmn":
+            from pypinyin import pinyin, Style
+            # Get the last character's pinyin final (without tone)
+            if text:
+                # Get pinyin finals for all characters
+                finals = pinyin(text, style=Style.FINALS, strict=False)
+                if finals and finals[-1]:
+                    # Return the final of the last character
+                    return finals[-1][0]
+            return text
+
+        # 轉換為 IPA for other languages
         ipa_text = self._text_to_ipa(text, lang)
 
         # 找到所有元音的位置
