@@ -108,6 +108,69 @@ class ConstraintValidator:
         rhymes = self._rhymes_with(rhyme1, rhyme2)
         return {"rhymes": rhymes, "rhyme1": rhyme1, "rhyme2": rhyme2}
 
+    def segment_words(self, text: str, language: str) -> list[str]:
+        """
+        Segment text into words.
+
+        Returns: List of words, e.g., ["I", "don't", "like", "you"]
+        """
+        return self.extractor._segment_words(text, language)
+
+    def verify_word_count(
+        self, lines: list[str], language: str, target_word_counts: list[int]
+    ) -> dict:
+        """
+        Verify that each line has the target number of words.
+
+        Args:
+            lines: List of translated lines
+            language: Language code
+            target_word_counts: Target word count for each line
+
+        Returns: {
+            "word_segments": [[str]],
+            "word_counts": [int],
+            "counts_match": bool,
+            "feedback": str
+        }
+        """
+        word_segments = [
+            self.extractor._segment_words(line, language) for line in lines
+        ]
+        word_counts = [len(words) for words in word_segments]
+        counts_match = word_counts == target_word_counts
+
+        feedback_parts = []
+        if not counts_match:
+            mismatches = []
+            for i, (actual, target) in enumerate(zip(word_counts, target_word_counts)):
+                if actual != target:
+                    diff = actual - target
+                    words_str = ", ".join(word_segments[i])
+                    if diff > 0:
+                        mismatches.append(
+                            f"Line {i + 1}: {actual} words [{words_str}] (need {diff} fewer)"
+                        )
+                    else:
+                        mismatches.append(
+                            f"Line {i + 1}: {actual} words [{words_str}] (need {abs(diff)} more)"
+                        )
+            if mismatches:
+                feedback_parts.append(
+                    "WORD COUNT MISMATCHES:\n" + "\n".join(mismatches)
+                )
+
+        feedback = (
+            "\n\n".join(feedback_parts) if feedback_parts else "Word counts match!"
+        )
+
+        return {
+            "word_segments": word_segments,
+            "word_counts": word_counts,
+            "counts_match": counts_match,
+            "feedback": feedback,
+        }
+
     # ==================== POST-VALIDATION ====================
 
     def validate(

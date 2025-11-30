@@ -10,6 +10,14 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class WordSegmentation(BaseModel):
+    """詞彙分割結果 (LLM-based segmentation output)"""
+
+    words: list[str] = Field(
+        description="List of segmented words, e.g., ['I', \"don't\", 'like', 'you']"
+    )
+
+
 class MusicConstraints(BaseModel):
     """音樂約束條件"""
 
@@ -17,8 +25,9 @@ class MusicConstraints(BaseModel):
     rhyme_scheme: Optional[str] = Field(
         default=None, description="押韻方案，例如: AABB, ABAB, AAAA"
     )
-    pause_positions: Optional[list[int]] = Field(
-        default=None, description="音樂停頓位置，詞邊界應該對齊的位置"
+    word_segments: Optional[list[list[str]]] = Field(
+        default=None,
+        description="詞彙分割，每行的詞彙數組，例如: [['I', 'don't', 'like', 'you'], ['You', 'don't', 'like', 'me']]",
     )
 
 
@@ -31,6 +40,10 @@ class LyricTranslation(BaseModel):
     )
     rhyme_endings: list[str] = Field(
         description="Rhyme ending per line (LLM outputs, we recalculate)"
+    )
+    word_segments: Optional[list[list[str]]] = Field(
+        default=None,
+        description="Word segmentation per line (LLM outputs, we recalculate)",
     )
     reasoning: str = Field(description="Translation reasoning and considerations")
     tool_call_stats: Optional[dict[str, int]] = Field(

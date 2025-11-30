@@ -91,7 +91,7 @@ class LyricsTranslator:
             return result
 
         def count_syllables(text: str, language: str) -> int:
-            """Count syllables in single text. Use verify_all_constraints for multiple lines."""
+            """Count syllables using IPA-based method (phonemizer + espeak-ng). Converts text to IPA and counts vowel nuclei. Diphthongs and long vowels counted as single syllable. Use verify_all_constraints for multiple lines."""
             self.tool_call_stats["count_syllables"] += 1
             logger.info(
                 f"🔧 Tool called: count_syllables(text='{text[:30]}...', language={language})"
@@ -110,10 +110,30 @@ class LyricsTranslator:
             logger.info(f"   Result: rhymes={result['rhymes']}")
             return result
 
+        def analyze_words(text: str, language: str) -> dict:
+            """Analyze text: segment into words (LLM-based) and count syllables for each word (IPA-based with phonemizer + espeak-ng). Returns: {"words": [str], "syllables": [int], "total_syllables": int}. Example: "I like tomato" → {"words": ["I", "like", "tomato"], "syllables": [1, 1, 3], "total_syllables": 5}"""
+            self.tool_call_stats["analyze_words"] += 1
+            logger.info(
+                f"🔧 Tool called: analyze_words(text='{text[:30]}...', language={language})"
+            )
+            words, syllables = self.feature_extractor._seg_lyrics(text, language)
+            result = {
+                "words": words,
+                "syllables": syllables,
+                "total_syllables": sum(syllables),
+            }
+            logger.info(
+                f"   Result: {len(words)} words, {result['total_syllables']} syllables total"
+            )
+            logger.info(f"   Words: {words}")
+            logger.info(f"   Syllables: {syllables}")
+            return result
+
         # Register tools to Agent
         self.agent.tool_plain(verify_all_constraints)
         self.agent.tool_plain(count_syllables)
         self.agent.tool_plain(check_rhyme)
+        self.agent.tool_plain(analyze_words)
 
     def _get_system_prompt(self) -> str:
         """Get system prompt"""
@@ -122,20 +142,21 @@ class LyricsTranslator:
 CONSTRAINT PRIORITIES (strictly enforced in this order):
 1. SYLLABLE COUNT (CRITICAL) - Must match exactly
 2. Rhyme scheme (IMPORTANT) - Match when possible, syllable count takes precedence
-3. Pause positions (OPTIONAL) - Guidance only
+3. WORD COUNT (HELPFUL) - Try to match the number of words per line for better singability
 
-EFFICIENT VERIFICATION:
-- Use verify_all_constraints(lines, language, target_syllables, rhyme_scheme) to check all lines at once
-- Only use count_syllables for individual line adjustments
-- Tool returns: syllables, syllables_match, rhyme_endings, rhymes_valid, feedback
-- The 'feedback' field provides specific improvement suggestions for each mismatched line
+AVAILABLE TOOLS (syllable counting uses IPA-based method with phonemizer + espeak-ng):
+- verify_all_constraints(lines, language, target_syllables, rhyme_scheme) - Check syllable and rhyme constraints at once
+- analyze_words(text, language) - Segment words (LLM-based) and count syllables per word (IPA-based). Returns {"words": [str], "syllables": [int], "total_syllables": int}
+- count_syllables(text, language) - Count total syllables using IPA vowel nuclei detection
+- check_rhyme(text1, text2, language) - Check if two texts rhyme using IPA rhyme ending comparison
 
 WORKFLOW:
 1. Draft all translations (prioritize syllable count over grammar perfection)
-2. Call verify_all_constraints to check entire translation
+2. Call verify_all_constraints to check syllable and rhyme constraints
 3. Read the 'feedback' field to see exactly which lines need adjustment and by how much
 4. If syllables_match=False, adjust the specific lines mentioned in feedback
-5. Re-verify until syllables_match=True, then output
+5. Use analyze_words to understand word-level syllable breakdown for fine-tuning
+6. Re-verify until syllables_match=True, then output
 
 Limit to 10 verification rounds. If still mismatched, output best attempt with reasoning."""
 
@@ -187,13 +208,17 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
         translation = result.output
         logger.info("✅ LLM translation completed")
 
-        # 4. Calculate syllable counts and rhyme endings using validator
+        # 4. Calculate syllable counts, rhyme endings, and word segments using validator
         translation.syllable_counts = [
             self.validator.count_syllables(line, target_lang)
             for line in translation.translated_lines
         ]
         translation.rhyme_endings = [
             self.validator.extractor._extract_rhyme_ending(line, target_lang)
+            for line in translation.translated_lines
+        ]
+        translation.word_segments = [
+            self.feature_extractor._segment_words(line, target_lang)
             for line in translation.translated_lines
         ]
 
@@ -250,12 +275,16 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
         if constraints.rhyme_scheme:
             prompt_parts.append(f"• Rhyme scheme: {constraints.rhyme_scheme}")
 
-        if constraints.pause_positions:
-            prompt_parts.append(f"• Pause positions: {constraints.pause_positions}")
+        if constraints.word_segments:
+            word_counts = [len(words) for words in constraints.word_segments]
+            prompt_parts.append(f"• Word counts per line: {word_counts}")
+            prompt_parts.append("• Source word segmentation:")
+            for i, words in enumerate(constraints.word_segments, 1):
+                prompt_parts.append(f"  Line {i}: [{', '.join(words)}]")
 
         prompt_parts.append("")
         prompt_parts.append(
-            "Translate ensuring all constraints are met. Verify each line's syllable count using count_syllables tool."
+            "Translate ensuring all constraints are met. Use verify_all_constraints for verification and analyze_words for word-level analysis."
         )
 
         return "\n".join(prompt_parts)

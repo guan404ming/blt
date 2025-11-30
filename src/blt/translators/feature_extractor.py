@@ -5,12 +5,41 @@ Feature Extractor for Music Constraints
 
 import os
 import re
-from typing import Optional
-from .models import MusicConstraints
+from pydantic_ai import Agent
+from .models import MusicConstraints, WordSegmentation
 
 # Set environment variables for phonemizer to find espeak-ng
 os.environ["PHONEMIZER_ESPEAK_PATH"] = "/opt/homebrew/bin/espeak-ng"
 os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
+
+def _get_segmentation_system_prompt() -> str:
+    """Get system prompt for word segmentation agent"""
+    return """You are a word segmentation expert for song lyrics.
+
+Your task is to segment a line of lyrics into individual words or singable units that match how the lyrics would be sung.
+
+CRITICAL RULES:
+1. NEVER include punctuation marks as separate words
+2. ALWAYS remove all punctuation (commas, periods, exclamation marks, etc.)
+3. ONLY return actual words, not punctuation
+
+For English and similar languages:
+- Keep contractions together (e.g., "don't", "I'm", "you're")
+- Keep hyphenated words together (e.g., "twenty-one")
+- Split on spaces ONLY
+- Remove all punctuation
+- Example: "I don't like you." → ["I", "don't", "like", "you"]
+- Example: "Yes, I can!" → ["Yes", "I", "can"]
+
+For Chinese and similar languages:
+- Split single-character words when appropriate (e.g., "我不愛你" → ["我", "不", "愛", "你"])
+- Each character that can stand alone should be separate
+- Only combine characters when they form a compound word
+- Consider singability - prefer smaller units for song lyrics
+- Example: "我不喜欢你" → ["我", "不", "喜欢", "你"]
+- Example: "你好世界" → ["你好", "世界"]
+
+Return ONLY the list of words, with NO punctuation marks."""
 
 
 class FeatureExtractor:
@@ -26,15 +55,28 @@ class FeatureExtractor:
         self.source_lang = source_lang
         self.target_lang = target_lang
 
+        # Initialize LLM agent for word segmentation
+        # Use a lightweight model for fast and cost-effective segmentation
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if api_key:
+            os.environ["GOOGLE_API_KEY"] = api_key
+            self.segmentation_agent = Agent(
+                model="gemini-2.5-flash",
+                output_type=WordSegmentation,
+                system_prompt=_get_segmentation_system_prompt(),
+            )
+        else:
+            self.segmentation_agent = None
+
     def extract_constraints(
-        self, source_lyrics: str, music_file: Optional[str] = None
+        self,
+        source_lyrics: str,
     ) -> MusicConstraints:
         """
         從源歌詞自動提取音樂約束
 
         Args:
             source_lyrics: 源語言歌詞
-            music_file: 可選的 MIDI/MusicXML 檔案路徑
 
         Returns:
             MusicConstraints: 音樂約束條件
@@ -51,16 +93,15 @@ class FeatureExtractor:
         # 2. 押韻方案檢測
         rhyme_scheme = self._detect_rhyme_scheme(lines, self.source_lang)
 
-        # 3. 停頓位置推測 (如果沒有音樂檔案，基於標點符號推測)
-        if music_file:
-            pause_positions = self._extract_pauses_from_music(music_file)
-        else:
-            pause_positions = self._infer_pauses(lines)
+        # 3. 詞彙分割 (Word Segmentation)
+        word_segments = [
+            self._segment_words(line, self.source_lang) for line in lines
+        ]
 
         return MusicConstraints(
             syllable_counts=syllable_counts,
             rhyme_scheme=rhyme_scheme,
-            pause_positions=pause_positions,
+            word_segments=word_segments,
         )
 
     def _text_to_ipa(self, text: str, lang: str) -> str:
@@ -188,29 +229,91 @@ class FeatureExtractor:
 
         return rhyme_ending
 
-    def _infer_pauses(self, lines: list[str]) -> list[int]:
-        """基於標點符號推測停頓位置"""
-        pause_positions = []
-        cumulative_syllables = 0
+    def _seg_lyrics(self, text: str, lang: str) -> tuple[list[str], list[int]]:
+        """
+        分析歌詞: 分詞 + 音節計數
 
-        for line in lines:
-            # 檢測標點符號位置
-            punctuation = r"[,;.!?，。；！？、]"
-            parts = re.split(punctuation, line)
+        使用 LLM 進行分詞，然後計算每個詞的音節數。
 
-            for i, part in enumerate(parts[:-1]):  # 不包括最後一個
-                syllables = self._count_syllables(part, self.source_lang)
-                cumulative_syllables += syllables
-                pause_positions.append(cumulative_syllables)
+        Args:
+            text: 歌詞文本 (單行)
+            lang: espeak-ng 語言代碼
 
-            # 行尾也是停頓
-            cumulative_syllables += self._count_syllables(parts[-1], self.source_lang)
-            pause_positions.append(cumulative_syllables)
+        Returns:
+            tuple: (words, syllables)
+                words: 分詞結果，例如 ["I", "like", "tomato"]
+                syllables: 每個詞的音節數，例如 [1, 1, 3]
 
-        return pause_positions
+        Example:
+            >>> words, syllables = extractor._seg_lyrics("I like tomato", "en-us")
+            >>> print(words)       # ["I", "like", "tomato"]
+            >>> print(syllables)   # [1, 1, 3]
+        """
+        # Step 1: Segment words using LLM
+        words = self._segment_words(text, lang)
 
-    def _extract_pauses_from_music(self, music_file: str) -> list[int]:
-        """從 MIDI/MusicXML 提取停頓位置"""
-        # TODO: 實作音樂檔案解析
-        # 需要使用 music21 或類似的函式庫
-        raise NotImplementedError("Music file parsing not implemented yet")
+        # Step 2: Count syllables for each word
+        syllables = [self._count_syllables(word, lang) for word in words]
+
+        return words, syllables
+
+
+    def _segment_words(self, text: str, lang: str) -> list[str]:
+        """
+        將文本分割成詞彙數組 (Word Segmentation)
+
+        使用 LLM 進行智能分詞，考慮語義。
+
+        Args:
+            text: 歌詞文本 (單行)
+            lang: espeak-ng 語言代碼
+
+        Returns:
+            詞彙列表，例如: ["I", "don't", "like", "you"]
+
+        Raises:
+            RuntimeError: 如果 LLM segmentation 失敗且沒有 API key
+        """
+        if not self.segmentation_agent:
+            raise RuntimeError(
+                "LLM word segmentation failed. Please ensure GOOGLE_API_KEY is set and valid."
+            )
+
+        text = text.strip()
+        if not text:
+            return []
+
+        # Prepare language name for the prompt
+        lang_name_map = {
+            "en-us": "English",
+            "cmn": "Chinese",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "de": "German",
+            "fr-fr": "French",
+            "es": "Spanish",
+        }
+        lang_name = lang_name_map.get(lang, lang)
+
+        try:
+            # Build prompt
+            prompt = f"""Segment this {lang_name} lyrics line into words:
+
+Text: {text}
+
+Language: {lang_name}
+
+Return the list of words"""
+
+            # Call LLM
+            response = self.segmentation_agent.run_sync(prompt)
+            words = response.output.words
+
+            # Filter empty strings
+            return [w for w in words if w.strip()]
+
+        except Exception as e:
+            # If LLM fails, raise error
+            raise RuntimeError(
+                f"LLM word segmentation failed: {e}. Please ensure GOOGLE_API_KEY is set and valid."
+            )
