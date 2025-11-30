@@ -12,6 +12,7 @@ from .models import MusicConstraints, WordSegmentation
 os.environ["PHONEMIZER_ESPEAK_PATH"] = "/opt/homebrew/bin/espeak-ng"
 os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
 
+
 def _get_segmentation_system_prompt() -> str:
     """Get system prompt for word segmentation agent"""
     return """You are a word segmentation expert for song lyrics.
@@ -94,9 +95,7 @@ class FeatureExtractor:
         rhyme_scheme = self._detect_rhyme_scheme(lines, self.source_lang)
 
         # 3. 詞彙分割 (Word Segmentation)
-        word_segments = [
-            self._segment_words(line, self.source_lang) for line in lines
-        ]
+        word_segments = [self._segment_words(line, self.source_lang) for line in lines]
 
         return MusicConstraints(
             syllable_counts=syllable_counts,
@@ -256,7 +255,6 @@ class FeatureExtractor:
         syllables = [self._count_syllables(word, lang) for word in words]
 
         return words, syllables
-
 
     def _segment_words(self, text: str, lang: str) -> list[str]:
         """
