@@ -117,20 +117,26 @@ class LyricsTranslator:
             logger.info(
                 f"🔧 Tool called: get_syllable_pattern(lines={len(lines)}, language={language})"
             )
-            syllable_patterns = self.feature_extractor._get_syllable_patterns(lines, language)
+            syllable_patterns = self.feature_extractor._get_syllable_patterns(
+                lines, language
+            )
             result = {
                 "syllable_patterns": syllable_patterns,
             }
             logger.info(f"   Result: {syllable_patterns}")
             return result
 
-        def verify_syllable_pattern(lines: list[str], language: str, target_patterns: list[list[int]]) -> dict:
+        def verify_syllable_pattern(
+            lines: list[str], language: str, target_patterns: list[list[int]]
+        ) -> dict:
             """Verify syllable patterns match exactly (uses batch LLM call). Returns: {"syllable_patterns": [[int]], "patterns_match": bool, "feedback": str}. Example: verify_syllable_pattern(["I like you"], "en-us", [[1, 1, 1]]) checks if pattern matches [1, 1, 1]"""
             self.tool_call_stats["verify_syllable_pattern"] += 1
             logger.info(
                 f"🔧 Tool called: verify_syllable_pattern(lines={len(lines)}, language={language}, target_patterns={target_patterns})"
             )
-            result = self.validator.verify_syllable_pattern(lines, language, target_patterns)
+            result = self.validator.verify_syllable_pattern(
+                lines, language, target_patterns
+            )
             logger.info(f"   Result: patterns_match={result['patterns_match']}")
             if result.get("feedback"):
                 logger.info(f"   Feedback:\n{result['feedback']}")
@@ -147,9 +153,9 @@ class LyricsTranslator:
         return """You are a professional lyrics translation expert specialized in singable translations.
 
 CONSTRAINT PRIORITIES (strictly enforced in this order):
-1. SYLLABLE COUNT (CRITICAL) - Must match exactly
-2. Rhyme scheme (IMPORTANT) - Match when possible, syllable count takes precedence
-3. WORD COUNT (HELPFUL) - Try to match the number of words per line for better singability
+1. SYLLABLE COUNT & PATTERNS (CRITICAL) - The total syllable count AND the specific syllable pattern (syllables per word) must match the source exactly. This is essential for the rhythm.
+2. Rhyme scheme (IMPORTANT) - Match when possible, but never violate syllable constraints.
+3. WORD COUNT (CRITICAL) - Derived from syllable patterns, the number of words must match.
 
 AVAILABLE TOOLS (syllable counting uses IPA-based method with phonemizer + espeak-ng):
 - verify_all_constraints(lines, language, target_syllables, rhyme_scheme, target_patterns=None) - Check syllable, rhyme, and optionally pattern constraints at once (most efficient)
@@ -166,7 +172,7 @@ WORKFLOW:
 5. Use get_syllable_pattern to understand word-level syllable breakdown for fine-tuning
 6. Re-verify until syllables_match=True, then output
 
-Limit to 10 verification rounds. If still mismatched, output best attempt with reasoning."""
+Limit to 15 verification rounds. If still mismatched, output best attempt with reasoning."""
 
     def translate(
         self,
@@ -277,7 +283,7 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
             source_lyrics,
             "",
             "CONSTRAINTS:",
-            f"• Syllable counts per line: {constraints.syllable_counts}",
+            f"• Syllable counts per line (CRITICAL): {constraints.syllable_counts}",
         ]
 
         if constraints.rhyme_scheme:
@@ -285,10 +291,12 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
 
         if constraints.syllable_patterns:
             word_counts = [len(pattern) for pattern in constraints.syllable_patterns]
-            prompt_parts.append(f"• Word counts per line: {word_counts}")
-            prompt_parts.append("• Source syllable patterns:")
+            prompt_parts.append(f"• Word counts per line (CRITICAL): {word_counts}")
+            prompt_parts.append("• Source syllable patterns (CRITICAL):")
             for i, pattern in enumerate(constraints.syllable_patterns, 1):
-                prompt_parts.append(f"  Line {i}: [{', '.join(str(s) for s in pattern)}]")
+                prompt_parts.append(
+                    f"  Line {i}: [{', '.join(str(s) for s in pattern)}]"
+                )
 
         prompt_parts.append("")
         prompt_parts.append(

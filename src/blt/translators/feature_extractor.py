@@ -65,7 +65,9 @@ class FeatureExtractor:
     def _get_hanlp_tokenizer(self):
         """Lazy load HanLP tokenizer for Chinese word segmentation"""
         if self._hanlp_tokenizer is None:
-            self._hanlp_tokenizer = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
+            self._hanlp_tokenizer = hanlp.load(
+                hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH
+            )
         return self._hanlp_tokenizer
 
     def extract_constraints(
@@ -280,7 +282,9 @@ class FeatureExtractor:
             tokenizer = self._get_hanlp_tokenizer()
             for line in lines:
                 segmented_line = tokenizer(line)
-                all_segmented_words.append([word for word in segmented_line if word.strip()])
+                all_segmented_words.append(
+                    [word for word in segmented_line if word.strip()]
+                )
             return all_segmented_words
 
         elif lang == "en-us":  # English segmentation using space splitting
@@ -300,7 +304,9 @@ class FeatureExtractor:
 
             try:
                 # Build prompt for all lines
-                lines_text = "\n".join(f"{i+1}. {line}" for i, line in enumerate(lines))
+                lines_text = "\n".join(
+                    f"{i + 1}. {line}" for i, line in enumerate(lines)
+                )
                 prompt = f"""Segment these {lang} lyrics lines into words:
 
 {lines_text}

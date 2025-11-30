@@ -50,7 +50,9 @@ class TestWordSegmentation:
         # _segment_words now takes a list of lines and returns list of lists
         result = extractor._segment_words([text], lang)
         assert len(result) == 1, f"Expected 1 line result, got {len(result)}"
-        assert result[0] == expected_words, f"Expected {expected_words}, got {result[0]}"
+        assert result[0] == expected_words, (
+            f"Expected {expected_words}, got {result[0]}"
+        )
 
     def test_segment_empty_lines(self, extractor):
         """Test segmentation of empty lines"""
@@ -84,7 +86,7 @@ class TestWordSegmentation:
         expected = [
             ["I", "don't", "like", "you"],
             ["Hello", "world"],
-            ["Yes", "I", "can"]
+            ["Yes", "I", "can"],
         ]
         result = extractor._segment_words(lines, "en-us")
         assert len(result) == 3, f"Expected 3 lines, got {len(result)}"

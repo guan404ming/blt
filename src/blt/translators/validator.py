@@ -81,7 +81,9 @@ class ConstraintValidator:
 
             if not patterns_match:
                 pattern_mismatches = []
-                for i, (actual, target) in enumerate(zip(syllable_patterns, target_patterns)):
+                for i, (actual, target) in enumerate(
+                    zip(syllable_patterns, target_patterns)
+                ):
                     if actual != target:
                         actual_str = "[" + ", ".join(str(s) for s in actual) + "]"
                         target_str = "[" + ", ".join(str(s) for s in target) + "]"
@@ -90,22 +92,35 @@ class ConstraintValidator:
 
                         mismatch_details = []
                         mismatch_details.append(f"Line {i + 1}:")
-                        mismatch_details.append(f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)")
-                        mismatch_details.append(f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)")
+                        mismatch_details.append(
+                            f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)"
+                        )
+                        mismatch_details.append(
+                            f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)"
+                        )
 
                         if len(actual) != len(target):
                             diff = len(actual) - len(target)
                             if diff > 0:
-                                mismatch_details.append(f"  → Need {diff} fewer word(s)")
+                                mismatch_details.append(
+                                    f"  → Need {diff} fewer word(s)"
+                                )
                             else:
-                                mismatch_details.append(f"  → Need {abs(diff)} more word(s)")
+                                mismatch_details.append(
+                                    f"  → Need {abs(diff)} more word(s)"
+                                )
                         else:
-                            mismatch_details.append("  → Word count matches, but syllable distribution differs")
+                            mismatch_details.append(
+                                "  → Word count matches, but syllable distribution differs"
+                            )
 
                         pattern_mismatches.append("\n".join(mismatch_details))
 
                 if pattern_mismatches:
-                    feedback_parts.append("SYLLABLE PATTERN MISMATCHES:\n\n" + "\n\n".join(pattern_mismatches))
+                    feedback_parts.append(
+                        "SYLLABLE PATTERN MISMATCHES:\n\n"
+                        + "\n\n".join(pattern_mismatches)
+                    )
 
         # Check rhyme scheme
         rhymes_valid = True
@@ -184,7 +199,9 @@ class ConstraintValidator:
         feedback_parts = []
         if not patterns_match:
             mismatches = []
-            for i, (actual, target) in enumerate(zip(syllable_patterns, target_patterns)):
+            for i, (actual, target) in enumerate(
+                zip(syllable_patterns, target_patterns)
+            ):
                 if actual != target:
                     actual_str = "[" + ", ".join(str(s) for s in actual) + "]"
                     target_str = "[" + ", ".join(str(s) for s in target) + "]"
@@ -193,25 +210,37 @@ class ConstraintValidator:
 
                     mismatch_details = []
                     mismatch_details.append(f"Line {i + 1}:")
-                    mismatch_details.append(f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)")
-                    mismatch_details.append(f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)")
+                    mismatch_details.append(
+                        f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)"
+                    )
+                    mismatch_details.append(
+                        f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)"
+                    )
 
                     if len(actual) != len(target):
                         diff = len(actual) - len(target)
                         if diff > 0:
                             mismatch_details.append(f"  → Need {diff} fewer word(s)")
                         else:
-                            mismatch_details.append(f"  → Need {abs(diff)} more word(s)")
+                            mismatch_details.append(
+                                f"  → Need {abs(diff)} more word(s)"
+                            )
                     else:
-                        mismatch_details.append("  → Word count matches, but syllable distribution differs")
+                        mismatch_details.append(
+                            "  → Word count matches, but syllable distribution differs"
+                        )
 
                     mismatches.append("\n".join(mismatch_details))
 
             if mismatches:
-                feedback_parts.append("SYLLABLE PATTERN MISMATCHES:\n" + "\n\n".join(mismatches))
+                feedback_parts.append(
+                    "SYLLABLE PATTERN MISMATCHES:\n" + "\n\n".join(mismatches)
+                )
 
         feedback = (
-            "\n\n".join(feedback_parts) if feedback_parts else "Syllable patterns match perfectly!"
+            "\n\n".join(feedback_parts)
+            if feedback_parts
+            else "Syllable patterns match perfectly!"
         )
 
         return {
