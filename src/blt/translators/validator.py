@@ -93,10 +93,10 @@ class ConstraintValidator:
                         mismatch_details = []
                         mismatch_details.append(f"Line {i + 1}:")
                         mismatch_details.append(
-                            f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)"
+                            f"  Actual:  {actual_str} (total: {actual_total} syllables)"
                         )
                         mismatch_details.append(
-                            f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)"
+                            f"  Target:  {target_str} (total: {target_total} syllables)"
                         )
 
                         pattern_mismatches.append("\n".join(mismatch_details))
