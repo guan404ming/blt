@@ -116,7 +116,7 @@ class ConstraintValidator:
         """
         return self.extractor._segment_words(text, language)
 
-    def verify_word_count(
+    def verify_syllable_pattern(
         self, lines: list[str], language: str, target_word_counts: list[int]
     ) -> dict:
         """
@@ -128,16 +128,16 @@ class ConstraintValidator:
             target_word_counts: Target word count for each line
 
         Returns: {
-            "word_segments": [[str]],
+            "syllable_patterns": [[int]],
             "word_counts": [int],
             "counts_match": bool,
             "feedback": str
         }
         """
-        word_segments = [
-            self.extractor._segment_words(line, language) for line in lines
+        syllable_patterns = [
+            self.extractor._get_syllable_pattern(line, language) for line in lines
         ]
-        word_counts = [len(words) for words in word_segments]
+        word_counts = [len(pattern) for pattern in syllable_patterns]
         counts_match = word_counts == target_word_counts
 
         feedback_parts = []
@@ -146,14 +146,14 @@ class ConstraintValidator:
             for i, (actual, target) in enumerate(zip(word_counts, target_word_counts)):
                 if actual != target:
                     diff = actual - target
-                    words_str = ", ".join(word_segments[i])
+                    pattern_str = ", ".join(str(s) for s in syllable_patterns[i])
                     if diff > 0:
                         mismatches.append(
-                            f"Line {i + 1}: {actual} words [{words_str}] (need {diff} fewer)"
+                            f"Line {i + 1}: {actual} words [{pattern_str}] (need {diff} fewer)"
                         )
                     else:
                         mismatches.append(
-                            f"Line {i + 1}: {actual} words [{words_str}] (need {abs(diff)} more)"
+                            f"Line {i + 1}: {actual} words [{pattern_str}] (need {abs(diff)} more)"
                         )
             if mismatches:
                 feedback_parts.append(
@@ -165,7 +165,7 @@ class ConstraintValidator:
         )
 
         return {
-            "word_segments": word_segments,
+            "syllable_patterns": syllable_patterns,
             "word_counts": word_counts,
             "counts_match": counts_match,
             "feedback": feedback,

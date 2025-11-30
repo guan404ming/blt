@@ -110,22 +110,19 @@ class LyricsTranslator:
             logger.info(f"   Result: rhymes={result['rhymes']}")
             return result
 
-        def analyze_words(text: str, language: str) -> dict:
+        def get_syllable_pattern(text: str, language: str) -> dict:
             """Analyze text: segment into words (LLM-based) and count syllables for each word (IPA-based with phonemizer + espeak-ng). Returns: {"words": [str], "syllables": [int], "total_syllables": int}. Example: "I like tomato" → {"words": ["I", "like", "tomato"], "syllables": [1, 1, 3], "total_syllables": 5}"""
-            self.tool_call_stats["analyze_words"] += 1
+            self.tool_call_stats["get_syllable_pattern"] += 1
             logger.info(
-                f"🔧 Tool called: analyze_words(text='{text[:30]}...', language={language})"
+                f"🔧 Tool called: get_syllable_pattern(text='{text[:30]}...', language={language})"
             )
-            words, syllables = self.feature_extractor._seg_lyrics(text, language)
+            syllables = self.feature_extractor._get_syllable_pattern(text, language)
             result = {
-                "words": words,
                 "syllables": syllables,
-                "total_syllables": sum(syllables),
             }
             logger.info(
-                f"   Result: {len(words)} words, {result['total_syllables']} syllables total"
+                f"   Result: {result['total_syllables']}"
             )
-            logger.info(f"   Words: {words}")
             logger.info(f"   Syllables: {syllables}")
             return result
 
@@ -133,7 +130,7 @@ class LyricsTranslator:
         self.agent.tool_plain(verify_all_constraints)
         self.agent.tool_plain(count_syllables)
         self.agent.tool_plain(check_rhyme)
-        self.agent.tool_plain(analyze_words)
+        self.agent.tool_plain(get_syllable_pattern)
 
     def _get_system_prompt(self) -> str:
         """Get system prompt"""
@@ -146,7 +143,7 @@ CONSTRAINT PRIORITIES (strictly enforced in this order):
 
 AVAILABLE TOOLS (syllable counting uses IPA-based method with phonemizer + espeak-ng):
 - verify_all_constraints(lines, language, target_syllables, rhyme_scheme) - Check syllable and rhyme constraints at once
-- analyze_words(text, language) - Segment words (LLM-based) and count syllables per word (IPA-based). Returns {"words": [str], "syllables": [int], "total_syllables": int}
+- get_syllable_pattern(text, language) - Get syllables pattern (IPA-based). Returns {"syllables": [int]}
 - count_syllables(text, language) - Count total syllables using IPA vowel nuclei detection
 - check_rhyme(text1, text2, language) - Check if two texts rhyme using IPA rhyme ending comparison
 
@@ -155,7 +152,7 @@ WORKFLOW:
 2. Call verify_all_constraints to check syllable and rhyme constraints
 3. Read the 'feedback' field to see exactly which lines need adjustment and by how much
 4. If syllables_match=False, adjust the specific lines mentioned in feedback
-5. Use analyze_words to understand word-level syllable breakdown for fine-tuning
+5. Use get_syllable_pattern to understand word-level syllable breakdown for fine-tuning
 6. Re-verify until syllables_match=True, then output
 
 Limit to 10 verification rounds. If still mismatched, output best attempt with reasoning."""
@@ -217,8 +214,8 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
             self.validator.extractor._extract_rhyme_ending(line, target_lang)
             for line in translation.translated_lines
         ]
-        translation.word_segments = [
-            self.feature_extractor._segment_words(line, target_lang)
+        translation.syllable_patterns = [
+            self.feature_extractor._get_syllable_pattern(line, target_lang)
             for line in translation.translated_lines
         ]
 
@@ -275,16 +272,16 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
         if constraints.rhyme_scheme:
             prompt_parts.append(f"• Rhyme scheme: {constraints.rhyme_scheme}")
 
-        if constraints.word_segments:
-            word_counts = [len(words) for words in constraints.word_segments]
+        if constraints.syllable_patterns:
+            word_counts = [len(pattern) for pattern in constraints.syllable_patterns]
             prompt_parts.append(f"• Word counts per line: {word_counts}")
-            prompt_parts.append("• Source word segmentation:")
-            for i, words in enumerate(constraints.word_segments, 1):
-                prompt_parts.append(f"  Line {i}: [{', '.join(words)}]")
+            prompt_parts.append("• Source syllable patterns:")
+            for i, pattern in enumerate(constraints.syllable_patterns, 1):
+                prompt_parts.append(f"  Line {i}: [{', '.join(str(s) for s in pattern)}]")
 
         prompt_parts.append("")
         prompt_parts.append(
-            "Translate ensuring all constraints are met. Use verify_all_constraints for verification and analyze_words for word-level analysis."
+            "Translate ensuring all constraints are met. Use verify_all_constraints for verification and get_syllable_pattern for word-level analysis."
         )
 
         return "\n".join(prompt_parts)

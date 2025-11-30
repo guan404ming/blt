@@ -95,12 +95,14 @@ class FeatureExtractor:
         rhyme_scheme = self._detect_rhyme_scheme(lines, self.source_lang)
 
         # 3. 詞彙分割 (Word Segmentation)
-        word_segments = [self._segment_words(line, self.source_lang) for line in lines]
+        syllable_patterns = [
+            self._get_syllable_pattern(line, self.source_lang) for line in lines
+        ]
 
         return MusicConstraints(
             syllable_counts=syllable_counts,
             rhyme_scheme=rhyme_scheme,
-            word_segments=word_segments,
+            syllable_patterns=syllable_patterns,
         )
 
     def _text_to_ipa(self, text: str, lang: str) -> str:
@@ -228,7 +230,7 @@ class FeatureExtractor:
 
         return rhyme_ending
 
-    def _seg_lyrics(self, text: str, lang: str) -> tuple[list[str], list[int]]:
+    def _get_syllable_pattern(self, text: str, lang: str) -> list[int]:
         """
         分析歌詞: 分詞 + 音節計數
 
@@ -244,8 +246,7 @@ class FeatureExtractor:
                 syllables: 每個詞的音節數，例如 [1, 1, 3]
 
         Example:
-            >>> words, syllables = extractor._seg_lyrics("I like tomato", "en-us")
-            >>> print(words)       # ["I", "like", "tomato"]
+            >>> syllables = extractor._get_syllable_pattern("I like tomato", "en-us")
             >>> print(syllables)   # [1, 1, 3]
         """
         # Step 1: Segment words using LLM
@@ -254,7 +255,7 @@ class FeatureExtractor:
         # Step 2: Count syllables for each word
         syllables = [self._count_syllables(word, lang) for word in words]
 
-        return words, syllables
+        return syllables
 
     def _segment_words(self, text: str, lang: str) -> list[str]:
         """

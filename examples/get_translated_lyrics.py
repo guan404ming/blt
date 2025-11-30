@@ -105,8 +105,8 @@ def main():
     constraints = extractor.extract_constraints(first_verse)
 
     print(f"\n音節數: {constraints.syllable_counts}")
+    print(f"音節規律: {constraints.syllable_patterns}")
     print(f"押韻方案: {constraints.rhyme_scheme}")
-    print(f"停頓位置: {constraints.word_segments}")
 
     # Zero-shot translation
     print("\n" + "=" * 80)
