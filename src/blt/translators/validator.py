@@ -99,21 +99,6 @@ class ConstraintValidator:
                             f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)"
                         )
 
-                        if len(actual) != len(target):
-                            diff = len(actual) - len(target)
-                            if diff > 0:
-                                mismatch_details.append(
-                                    f"  → Need {diff} fewer word(s)"
-                                )
-                            else:
-                                mismatch_details.append(
-                                    f"  → Need {abs(diff)} more word(s)"
-                                )
-                        else:
-                            mismatch_details.append(
-                                "  → Word count matches, but syllable distribution differs"
-                            )
-
                         pattern_mismatches.append("\n".join(mismatch_details))
 
                 if pattern_mismatches:
@@ -216,26 +201,7 @@ class ConstraintValidator:
                     mismatch_details.append(
                         f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)"
                     )
-
-                    if len(actual) != len(target):
-                        diff = len(actual) - len(target)
-                        if diff > 0:
-                            mismatch_details.append(f"  → Need {diff} fewer word(s)")
-                        else:
-                            mismatch_details.append(
-                                f"  → Need {abs(diff)} more word(s)"
-                            )
-                    else:
-                        mismatch_details.append(
-                            "  → Word count matches, but syllable distribution differs"
-                        )
-
                     mismatches.append("\n".join(mismatch_details))
-
-            if mismatches:
-                feedback_parts.append(
-                    "SYLLABLE PATTERN MISMATCHES:\n" + "\n\n".join(mismatches)
-                )
 
         feedback = (
             "\n\n".join(feedback_parts)

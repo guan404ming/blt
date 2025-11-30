@@ -155,7 +155,6 @@ class LyricsTranslator:
 CONSTRAINT PRIORITIES (strictly enforced in this order):
 1. SYLLABLE COUNT & PATTERNS (CRITICAL) - The total syllable count AND the specific syllable pattern (syllables per word) must match the source exactly. This is essential for the rhythm.
 2. Rhyme scheme (IMPORTANT) - Match when possible, but never violate syllable constraints.
-3. WORD COUNT (CRITICAL) - Derived from syllable patterns, the number of words must match.
 
 AVAILABLE TOOLS (syllable counting uses IPA-based method with phonemizer + espeak-ng):
 - verify_all_constraints(lines, language, target_syllables, rhyme_scheme, target_patterns=None) - Check syllable, rhyme, and optionally pattern constraints at once (most efficient)
@@ -290,8 +289,6 @@ Limit to 15 verification rounds. If still mismatched, output best attempt with r
             prompt_parts.append(f"• Rhyme scheme: {constraints.rhyme_scheme}")
 
         if constraints.syllable_patterns:
-            word_counts = [len(pattern) for pattern in constraints.syllable_patterns]
-            prompt_parts.append(f"• Word counts per line (CRITICAL): {word_counts}")
             prompt_parts.append("• Source syllable patterns (CRITICAL):")
             for i, pattern in enumerate(constraints.syllable_patterns, 1):
                 prompt_parts.append(
