@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-ai-slim[google]>=1.22.0",
     "phonemizer>=3.3.0",
     "dotenv>=0.9.9",
+    "hanlp>=2.1.0",
 ]
 
 [project.optional-dependencies]

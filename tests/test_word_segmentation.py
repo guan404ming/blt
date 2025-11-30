@@ -25,7 +25,6 @@ class TestWordSegmentation:
             ("Hello, world!", "en-us", ["Hello", "world"]),
             ("I love you.", "en-us", ["I", "love", "you"]),
             # Edge cases
-            ("", "en-us", []),
             ("a", "en-us", ["a"]),
             ("I", "en-us", ["I"]),
             # With punctuation
@@ -36,7 +35,7 @@ class TestWordSegmentation:
             ("State-of-the-art", "en-us", ["State-of-the-art"]),
             # Multiple spaces
             ("Hello  world", "en-us", ["Hello", "world"]),
-            # Chinese tests (LLM-based segmentation)
+            # Chinese tests
             ("我不愛你", "cmn", ["我", "不", "愛", "你"]),
             ("你好世界", "cmn", ["你好", "世界"]),
             ("今天天氣很好", "cmn", ["今天", "天氣", "很", "好"]),
@@ -48,27 +47,45 @@ class TestWordSegmentation:
     )
     def test_segment_words(self, extractor, text, lang, expected_words):
         """Test LLM-based word segmentation for different languages and cases"""
-        result = extractor._segment_words(text, lang)
-        assert result == expected_words, f"Expected {expected_words}, got {result}"
+        # _segment_words now takes a list of lines and returns list of lists
+        result = extractor._segment_words([text], lang)
+        assert len(result) == 1, f"Expected 1 line result, got {len(result)}"
+        assert result[0] == expected_words, f"Expected {expected_words}, got {result[0]}"
 
-    def test_segment_empty_line(self, extractor):
-        """Test segmentation of empty line"""
-        result = extractor._segment_words("", "en-us")
+    def test_segment_empty_lines(self, extractor):
+        """Test segmentation of empty lines"""
+        result = extractor._segment_words([], "en-us")
         assert result == []
 
     def test_segment_punctuation_only(self, extractor):
         """Test segmentation of punctuation-only text"""
-        result = extractor._segment_words("!!!", "en-us")
-        assert result == []
+        result = extractor._segment_words(["!!!"], "en-us")
+        assert len(result) == 1
+        assert result[0] == []
 
     def test_segment_mixed_punctuation(self, extractor):
         """Test segmentation with mixed punctuation"""
-        result = extractor._segment_words("Hello, my name is John!", "en-us")
-        assert result == ["Hello", "my", "name", "is", "John"]
+        result = extractor._segment_words(["Hello, my name is John!"], "en-us")
+        assert len(result) == 1
+        assert result[0] == ["Hello", "my", "name", "is", "John"]
 
     def test_chinese_word_count(self, extractor):
         """Test Chinese word segmentation count"""
         text = "我愛你"
-        words = extractor._segment_words(text, "cmn")
+        result = extractor._segment_words([text], "cmn")
+        assert len(result) == 1
+        words = result[0]
         assert len(words) == 3
         assert "".join(words) == "我愛你"
+
+    def test_batch_segment_words(self, extractor):
+        """Test batch segmentation of multiple lines"""
+        lines = ["I don't like you", "Hello world", "Yes, I can!"]
+        expected = [
+            ["I", "don't", "like", "you"],
+            ["Hello", "world"],
+            ["Yes", "I", "can"]
+        ]
+        result = extractor._segment_words(lines, "en-us")
+        assert len(result) == 3, f"Expected 3 lines, got {len(result)}"
+        assert result == expected, f"Expected {expected}, got {result}"

@@ -74,17 +74,18 @@ class LyricsTranslator:
             language: str,
             target_syllables: list[int],
             rhyme_scheme: str = "",
+            target_patterns: list[list[int]] | None = None,
         ) -> dict:
-            """Verify all constraints at once (most efficient). Returns: {"syllables": [int], "syllables_match": bool, "rhyme_endings": [str], "rhymes_valid": bool, "feedback": str}"""
+            """Verify all constraints at once (most efficient). Can optionally verify syllable patterns. Returns: {"syllables": [int], "syllables_match": bool, "rhyme_endings": [str], "rhymes_valid": bool, "syllable_patterns": [[int]] (if target_patterns provided), "patterns_match": bool (if target_patterns provided), "feedback": str}"""
             self.tool_call_stats["verify_all_constraints"] += 1
             logger.info(
-                f"🔧 Tool called: verify_all_constraints(lines={len(lines)}, language={language}, target_syllables={target_syllables})"
+                f"🔧 Tool called: verify_all_constraints(lines={len(lines)}, language={language}, target_syllables={target_syllables}, target_patterns={'provided' if target_patterns else 'None'})"
             )
             result = self.validator.verify_all_constraints(
-                lines, language, target_syllables, rhyme_scheme
+                lines, language, target_syllables, rhyme_scheme, target_patterns
             )
             logger.info(
-                f"   Result: syllables_match={result['syllables_match']}, rhymes_valid={result.get('rhymes_valid', 'N/A')}"
+                f"   Result: syllables_match={result['syllables_match']}, rhymes_valid={result.get('rhymes_valid', 'N/A')}, patterns_match={result.get('patterns_match', 'N/A')}"
             )
             if result.get("feedback"):
                 logger.info(f"   Feedback:\n{result['feedback']}")
@@ -110,20 +111,29 @@ class LyricsTranslator:
             logger.info(f"   Result: rhymes={result['rhymes']}")
             return result
 
-        def get_syllable_pattern(text: str, language: str) -> dict:
-            """Analyze text: segment into words (LLM-based) and count syllables for each word (IPA-based with phonemizer + espeak-ng). Returns: {"words": [str], "syllables": [int], "total_syllables": int}. Example: "I like tomato" → {"words": ["I", "like", "tomato"], "syllables": [1, 1, 3], "total_syllables": 5}"""
+        def get_syllable_pattern(lines: list[str], language: str) -> dict:
+            """Analyze multiple lines: segment into words (LLM-based) and count syllables for each word (IPA-based with phonemizer + espeak-ng). Returns: {"syllable_patterns": [[int]]}, where each inner list represents syllables per word for that line. Example: ["I like tomato", "You are great"] → {"syllable_patterns": [[1, 1, 3], [1, 1, 1]]}"""
             self.tool_call_stats["get_syllable_pattern"] += 1
             logger.info(
-                f"🔧 Tool called: get_syllable_pattern(text='{text[:30]}...', language={language})"
+                f"🔧 Tool called: get_syllable_pattern(lines={len(lines)}, language={language})"
             )
-            syllables = self.feature_extractor._get_syllable_pattern(text, language)
+            syllable_patterns = self.feature_extractor._get_syllable_patterns(lines, language)
             result = {
-                "syllables": syllables,
+                "syllable_patterns": syllable_patterns,
             }
+            logger.info(f"   Result: {syllable_patterns}")
+            return result
+
+        def verify_syllable_pattern(lines: list[str], language: str, target_patterns: list[list[int]]) -> dict:
+            """Verify syllable patterns match exactly (uses batch LLM call). Returns: {"syllable_patterns": [[int]], "patterns_match": bool, "feedback": str}. Example: verify_syllable_pattern(["I like you"], "en-us", [[1, 1, 1]]) checks if pattern matches [1, 1, 1]"""
+            self.tool_call_stats["verify_syllable_pattern"] += 1
             logger.info(
-                f"   Result: {result['total_syllables']}"
+                f"🔧 Tool called: verify_syllable_pattern(lines={len(lines)}, language={language}, target_patterns={target_patterns})"
             )
-            logger.info(f"   Syllables: {syllables}")
+            result = self.validator.verify_syllable_pattern(lines, language, target_patterns)
+            logger.info(f"   Result: patterns_match={result['patterns_match']}")
+            if result.get("feedback"):
+                logger.info(f"   Feedback:\n{result['feedback']}")
             return result
 
         # Register tools to Agent
@@ -142,8 +152,9 @@ CONSTRAINT PRIORITIES (strictly enforced in this order):
 3. WORD COUNT (HELPFUL) - Try to match the number of words per line for better singability
 
 AVAILABLE TOOLS (syllable counting uses IPA-based method with phonemizer + espeak-ng):
-- verify_all_constraints(lines, language, target_syllables, rhyme_scheme) - Check syllable and rhyme constraints at once
-- get_syllable_pattern(text, language) - Get syllables pattern (IPA-based). Returns {"syllables": [int]}
+- verify_all_constraints(lines, language, target_syllables, rhyme_scheme, target_patterns=None) - Check syllable, rhyme, and optionally pattern constraints at once (most efficient)
+- verify_syllable_pattern(lines, language, target_patterns) - Verify syllable patterns match exactly (uses batch LLM call)
+- get_syllable_pattern(lines, language) - Get syllables pattern for multiple lines (IPA-based). Returns {"syllable_patterns": [[int]]}
 - count_syllables(text, language) - Count total syllables using IPA vowel nuclei detection
 - check_rhyme(text1, text2, language) - Check if two texts rhyme using IPA rhyme ending comparison
 
@@ -214,10 +225,10 @@ Limit to 10 verification rounds. If still mismatched, output best attempt with r
             self.validator.extractor._extract_rhyme_ending(line, target_lang)
             for line in translation.translated_lines
         ]
-        translation.syllable_patterns = [
-            self.feature_extractor._get_syllable_pattern(line, target_lang)
-            for line in translation.translated_lines
-        ]
+        # Batch process all lines in one LLM call
+        translation.syllable_patterns = self.feature_extractor._get_syllable_patterns(
+            translation.translated_lines, target_lang
+        )
 
         # 5. Add tool call statistics to translation
         translation.tool_call_stats = dict(self.tool_call_stats)

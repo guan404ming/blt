@@ -21,15 +21,25 @@ class ConstraintValidator:
         language: str,
         target_syllables: list[int],
         rhyme_scheme: str = "",
+        target_patterns: list[list[int]] | None = None,
     ) -> dict:
         """
         Verify all constraints at once (most efficient tool).
+
+        Args:
+            lines: List of translated lines
+            language: Language code
+            target_syllables: Target syllable count for each line
+            rhyme_scheme: Rhyme scheme (e.g., "AABB")
+            target_patterns: Optional target syllable patterns, e.g., [[1, 1, 3], [1, 2, 1]]
 
         Returns: {
             "syllables": [int],
             "syllables_match": bool,
             "rhyme_endings": [str],
             "rhymes_valid": bool,
+            "syllable_patterns": [[int]] (if target_patterns provided),
+            "patterns_match": bool (if target_patterns provided),
             "feedback": str  # Improvement suggestions
         }
         """
@@ -62,6 +72,41 @@ class ConstraintValidator:
             if mismatches:
                 feedback_parts.append("SYLLABLE MISMATCHES:\n" + "\n".join(mismatches))
 
+        # Check syllable patterns if provided (uses batch LLM call)
+        patterns_match = True
+        syllable_patterns = None
+        if target_patterns:
+            syllable_patterns = self.extractor._get_syllable_patterns(lines, language)
+            patterns_match = syllable_patterns == target_patterns
+
+            if not patterns_match:
+                pattern_mismatches = []
+                for i, (actual, target) in enumerate(zip(syllable_patterns, target_patterns)):
+                    if actual != target:
+                        actual_str = "[" + ", ".join(str(s) for s in actual) + "]"
+                        target_str = "[" + ", ".join(str(s) for s in target) + "]"
+                        actual_total = sum(actual)
+                        target_total = sum(target)
+
+                        mismatch_details = []
+                        mismatch_details.append(f"Line {i + 1}:")
+                        mismatch_details.append(f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)")
+                        mismatch_details.append(f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)")
+
+                        if len(actual) != len(target):
+                            diff = len(actual) - len(target)
+                            if diff > 0:
+                                mismatch_details.append(f"  → Need {diff} fewer word(s)")
+                            else:
+                                mismatch_details.append(f"  → Need {abs(diff)} more word(s)")
+                        else:
+                            mismatch_details.append("  → Word count matches, but syllable distribution differs")
+
+                        pattern_mismatches.append("\n".join(mismatch_details))
+
+                if pattern_mismatches:
+                    feedback_parts.append("SYLLABLE PATTERN MISMATCHES:\n\n" + "\n\n".join(pattern_mismatches))
+
         # Check rhyme scheme
         rhymes_valid = True
         rhyme_issues = []
@@ -89,13 +134,20 @@ class ConstraintValidator:
         else:
             feedback = "All constraints satisfied!"
 
-        return {
+        result = {
             "syllables": syllables,
             "syllables_match": syllables_match,
             "rhyme_endings": rhyme_endings,
             "rhymes_valid": rhymes_valid,
             "feedback": feedback,
         }
+
+        # Add syllable pattern results if checked
+        if target_patterns:
+            result["syllable_patterns"] = syllable_patterns
+            result["patterns_match"] = patterns_match
+
+        return result
 
     def count_syllables(self, text: str, language: str) -> int:
         """Count syllables in text."""
@@ -108,66 +160,63 @@ class ConstraintValidator:
         rhymes = self._rhymes_with(rhyme1, rhyme2)
         return {"rhymes": rhymes, "rhyme1": rhyme1, "rhyme2": rhyme2}
 
-    def segment_words(self, text: str, language: str) -> list[str]:
-        """
-        Segment text into words.
-
-        Returns: List of words, e.g., ["I", "don't", "like", "you"]
-        """
-        return self.extractor._segment_words(text, language)
-
     def verify_syllable_pattern(
-        self, lines: list[str], language: str, target_word_counts: list[int]
+        self, lines: list[str], language: str, target_patterns: list[list[int]]
     ) -> dict:
         """
-        Verify that each line has the target number of words.
+        Verify that syllable patterns match exactly (uses batch LLM call).
 
         Args:
             lines: List of translated lines
             language: Language code
-            target_word_counts: Target word count for each line
+            target_patterns: Target syllable pattern for each line, e.g., [[1, 1, 3], [1, 2, 1]]
 
         Returns: {
             "syllable_patterns": [[int]],
-            "word_counts": [int],
-            "counts_match": bool,
+            "patterns_match": bool,
             "feedback": str
         }
         """
-        syllable_patterns = [
-            self.extractor._get_syllable_pattern(line, language) for line in lines
-        ]
-        word_counts = [len(pattern) for pattern in syllable_patterns]
-        counts_match = word_counts == target_word_counts
+        # Batch process all lines in one LLM call
+        syllable_patterns = self.extractor._get_syllable_patterns(lines, language)
+        patterns_match = syllable_patterns == target_patterns
 
         feedback_parts = []
-        if not counts_match:
+        if not patterns_match:
             mismatches = []
-            for i, (actual, target) in enumerate(zip(word_counts, target_word_counts)):
+            for i, (actual, target) in enumerate(zip(syllable_patterns, target_patterns)):
                 if actual != target:
-                    diff = actual - target
-                    pattern_str = ", ".join(str(s) for s in syllable_patterns[i])
-                    if diff > 0:
-                        mismatches.append(
-                            f"Line {i + 1}: {actual} words [{pattern_str}] (need {diff} fewer)"
-                        )
+                    actual_str = "[" + ", ".join(str(s) for s in actual) + "]"
+                    target_str = "[" + ", ".join(str(s) for s in target) + "]"
+                    actual_total = sum(actual)
+                    target_total = sum(target)
+
+                    mismatch_details = []
+                    mismatch_details.append(f"Line {i + 1}:")
+                    mismatch_details.append(f"  Actual:  {actual_str} (total: {actual_total} syllables, {len(actual)} words)")
+                    mismatch_details.append(f"  Target:  {target_str} (total: {target_total} syllables, {len(target)} words)")
+
+                    if len(actual) != len(target):
+                        diff = len(actual) - len(target)
+                        if diff > 0:
+                            mismatch_details.append(f"  → Need {diff} fewer word(s)")
+                        else:
+                            mismatch_details.append(f"  → Need {abs(diff)} more word(s)")
                     else:
-                        mismatches.append(
-                            f"Line {i + 1}: {actual} words [{pattern_str}] (need {abs(diff)} more)"
-                        )
+                        mismatch_details.append("  → Word count matches, but syllable distribution differs")
+
+                    mismatches.append("\n".join(mismatch_details))
+
             if mismatches:
-                feedback_parts.append(
-                    "WORD COUNT MISMATCHES:\n" + "\n".join(mismatches)
-                )
+                feedback_parts.append("SYLLABLE PATTERN MISMATCHES:\n" + "\n\n".join(mismatches))
 
         feedback = (
-            "\n\n".join(feedback_parts) if feedback_parts else "Word counts match!"
+            "\n\n".join(feedback_parts) if feedback_parts else "Syllable patterns match perfectly!"
         )
 
         return {
             "syllable_patterns": syllable_patterns,
-            "word_counts": word_counts,
-            "counts_match": counts_match,
+            "patterns_match": patterns_match,
             "feedback": feedback,
         }
 
@@ -179,6 +228,17 @@ class ConstraintValidator:
         """Simple validation for final result display."""
         # Check syllables
         syllables_match = translation.syllable_counts == constraints.syllable_counts
+
+        # Check syllable patterns if both exist
+        patterns_match = True
+        if (
+            constraints.syllable_patterns
+            and translation.syllable_patterns
+            and len(constraints.syllable_patterns) == len(translation.syllable_patterns)
+        ):
+            patterns_match = (
+                translation.syllable_patterns == constraints.syllable_patterns
+            )
 
         # Check rhymes if needed
         rhymes_valid = True
@@ -195,8 +255,18 @@ class ConstraintValidator:
                             rhymes_valid = False
                             break
 
-        passed = syllables_match and rhymes_valid
-        score = 1.0 if passed else 0.5
+        passed = syllables_match and rhymes_valid and patterns_match
+
+        # Calculate score based on what matched
+        score_components = []
+        if syllables_match:
+            score_components.append(0.5)  # 50% for syllable count
+        if rhymes_valid or not constraints.rhyme_scheme:
+            score_components.append(0.3)  # 30% for rhymes
+        if patterns_match:
+            score_components.append(0.2)  # 20% for syllable patterns
+
+        score = sum(score_components)
 
         return ValidationResult(
             passed=passed,
