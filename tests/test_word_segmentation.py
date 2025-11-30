@@ -1,0 +1,74 @@
+"""
+Tests for LLM-based word segmentation functionality in FeatureExtractor
+"""
+
+import pytest
+from blt.translators.feature_extractor import FeatureExtractor
+
+
+class TestWordSegmentation:
+    """Test suite for LLM-based word segmentation functionality"""
+
+    @pytest.fixture
+    def extractor(self):
+        """Create a FeatureExtractor instance for testing"""
+        return FeatureExtractor(source_lang="English", target_lang="Chinese")
+
+    @pytest.mark.parametrize(
+        "text,lang,expected_words",
+        [
+            # English tests
+            ("I don't like you", "en-us", ["I", "don't", "like", "you"]),
+            ("Hello world", "en-us", ["Hello", "world"]),
+            ("It's a beautiful day", "en-us", ["It's", "a", "beautiful", "day"]),
+            ("You can't do that", "en-us", ["You", "can't", "do", "that"]),
+            ("Hello, world!", "en-us", ["Hello", "world"]),
+            ("I love you.", "en-us", ["I", "love", "you"]),
+            # Edge cases
+            ("", "en-us", []),
+            ("a", "en-us", ["a"]),
+            ("I", "en-us", ["I"]),
+            # With punctuation
+            ("Yes, I can!", "en-us", ["Yes", "I", "can"]),
+            ("Don't stop me now", "en-us", ["Don't", "stop", "me", "now"]),
+            # Hyphenated words
+            ("Well-known", "en-us", ["Well-known"]),
+            ("State-of-the-art", "en-us", ["State-of-the-art"]),
+            # Multiple spaces
+            ("Hello  world", "en-us", ["Hello", "world"]),
+            # Chinese tests (LLM-based segmentation)
+            ("我不愛你", "cmn", ["我", "不", "愛", "你"]),
+            ("你好世界", "cmn", ["你好", "世界"]),
+            ("今天天氣很好", "cmn", ["今天", "天氣", "很", "好"]),
+            ("我愛你", "cmn", ["我", "愛", "你"]),
+            # Single character Chinese
+            ("我", "cmn", ["我"]),
+            ("你", "cmn", ["你"]),
+        ],
+    )
+    def test_segment_words(self, extractor, text, lang, expected_words):
+        """Test LLM-based word segmentation for different languages and cases"""
+        result = extractor._segment_words(text, lang)
+        assert result == expected_words, f"Expected {expected_words}, got {result}"
+
+    def test_segment_empty_line(self, extractor):
+        """Test segmentation of empty line"""
+        result = extractor._segment_words("", "en-us")
+        assert result == []
+
+    def test_segment_punctuation_only(self, extractor):
+        """Test segmentation of punctuation-only text"""
+        result = extractor._segment_words("!!!", "en-us")
+        assert result == []
+
+    def test_segment_mixed_punctuation(self, extractor):
+        """Test segmentation with mixed punctuation"""
+        result = extractor._segment_words("Hello, my name is John!", "en-us")
+        assert result == ["Hello", "my", "name", "is", "John"]
+
+    def test_chinese_word_count(self, extractor):
+        """Test Chinese word segmentation count"""
+        text = "我愛你"
+        words = extractor._segment_words(text, "cmn")
+        assert len(words) == 3
+        assert "".join(words) == "我愛你"

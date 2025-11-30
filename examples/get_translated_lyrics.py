@@ -106,7 +106,7 @@ def main():
 
     print(f"\n音節數: {constraints.syllable_counts}")
     print(f"押韻方案: {constraints.rhyme_scheme}")
-    print(f"停頓位置: {constraints.pause_positions}")
+    print(f"停頓位置: {constraints.word_segments}")
 
     # Zero-shot translation
     print("\n" + "=" * 80)
