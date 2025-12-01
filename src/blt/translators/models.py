@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 
 
 class WordSegmentation(BaseModel):
-    """詞彙分割結果 (LLM-based segmentation output)"""
+    """詞彙分割結果 (LLM-based segmentation output for multiple lines)"""
 
-    words: list[str] = Field(
-        description="List of segmented words, e.g., ['I', \"don't\", 'like', 'you']"
+    lines: list[list[str]] = Field(
+        description="List of segmented words for each line, e.g., [['I', \"don't\", 'like', 'you'], ['You', 'like', 'me']]"
     )
 
 
@@ -25,9 +25,9 @@ class MusicConstraints(BaseModel):
     rhyme_scheme: Optional[str] = Field(
         default=None, description="押韻方案，例如: AABB, ABAB, AAAA"
     )
-    word_segments: Optional[list[list[str]]] = Field(
+    syllable_patterns: Optional[list[list[int]]] = Field(
         default=None,
-        description="詞彙分割，每行的詞彙數組，例如: [['I', 'don't', 'like', 'you'], ['You', 'don't', 'like', 'me']]",
+        description="每行的目標音節規律，例如: [[1, 1, 1, 3], [1, 3, 2, 4]]",
     )
 
 
@@ -41,9 +41,9 @@ class LyricTranslation(BaseModel):
     rhyme_endings: list[str] = Field(
         description="Rhyme ending per line (LLM outputs, we recalculate)"
     )
-    word_segments: Optional[list[list[str]]] = Field(
+    syllable_patterns: Optional[list[list[int]]] = Field(
         default=None,
-        description="Word segmentation per line (LLM outputs, we recalculate)",
+        description="Syllable patterns per line (LLM outputs, we recalculate)",
     )
     reasoning: str = Field(description="Translation reasoning and considerations")
     tool_call_stats: Optional[dict[str, int]] = Field(
