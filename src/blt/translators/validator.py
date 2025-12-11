@@ -75,7 +75,9 @@ class ConstraintValidator:
         if not syllables_match:
             mismatches = self._build_syllable_feedback(syllables, target_syllables)
             if mismatches:
-                feedback_parts.append("⚠️  SYLLABLE COUNT MISMATCHES:\n" + "\n".join(mismatches))
+                feedback_parts.append(
+                    "⚠️  SYLLABLE COUNT MISMATCHES:\n" + "\n".join(mismatches)
+                )
 
         # Check rhyme scheme (LOWEST PRIORITY)
         rhymes_valid = True
@@ -84,7 +86,9 @@ class ConstraintValidator:
                 rhyme_endings, rhyme_scheme, language
             )
             if rhyme_issues:
-                feedback_parts.append("ℹ️  Rhyme issues (optional):\n" + "\n".join(rhyme_issues))
+                feedback_parts.append(
+                    "ℹ️  Rhyme issues (optional):\n" + "\n".join(rhyme_issues)
+                )
 
         # Combine feedback
         feedback = (
