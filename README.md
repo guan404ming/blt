@@ -25,22 +25,22 @@
 
 **Music Constraints Extracted:**
 
-1. **Syllable Counts** (per line)
+1. **syllable_counts**: `list[int]` (ex. [4, 3])
 
-   - IPA-based syllable counting for English
-   - Character-based counting for Chinese
-   - Multi-language support (Japanese, Korean, etc.)
+   - Chinese: Character-based
+   - Other languages: IPA vowel nuclei
 
-2. **Rhyme Scheme** (e.g., AABB, ABAB)
+2. **syllable_patterns**: `list[list[int]]` (ex. [[1, 1, 2], [1, 2]])
 
-   - IPA phoneme-based rhyme detection for English
-   - Pinyin finals (韻母) for Chinese
-   - Cross-line rhyme pattern analysis
+   - **With audio (WIP)**: Alignment problem - timing sync with vocals
+   - **Without audio**: Word segmentation problem
+     - Chinese: HanLP tokenizer
+     - English: Space splitting
+     - Other languages: LLM-based
 
-3. **Syllable Patterns** (word-level)
-   - Syllables per word within each line
-   - Example: "I love you" → [1, 1, 1]
-   - Preserves singing rhythm and phrasing
+3. **rhyme_scheme**: `str` (ex. AB)
+   - Chinese: Pinyin finals
+   - Other languages: IPA phonemes
 
 </td>
 <td width="50%" valign="top">
