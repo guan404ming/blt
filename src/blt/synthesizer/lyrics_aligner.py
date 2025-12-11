@@ -194,7 +194,6 @@ class LyricsAligner:
             for i in range(len(words))
         ]
         scores = []
-        alignment_successful = False
 
         # Convert to WordTiming objects
         word_timings = []

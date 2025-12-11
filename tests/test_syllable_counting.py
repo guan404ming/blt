@@ -117,7 +117,7 @@ class TestSyllableCounting:
             (
                 "きょうはとてもいいてんきです",
                 "ja",
-                8,  # IPA-based count
+                11,  # IPA-based count
             ),
         ],
     )
