@@ -11,10 +11,6 @@
 
 ### 1. Translator
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
 **IPA-based lyrics translation tools with music constraints:**
 
 | Tool                  | Description                                          |
@@ -42,9 +38,6 @@
    - Chinese: Pinyin finals
    - Other languages: IPA phonemes
 
-</td>
-<td width="50%" valign="top">
-
 **Translation Flow:**
 
 ```mermaid
@@ -52,24 +45,14 @@ flowchart TD
     A[Source Lyrics] --> B[LyricsAnalyzer]
     B --> |Extract Constraints| C{LyricsTranslator}
     C --> |Generate Translation| D[ConstraintValidator]
-    D --> |Check Constraints| E{Valid?}
+    D --> |Check Constraints| E{Valid or Max Retries}
     E --> |No| C
     E --> |Yes| F[Target Lyrics]
 
-    style A fill:#e1f5ff
-    style F fill:#d4edda
-    style C fill:#fff3cd
-    style E fill:#f8d7da
-
-    classDef analyzer fill:#e7f3ff
-    classDef validator fill:#fff0e6
-    class B analyzer
-    class D validator
+    style B fill:#64b5f6,stroke:#1976d2,stroke-width:2px,color:#fff
+    style C fill:#1976d2,stroke:#0d47a1,stroke-width:2px,color:#fff
+    style D fill:#42a5f5,stroke:#1976d2,stroke-width:2px,color:#fff
 ```
-
-</td>
-</tr>
-</table>
 
 ### 2. Synthesizer
 
