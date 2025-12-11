@@ -10,28 +10,83 @@
 ## Toolkit Components
 
 ### 1. Translator
-IPA-based lyrics translation tools with music constraints:
 
-| Tool | Description |
-|------|-------------|
-| `LyricsTranslator` | Lyrics translation with syllable/rhyme preservation |
-| `FeatureExtractor` | Extract music constraints (syllables, rhymes) from lyrics |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**IPA-based lyrics translation tools with music constraints:**
+
+| Tool                  | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `LyricsTranslator`    | Main translator with syllable/rhyme preservation     |
+| `LyricsAnalyzer`      | Extract music constraints from lyrics                |
 | `ConstraintValidator` | Validate translated lyrics against music constraints |
 
+**Music Constraints Extracted:**
+
+1. **syllable_counts**: `list[int]` (ex. [4, 3])
+
+   - Chinese: Character-based
+   - Other languages: IPA vowel nuclei
+
+2. **syllable_patterns**: `list[list[int]]` (ex. [[1, 1, 2], [1, 2]])
+
+   - **With audio (WIP)**: Alignment problem - timing sync with vocals
+   - **Without audio**: Word segmentation problem
+     - Chinese: HanLP tokenizer
+     - English: Space splitting
+     - Other languages: LLM-based
+
+3. **rhyme_scheme**: `str` (ex. AB)
+   - Chinese: Pinyin finals
+   - Other languages: IPA phonemes
+
+</td>
+<td width="50%" valign="top">
+
+**Translation Flow:**
+
+```mermaid
+flowchart TD
+    A[Source Lyrics] --> B[LyricsAnalyzer]
+    B --> |Extract Constraints| C{LyricsTranslator}
+    C --> |Generate Translation| D[ConstraintValidator]
+    D --> |Check Constraints| E{Valid?}
+    E --> |No| C
+    E --> |Yes| F[Target Lyrics]
+
+    style A fill:#e1f5ff
+    style F fill:#d4edda
+    style C fill:#fff3cd
+    style E fill:#f8d7da
+
+    classDef analyzer fill:#e7f3ff
+    classDef validator fill:#fff0e6
+    class B analyzer
+    class D validator
+```
+
+</td>
+</tr>
+</table>
+
 ### 2. Synthesizer
+
 TTS, alignment, and voice synthesis tools:
 
-| Tool | Description |
-|------|-------------|
-| `VocalSeparator` | Separate vocals from instrumental tracks |
-| `LyricsAligner` | Align lyrics timing with audio |
-| `VoiceSynthesizer` | Synthesize vocals with new lyrics |
+| Tool               | Description                              |
+| ------------------ | ---------------------------------------- |
+| `VocalSeparator`   | Separate vocals from instrumental tracks |
+| `LyricsAligner`    | Align lyrics timing with audio           |
+| `VoiceSynthesizer` | Synthesize vocals with new lyrics        |
 
 ### 3. Pipeline
+
 Pre-defined combinations of tools:
 
-| Pipeline | Description |
-|----------|-------------|
+| Pipeline            | Description                                               |
+| ------------------- | --------------------------------------------------------- |
 | `CoverSongPipeline` | End-to-end pipeline for generating translated cover songs |
 
 ## Setup
