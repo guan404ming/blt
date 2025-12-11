@@ -1,17 +1,38 @@
-# 🥪 BLT - Better Lyrics Translation
+# 🥪 BLT - Better Lyrics Translation Toolkit
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-apache-yellow.svg)](https://opensource.org/license/apache-2-0)
 
 ## Overview
 
-**BLT** is an AI-powered song translation tool that allows you to translate any song into another language. It features a smart lyrics translation engine that rewrites lyrics to fit the song's melody, rhythm, and rhyme scheme, and then synthesizes the vocals to match the original singer's voice.
+**BLT** is a toolkit for song translation and voice synthesis. The toolkit contains three modular components that can be used independently or combined through pre-defined pipelines.
 
-## Features
+## Toolkit Components
 
-- **BLT (Better Lyrics Translation)**: Automatically translates and adapts lyrics to target languages, ensuring they fit the original melody's syllable count and rhyme constraints.
-- **Voice Cloning**: Preserves the unique timbre and style of the original artist in the translated version.
-- **Multilingual Support**: Translate songs between any language supported by modern LLMs.
+### 1. Translator
+IPA-based lyrics translation tools with music constraints:
+
+| Tool | Description |
+|------|-------------|
+| `LyricsTranslator` | Lyrics translation with syllable/rhyme preservation |
+| `FeatureExtractor` | Extract music constraints (syllables, rhymes) from lyrics |
+| `ConstraintValidator` | Validate translated lyrics against music constraints |
+
+### 2. Synthesizer
+TTS, alignment, and voice synthesis tools:
+
+| Tool | Description |
+|------|-------------|
+| `VocalSeparator` | Separate vocals from instrumental tracks |
+| `LyricsAligner` | Align lyrics timing with audio |
+| `VoiceSynthesizer` | Synthesize vocals with new lyrics |
+
+### 3. Pipeline
+Pre-defined combinations of tools:
+
+| Pipeline | Description |
+|----------|-------------|
+| `CoverSongPipeline` | End-to-end pipeline for generating translated cover songs |
 
 ## Setup
 

@@ -1,18 +1,18 @@
 """
-Tests for syllable counting functionality in FeatureExtractor
+Tests for syllable counting functionality in LyricsAnalyzer
 """
 
 import pytest
-from blt.translators.feature_extractor import FeatureExtractor
+from blt.translators import LyricsAnalyzer
 
 
 class TestSyllableCounting:
     """Test suite for syllable counting functionality"""
 
     @pytest.fixture
-    def extractor(self):
-        """Create a FeatureExtractor instance for testing"""
-        return FeatureExtractor(source_lang="English", target_lang="Chinese")
+    def analyzer(self):
+        """Create a LyricsAnalyzer instance for testing"""
+        return LyricsAnalyzer()
 
     @pytest.mark.parametrize(
         "text,lang,expected_count",
@@ -61,9 +61,9 @@ class TestSyllableCounting:
             ("", "ja", 0),
         ],
     )
-    def test_count_syllables_basic(self, extractor, text, lang, expected_count):
+    def test_count_syllables_basic(self, analyzer, text, lang, expected_count):
         """Test syllable counting for English, Chinese, and Japanese with basic words and phrases"""
-        result = extractor._count_syllables(text, lang)
+        result = analyzer.count_syllables(text, lang)
         assert result == expected_count, (
             f"Expected {expected_count} syllables for '{text}' ({lang}), got {result}"
         )
@@ -122,10 +122,10 @@ class TestSyllableCounting:
         ],
     )
     def test_count_syllables_longer_sentences(
-        self, extractor, text, lang, expected_count
+        self, analyzer, text, lang, expected_count
     ):
         """Test syllable counting for longer sentences in English, Chinese, and Japanese"""
-        result = extractor._count_syllables(text, lang)
+        result = analyzer.count_syllables(text, lang)
         assert result == expected_count, (
             f"Expected {expected_count} syllables for '{text}' ({lang}), got {result}"
         )
@@ -142,9 +142,9 @@ class TestSyllableCounting:
             ("こんにちは！", "ja"),
         ],
     )
-    def test_count_syllables_with_punctuation(self, extractor, text, lang):
+    def test_count_syllables_with_punctuation(self, analyzer, text, lang):
         """Test that syllable counting handles punctuation correctly for all languages"""
-        result = extractor._count_syllables(text, lang)
+        result = analyzer.count_syllables(text, lang)
         # Should still return a positive count even with punctuation
         assert result > 0, (
             f"Expected positive syllable count for '{text}' ({lang}), got {result}"
@@ -154,9 +154,9 @@ class TestSyllableCounting:
         "lang",
         ["en-us", "cmn", "ja"],
     )
-    def test_count_syllables_whitespace(self, extractor, lang):
+    def test_count_syllables_whitespace(self, analyzer, lang):
         """Test syllable counting with whitespace-only input for all languages"""
-        result = extractor._count_syllables("   ", lang)
+        result = analyzer.count_syllables("   ", lang)
         assert result == 0, (
             f"Expected 0 syllables for whitespace ({lang}), got {result}"
         )
