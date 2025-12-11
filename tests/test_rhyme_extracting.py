@@ -1,18 +1,18 @@
 """
-Tests for rhyme extraction functionality in FeatureExtractor
+Tests for rhyme extraction functionality in LyricsAnalyzer
 """
 
 import pytest
-from blt.translators.feature_extractor import FeatureExtractor
+from blt.translators import LyricsAnalyzer
 
 
 class TestRhymeExtracting:
     """Test suite for rhyme extraction functionality"""
 
     @pytest.fixture
-    def extractor(self):
-        """Create a FeatureExtractor instance for testing"""
-        return FeatureExtractor(source_lang="English", target_lang="Chinese")
+    def analyzer(self):
+        """Create a LyricsAnalyzer instance for testing"""
+        return LyricsAnalyzer(source_lang="English", target_lang="Chinese")
 
     @pytest.mark.parametrize(
         "text,lang",
@@ -39,9 +39,9 @@ class TestRhymeExtracting:
             ("さようなら", "ja"),
         ],
     )
-    def test_extract_rhyme_ending_basic(self, extractor, text, lang):
+    def test_extract_rhyme_ending_basic(self, analyzer, text, lang):
         """Test rhyme ending extraction returns non-empty string for valid input"""
-        result = extractor._extract_rhyme_ending(text, lang)
+        result = analyzer.extract_rhyme_ending(text, lang)
         assert len(result) > 0, (
             f"Expected non-empty rhyme ending for '{text}' ({lang}), got '{result}'"
         )
@@ -76,9 +76,9 @@ class TestRhymeExtracting:
             (["心", "林", "金"], "cmn"),  # in final
         ],
     )
-    def test_extract_rhyme_ending_rhyming_groups(self, extractor, words, lang):
+    def testextract_rhyme_ending_rhyming_groups(self, analyzer, words, lang):
         """Test that rhyming word groups produce the same rhyme ending"""
-        endings = [extractor._extract_rhyme_ending(word, lang) for word in words]
+        endings = [analyzer.extract_rhyme_ending(word, lang) for word in words]
         assert len(set(endings)) == 1, (
             f"Expected all words in {words} to have same rhyme ending, got {endings}"
         )
@@ -87,19 +87,19 @@ class TestRhymeExtracting:
         "lang",
         ["en-us", "cmn", "ja"],
     )
-    def test_extract_rhyme_ending_empty_string(self, extractor, lang):
+    def test_extract_rhyme_ending_empty_string(self, analyzer, lang):
         """Test rhyme ending extraction handles empty string"""
-        result = extractor._extract_rhyme_ending("", lang)
+        result = analyzer.extract_rhyme_ending("", lang)
         assert result == "", (
             f"Expected empty rhyme ending for empty string ({lang}), got '{result}'"
         )
 
-    def test_extract_rhyme_ending_with_punctuation(self, extractor):
+    def test_extract_rhyme_ending_with_punctuation(self, analyzer):
         """Test rhyme ending extraction handles punctuation"""
         # Test with punctuation
-        result_plain = extractor._extract_rhyme_ending("cat", "en-us")
-        result_punct1 = extractor._extract_rhyme_ending("cat!", "en-us")
-        result_punct2 = extractor._extract_rhyme_ending("cat.", "en-us")
+        result_plain = analyzer.extract_rhyme_ending("cat", "en-us")
+        result_punct1 = analyzer.extract_rhyme_ending("cat!", "en-us")
+        result_punct2 = analyzer.extract_rhyme_ending("cat.", "en-us")
 
         # All should produce same result
         assert result_plain == result_punct1 == result_punct2, (
