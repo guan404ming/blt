@@ -1,18 +1,18 @@
 """
-Tests for LLM-based word segmentation functionality in FeatureExtractor
+Tests for LLM-based word segmentation functionality in LyricsAnalyzer
 """
 
 import pytest
-from blt.translators.feature_extractor import FeatureExtractor
+from blt.translators import LyricsAnalyzer
 
 
 class TestWordSegmentation:
     """Test suite for LLM-based word segmentation functionality"""
 
     @pytest.fixture
-    def extractor(self):
-        """Create a FeatureExtractor instance for testing"""
-        return FeatureExtractor(source_lang="English", target_lang="Chinese")
+    def analyzer(self):
+        """Create a LyricsAnalyzer instance for testing"""
+        return LyricsAnalyzer(source_lang="English", target_lang="Chinese")
 
     @pytest.mark.parametrize(
         "text,lang,expected_words",
@@ -45,42 +45,42 @@ class TestWordSegmentation:
             ("你", "cmn", ["你"]),
         ],
     )
-    def test_segment_words(self, extractor, text, lang, expected_words):
+    def test_segment_words(self, analyzer, text, lang, expected_words):
         """Test LLM-based word segmentation for different languages and cases"""
         # _segment_words now takes a list of lines and returns list of lists
-        result = extractor._segment_words([text], lang)
+        result = analyzer._segment_words([text], lang)
         assert len(result) == 1, f"Expected 1 line result, got {len(result)}"
         assert result[0] == expected_words, (
             f"Expected {expected_words}, got {result[0]}"
         )
 
-    def test_segment_empty_lines(self, extractor):
+    def test_segment_empty_lines(self, analyzer):
         """Test segmentation of empty lines"""
-        result = extractor._segment_words([], "en-us")
+        result = analyzer._segment_words([], "en-us")
         assert result == []
 
-    def test_segment_punctuation_only(self, extractor):
+    def test_segment_punctuation_only(self, analyzer):
         """Test segmentation of punctuation-only text"""
-        result = extractor._segment_words(["!!!"], "en-us")
+        result = analyzer._segment_words(["!!!"], "en-us")
         assert len(result) == 1
         assert result[0] == []
 
-    def test_segment_mixed_punctuation(self, extractor):
+    def test_segment_mixed_punctuation(self, analyzer):
         """Test segmentation with mixed punctuation"""
-        result = extractor._segment_words(["Hello, my name is John!"], "en-us")
+        result = analyzer._segment_words(["Hello, my name is John!"], "en-us")
         assert len(result) == 1
         assert result[0] == ["Hello", "my", "name", "is", "John"]
 
-    def test_chinese_word_count(self, extractor):
+    def test_chinese_word_count(self, analyzer):
         """Test Chinese word segmentation count"""
         text = "我愛你"
-        result = extractor._segment_words([text], "cmn")
+        result = analyzer._segment_words([text], "cmn")
         assert len(result) == 1
         words = result[0]
         assert len(words) == 3
         assert "".join(words) == "我愛你"
 
-    def test_batch_segment_words(self, extractor):
+    def test_batch_segment_words(self, analyzer):
         """Test batch segmentation of multiple lines"""
         lines = ["I don't like you", "Hello world", "Yes, I can!"]
         expected = [
@@ -88,6 +88,6 @@ class TestWordSegmentation:
             ["Hello", "world"],
             ["Yes", "I", "can"],
         ]
-        result = extractor._segment_words(lines, "en-us")
+        result = analyzer._segment_words(lines, "en-us")
         assert len(result) == 3, f"Expected 3 lines, got {len(result)}"
         assert result == expected, f"Expected {expected}, got {result}"

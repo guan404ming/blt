@@ -1,5 +1,5 @@
 """
-Translate lyrics with music constraints
+Translate lyrics with music constraints - Updated for new API
 """
 
 import argparse
@@ -7,7 +7,8 @@ import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from blt.translators import LyricsTranslator, FeatureExtractor
+from blt.translators import LyricsTranslator, TranslatorConfig
+from blt.translators.analyzer import LyricsAnalyzer
 
 # Load .env file
 load_dotenv()
@@ -27,8 +28,8 @@ def main():
         "-f",
         "--lyrics-file",
         type=str,
-        default="/Users/wchiu/Documents/GitHub/blt/examples/lyrics-let-it-go.txt",
-        help="Path to the lyrics file (default: lyrics-let-it-go.txt)",
+        default="examples/lyrics-let-it-go.txt",
+        help="Path to the lyrics file",
     )
     parser.add_argument(
         "-s",
@@ -49,27 +50,34 @@ def main():
         "--save-dir",
         type=str,
         default="outputs",
-        help="Directory to save translation results (default: outputs)",
+        help="Directory to save translation results",
+    )
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="gemini-2.5-flash",
+        help="Model to use (default: gemini-2.5-flash)",
     )
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Enable verbose logging (shows tool calls)",
+        help="Enable verbose logging",
     )
 
     args = parser.parse_args()
 
-    # Set logging level based on verbose flag
+    # Set logging level
     if args.verbose:
-        logging.getLogger("blt.translators.translator").setLevel(logging.INFO)
+        logging.getLogger("blt.translators").setLevel(logging.INFO)
     else:
-        logging.getLogger("blt.translators.translator").setLevel(logging.WARNING)
+        logging.getLogger("blt.translators").setLevel(logging.WARNING)
 
-    # Load API key
+    # Check API key
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("請設定 GOOGLE_API_KEY 環境變數")
+        print("Error: Please set GOOGLE_API_KEY environment variable")
         print("export GOOGLE_API_KEY='your-api-key'")
         return
 
@@ -82,63 +90,68 @@ def main():
     with open(lyrics_path, "r", encoding="utf-8") as f:
         source_lyrics = f.read().strip()
 
-    # Take first verse for demonstration
-    lines = source_lyrics.split("\n")
-    first_verse = "\n".join(lines)
-
     print("=" * 80)
-    print(f"歌詞翻譯: {lyrics_path.name}")
-    print(f"翻譯方向: {args.source_lang} → {args.target_lang}")
+    print(f"Lyrics Translation: {lyrics_path.name}")
+    print(f"Direction: {args.source_lang} → {args.target_lang}")
     print("=" * 80)
-    print(f"\n【原始歌詞】({args.source_lang})")
-    print(first_verse)
+    print(f"\n【Source Lyrics】({args.source_lang})")
+    print(source_lyrics)
     print()
 
-    # Extract constraints
-    print("\n" + "=" * 80)
-    print("1. 自動提取音樂約束")
-    print("=" * 80)
-
-    extractor = FeatureExtractor(
-        source_lang=args.source_lang, target_lang=args.target_lang
-    )
-    constraints = extractor.extract_constraints(first_verse)
-
-    print(f"\n音節數: {constraints.syllable_counts}")
-    print(f"音節規律: {constraints.syllable_patterns}")
-    print(f"押韻方案: {constraints.rhyme_scheme}")
-
-    # Zero-shot translation
-    print("\n" + "=" * 80)
-    print("2. Zero-shot 翻譯")
-    print("=" * 80)
-
-    translator = LyricsTranslator(
+    # Create config
+    config = TranslatorConfig(
+        model=args.model,
         api_key=api_key,
         auto_save=True,
         save_dir=args.save_dir,
-    )
-
-    result = translator.translate(
-        source_lyrics=first_verse,
-        source_lang=args.source_lang,
-        target_lang=args.target_lang,
         save_format="md",
+        default_source_lang=args.source_lang,
+        default_target_lang=args.target_lang,
+        enable_logging=args.verbose,
     )
 
-    print("\n【翻譯結果】")
+    # Create translator
+    translator = LyricsTranslator(config=config)
+
+    # Extract target constraints
+    analyzer = LyricsAnalyzer()
+    constraints = analyzer.extract_constraints(source_lyrics, args.source_lang)
+
+    # Translate
+    print("\n" + "=" * 80)
+    print("Translating...")
+    print("=" * 80)
+
+    result = translator.translate(source_lyrics)
+
+    # Display results
+    print("\n【Translation】")
     for i, line in enumerate(result.translated_lines, 1):
         print(f"{i}. {line}")
 
-    print(f"\n【音節數】{result.syllable_counts}")
-    print(f"【韻腳】{result.rhyme_endings}")
+    print("\n【Syllables】")
+    print(f"  Target: {constraints.syllable_counts}")
+    print(f"  Actual: {result.syllable_counts}")
+    print(f"  Match:  {result.syllable_counts == constraints.syllable_counts}")
+
+    print("\n【Rhymes】")
+    print(f"  Target scheme: {constraints.rhyme_scheme}")
+    print(f"  Actual endings: {result.rhyme_endings}")
+
+    if result.syllable_patterns and constraints.syllable_patterns:
+        print("\n【Patterns】")
+        for i, (target, actual) in enumerate(
+            zip(constraints.syllable_patterns, result.syllable_patterns), 1
+        ):
+            match = "✓" if target == actual else "✗"
+            print(f"  {i}. Target: {target}  |  Actual: {actual}  {match}")
 
     if result.tool_call_stats:
-        print("\n【工具調用統計】")
+        print("\n【Tool Calls】")
         for tool_name, count in sorted(result.tool_call_stats.items()):
-            print(f"  • {tool_name}: {count} 次")
+            print(f"  • {tool_name}: {count}")
 
-    print(f"\n【翻譯思路】\n{result.reasoning}")
+    print(f"\n【Reasoning】\n{result.reasoning}")
 
 
 if __name__ == "__main__":
