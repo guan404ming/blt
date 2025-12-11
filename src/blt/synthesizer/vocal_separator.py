@@ -67,6 +67,7 @@ class VocalSeparator:
         Returns:
             Tuple of (vocals_path, instrumental_path)
         """
+
         audio_path = Path(audio_path)
 
         if not audio_path.exists():

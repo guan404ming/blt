@@ -12,7 +12,7 @@ class TestWordSegmentation:
     @pytest.fixture
     def analyzer(self):
         """Create a LyricsAnalyzer instance for testing"""
-        return LyricsAnalyzer(source_lang="English", target_lang="Chinese")
+        return LyricsAnalyzer()
 
     @pytest.mark.parametrize(
         "text,lang,expected_words",
