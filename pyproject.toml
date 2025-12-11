@@ -1,9 +1,22 @@
 [project]
-name = "blt"
+name = "blt-toolkit"
 version = "0.1.0"
-description = "BLT: AI Song Translator"
+description = "Better Lyrics Translation Toolkit - AI-powered song translation with music constraint preservation"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Guan-Ming, Chiu", email = "guanmingchiu@gmail.com" }]
+keywords = ["lyrics", "translation", "music", "AI", "NLP", "song"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Text Processing :: Linguistic",
+]
+
 dependencies = [
     "torch>=2.5.0",
     "torchaudio>=2.5.0",
@@ -20,12 +33,13 @@ dependencies = [
     "hanlp>=2.1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/guan404ming/blt"
+Repository = "https://github.com/guan404ming/blt"
+Issues = "https://github.com/guan404ming/blt/issues"
+
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "ruff>=0.4.0",
-    "mypy>=1.10.0",
-]
+dev = ["pytest>=8.0.0", "ruff>=0.4.0", "mypy>=1.10.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -33,3 +47,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/blt"]
+
+[dependency-groups]
+dev = ["build>=1.3.0", "twine>=6.2.0"]
