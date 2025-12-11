@@ -1,6 +1,6 @@
 [project]
 name = "blt-toolkit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Better Lyrics Translation Toolkit - AI-powered song translation with music constraint preservation"
 readme = "README.md"
 requires-python = ">=3.11"
