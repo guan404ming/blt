@@ -1,5 +1,5 @@
 """
-Translate lyrics with music constraints - Updated for new API
+Translate lyrics with music constraints
 """
 
 import argparse
