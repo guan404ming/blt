@@ -38,7 +38,7 @@
    - Chinese: Pinyin finals
    - Other languages: IPA phonemes
 
-<details>
+<details open>
 <summary><b>Translation Flow</b></summary>
 
 ```mermaid
@@ -57,7 +57,7 @@ flowchart TD
 
 </details>
 
-### 2. Synthesizer
+### 2. (WIP) Synthesizer
 
 TTS, alignment, and voice synthesis tools:
 
@@ -67,7 +67,7 @@ TTS, alignment, and voice synthesis tools:
 | `LyricsAligner`    | Align lyrics timing with audio           |
 | `VoiceSynthesizer` | Synthesize vocals with new lyrics        |
 
-### 3. Pipeline
+### 3. (WIP) Pipeline
 
 Pre-defined combinations of tools:
 

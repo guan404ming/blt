@@ -138,8 +138,8 @@ wheels = [
 ]
 
 [[package]]
-name = "blt-lyrics-translator"
-version = "0.1.0"
+name = "blt-toolkit"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "ctc-forced-aligner" },
