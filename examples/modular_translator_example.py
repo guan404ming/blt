@@ -13,8 +13,6 @@ from dotenv import load_dotenv
 from blt.translators import (
     LyricsTranslator,
     TranslatorConfig,
-    DefaultPromptBuilder,
-    MinimalPromptBuilder,
 )
 
 load_dotenv()
@@ -76,16 +74,18 @@ Nice to meet you"""
 
 
 def example_custom_prompt_builder():
-    """Example 3: Using custom prompt builder"""
+    """Example 3: Using different models"""
     print("\n" + "=" * 80)
-    print("Example 3: Custom Prompt Builder")
+    print("Example 3: Using Different Models")
     print("=" * 80)
 
-    # Use minimal prompt builder for simpler prompts
-    config = TranslatorConfig(model="gemini-2.5-flash")
-    prompt_builder = MinimalPromptBuilder()
+    # Use a faster model configuration
+    config = TranslatorConfig(
+        model="gemini-2.5-flash",
+        max_retries=10,
+    )
 
-    translator = LyricsTranslator(config=config, prompt_builder=prompt_builder)
+    translator = LyricsTranslator(config=config)
 
     lyrics = """Good morning
 Have a nice day"""
@@ -142,23 +142,20 @@ def example_reusing_components():
     print("Example 5: Reusing Components")
     print("=" * 80)
 
-    from blt.translators import FeatureExtractor, ConstraintValidator
+    from blt.translators import LyricsAnalyzer
 
-    # Create shared components
-    feature_extractor = FeatureExtractor()
-    validator = ConstraintValidator()
+    # Create shared analyzer component
+    analyzer = LyricsAnalyzer()
 
-    # Create two translators sharing the same components
+    # Create two translators sharing the same analyzer
     translator1 = LyricsTranslator(
         config=TranslatorConfig(model="gemini-2.5-flash"),
-        feature_extractor=feature_extractor,
-        validator=validator,
+        analyzer=analyzer,
     )
 
     translator2 = LyricsTranslator(
         config=TranslatorConfig(model="gemini-2.5-pro"),
-        feature_extractor=feature_extractor,  # Shared!
-        validator=validator,  # Shared!
+        analyzer=analyzer,  # Shared analyzer!
     )
 
     lyrics = "Hello world"
