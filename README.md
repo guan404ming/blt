@@ -17,8 +17,6 @@
 | --------------------- | ---------------------------------------------------- |
 | `LyricsTranslator`    | Main translator with syllable/rhyme preservation     |
 | `SoramimiTranslator`  | Phonetic (soramimi/空耳) translator - creates text that sounds like the original |
-| `LyricsAnalyzer`      | Extract music constraints from lyrics                |
-| `ConstraintValidator` | Validate translated lyrics against music constraints |
 
 **Music Constraints Extracted:**
 
@@ -86,26 +84,6 @@ uv sync
 ```
 
 ## Usage
-
-### Standard Translation (Cover Songs)
-
-To generate a translated cover song, use the `examples/gen_translated_song.py` script:
-
-```bash
-uv run python examples/gen_translated_song.py \
-    --audio "path/to/your/song.mp3" \
-    --old-lyrics-file "path/to/original/lyrics.txt" \
-    --new-lyrics-file "path/to/new/lyrics.txt" \
-    --output-name "my_cover_song"
-```
-
-**Parameters:**
-
-- `--audio`: Path to the original song audio file.
-- `--old-lyrics-file`: Path to a text file containing the original lyrics.
-- `--new-lyrics-file`: Path to a text file containing the new lyrics.
-- `--output-name`: The name for the generated cover song files.
-- `--device`: The device to run the models on (`cuda` or `cpu`).
 
 ### Soramimi Translation (Phonetic Matching)
 
