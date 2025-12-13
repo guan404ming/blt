@@ -47,7 +47,7 @@
 ```mermaid
 flowchart TD
     A[Source Lyrics] --> B[LyricsAnalyzer]
-    B --> |Extract Constraints| C{LyricsTranslationAgent}
+    B --> |Extract Constraints| C{TranslationAgent}
     C --> |Generate Translation| D[ConstraintValidator]
     D --> |Check Constraints| E{Valid or Max Retries}
     E --> |No| C
