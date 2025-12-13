@@ -11,18 +11,18 @@ Architecture:
     LyricsAnalyzer: Core analysis (syllables, rhymes, patterns, IPA)
     ConstraintValidator: Validation logic for constraint-based translation
     SoramimiValidator: Validation logic for phonetic similarity
-    TranslatorConfig: Configuration + prompts + tool registration
-    SoramimiConfig: Configuration for soramimi translation
-    LyricsTranslator: Main orchestrator for constraint-based translation
-    SoramimiTranslator: Main orchestrator for phonetic translation
+    LyricsTranslationAgentConfig: Configuration + prompts + tool registration
+    SoramimiTranslationAgentConfig: Configuration for soramimi translation
+    LyricsTranslationAgent: Main orchestrator for constraint-based translation
+    SoramimiTranslationAgent: Main orchestrator for phonetic translation
 """
 
 # Core components
 from .analyzer import LyricsAnalyzer
-from .validator import ConstraintValidator, SoramimiValidator
+from .validators import ConstraintValidator, SoramimiValidator
 
 # Configuration (includes prompts + tools)
-from .config import TranslatorConfig, SoramimiConfig
+from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig
 
 # Models
 from .models import (
@@ -33,20 +33,20 @@ from .models import (
 )
 
 # Translators
-from .translator import LyricsTranslator, SoramimiTranslator
+from .agents import LyricsTranslationAgent, SoramimiTranslationAgent
 
 __version__ = "0.1.0"
 
 __all__ = [
-    # Main translators
-    "LyricsTranslator",
-    "SoramimiTranslator",
+    # Main agents
+    "LyricsTranslationAgent",
+    "SoramimiTranslationAgent",
     # Core
     "LyricsAnalyzer",
     "ConstraintValidator",
     "SoramimiValidator",
-    "TranslatorConfig",
-    "SoramimiConfig",
+    "LyricsTranslationAgentConfig",
+    "SoramimiTranslationAgentConfig",
     # Models
     "LyricTranslation",
     "MusicConstraints",
