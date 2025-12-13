@@ -66,6 +66,7 @@ TTS, alignment, and voice synthesis tools:
 | `VocalSeparator`   | Separate vocals from instrumental tracks |
 | `LyricsAligner`    | Align lyrics timing with audio           |
 | `VoiceSynthesizer` | Synthesize vocals with new lyrics        |
+| `RvcConverter`     | Convert voice using RVC models           |
 
 ### 3. (WIP) Pipeline
 
