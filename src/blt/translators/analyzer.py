@@ -275,7 +275,7 @@ class LyricsAnalyzer:
     # ==================== PRIVATE HELPERS ====================
 
     def _chinese_to_pinyin(self, text: str) -> str:
-        """Convert Chinese text via pinyin"""
+        """Convert Chinese text to pinyin"""
         # Convert Chinese to pinyin
         pinyin_list = lazy_pinyin(text)
         pinyin_text = " ".join(pinyin_list)
