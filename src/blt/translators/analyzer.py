@@ -6,7 +6,9 @@ Centralized core functionality for syllable counting, rhyme detection, and patte
 import os
 import re
 import hanlp
+import panphon.distance
 from pydantic_ai import Agent
+from pypinyin import lazy_pinyin
 from .models import MusicConstraints, WordSegmentation
 
 
@@ -15,6 +17,9 @@ os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-n
 os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
     "~/.local/lib/libespeak-ng.so"
 )
+
+# Initialize panphon feature distance calculator
+_ft = panphon.distance.Distance()
 
 
 class LyricsAnalyzer:
@@ -223,7 +228,58 @@ class LyricsAnalyzer:
             syllable_patterns=syllable_patterns,
         )
 
+    def calculate_ipa_similarity(
+        self, ipa1: str, ipa2: str, is_chinese: bool = False
+    ) -> float:
+        """
+        Calculate phonetic similarity between two IPA strings using panphon feature-based distance
+
+        Args:
+            ipa1: First IPA string (or Chinese text if is_chinese=True)
+            ipa2: Second IPA string (or Chinese text if is_chinese=True)
+            is_chinese: If True, convert Chinese to pinyin first
+
+        Returns:
+            Similarity score between 0 and 1
+        """
+        if not ipa1 and not ipa2:
+            return 1.0
+        if not ipa1 or not ipa2:
+            return 0.0
+
+        # For Chinese, convert to pinyin first
+        if is_chinese:
+            ipa1 = self._chinese_to_pinyin(ipa1)
+            ipa2 = self._chinese_to_pinyin(ipa2)
+
+        # Normalize: remove spaces, convert to lowercase
+        ipa1 = ipa1.replace(" ", "").lower()
+        ipa2 = ipa2.replace(" ", "").lower()
+
+        len1, len2 = len(ipa1), len(ipa2)
+
+        if len1 == 0:
+            return 0.0 if len2 > 0 else 1.0
+        if len2 == 0:
+            return 0.0
+
+        # Calculate feature-based edit distance using panphon
+        distance = _ft.feature_edit_distance(ipa1, ipa2)
+        max_len = max(len1, len2)
+
+        # Convert distance to similarity score
+        similarity = 1.0 - (distance / max_len)
+
+        return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
+
     # ==================== PRIVATE HELPERS ====================
+
+    def _chinese_to_pinyin(self, text: str) -> str:
+        """Convert Chinese text to pinyin"""
+        # Convert Chinese to pinyin
+        pinyin_list = lazy_pinyin(text)
+        pinyin_text = " ".join(pinyin_list)
+        return pinyin_text
 
     def _text_to_ipa(self, text: str, lang: str) -> str:
         """Convert text to IPA using phonemizer"""

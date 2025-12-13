@@ -14,7 +14,7 @@ import argparse
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-from blt.translators import SoramimiTranslator, SoramimiConfig
+from blt.translators import SoramimiTranslationAgent, SoramimiTranslationAgentConfig
 
 # Load .env file
 load_dotenv()
@@ -107,7 +107,7 @@ def main():
     print()
 
     # Create config
-    config = SoramimiConfig(
+    config = SoramimiTranslationAgentConfig(
         model=args.model,
         auto_save=True,
         save_dir=args.save_dir,
@@ -119,7 +119,7 @@ def main():
     )
 
     # Create translator
-    translator = SoramimiTranslator(config=config)
+    translator = SoramimiTranslationAgent(config=config)
 
     # Translate
     print("\n" + "=" * 80)

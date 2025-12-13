@@ -4,10 +4,9 @@ Translate lyrics with music constraints
 
 import argparse
 import logging
-import os
 from pathlib import Path
 from dotenv import load_dotenv
-from blt.translators import LyricsTranslator, TranslatorConfig
+from blt.translators import LyricsTranslationAgent, LyricsTranslationAgentConfig
 from blt.translators.analyzer import LyricsAnalyzer
 
 # Load .env file
@@ -94,7 +93,7 @@ def main():
     print()
 
     # Create config
-    config = TranslatorConfig(
+    config = LyricsTranslationAgentConfig(
         model=args.model,
         auto_save=True,
         save_dir=args.save_dir,
@@ -105,7 +104,7 @@ def main():
     )
 
     # Create translator
-    translator = LyricsTranslator(config=config)
+    translator = LyricsTranslationAgent(config=config)
 
     # Extract target constraints
     analyzer = LyricsAnalyzer()

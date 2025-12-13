@@ -13,10 +13,10 @@
 
 **IPA-based lyrics translation tools with music constraints:**
 
-| Tool                  | Description                                          |
-| --------------------- | ---------------------------------------------------- |
-| `LyricsTranslator`    | Main translator with syllable/rhyme preservation     |
-| `SoramimiTranslator`  | Phonetic (soramimi/空耳) translator - creates text that sounds like the original |
+| Tool                        | Description                                                           |
+| --------------------------- | --------------------------------------------------------------------- |
+| `LyricsTranslationAgent`    | Main translator with syllable/rhyme preservation                      |
+| `SoramimiTranslationAgent`  | そらみみ (空耳) translator - creates text that sounds like the original |
 
 **Music Constraints Extracted:**
 
@@ -47,7 +47,7 @@
 ```mermaid
 flowchart TD
     A[Source Lyrics] --> B[LyricsAnalyzer]
-    B --> |Extract Constraints| C{LyricsTranslator}
+    B --> |Extract Constraints| C{TranslationAgent}
     C --> |Generate Translation| D[ConstraintValidator]
     D --> |Check Constraints| E{Valid or Max Retries}
     E --> |No| C
