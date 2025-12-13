@@ -346,16 +346,16 @@ class SoramimiTranslationAgentConfig:
     ) -> Callable:
         """Create tool to calculate IPA similarity between two strings"""
 
-        def calculate_ipa_similarity(ipa1: str, ipa2: str, is_chinese: bool = False) -> dict:
+        def calculate_ipa_similarity(
+            ipa1: str, ipa2: str, is_chinese: bool = False
+        ) -> dict:
             """Calculate phonetic similarity between two IPA strings. Set is_chinese=True for Chinese text."""
             self._tool_call_stats["calculate_ipa_similarity"] += 1
 
             similarity = analyzer.calculate_ipa_similarity(ipa1, ipa2, is_chinese)
 
             if self.enable_logging:
-                logger.info(
-                    f"   calculate_ipa_similarity: {similarity:.1%}"
-                )
+                logger.info(f"   calculate_ipa_similarity: {similarity:.1%}")
 
             return {
                 "ipa1": ipa1,
@@ -448,30 +448,36 @@ class SoramimiTranslationAgentConfig:
         source_name = LANGUAGE_NAMES.get(self._source_lang, self._source_lang)
         target_name = LANGUAGE_NAMES.get(self._target_lang, self._target_lang)
 
-        return f"""You create SORAMIMI (空耳): {target_name} text that SOUNDS like {source_name}.
+        return f"""🚫 DO NOT TRANSLATE! This is SORAMIMI (空耳) - PHONETIC MATCHING ONLY!
 
-空耳（日語：そらみみ，Soramimi）是一種將聽到的聲音（通常是外語歌曲歌詞）故意「幻聽」或「誤聽」
-改寫成發音近似，以達到方便記憶的二次創作行為
-其精髓是「音準即可」，即改寫後的句子在發音上相似，可以完全不成句。
+YOU ARE NOT A TRANSLATOR. You create {target_name} text that SOUNDS like {source_name}, regardless of meaning.
 
-CRITICAL RULES:
-1. ONLY match SOUNDS/PRONUNCIATION - IGNORE meaning completely
-2. DO NOT translate words (e.g., "queen" → "女皇" is WRONG, use "奎因/庫林" instead)
-3. DO NOT use semantic equivalents (e.g., "know" → "知道" is WRONG, use "耨" instead)
-4. Match EVERY syllable phonetically - meaning is irrelevant
-5. You MUST convert ALL lines to {target_name} characters/text. DO NOT leave any line in {source_name}.
+⚠️ WRONG APPROACH (DO NOT DO THIS):
+❌ "The snow glows white" → "雪光白" (you translated the words!)
+❌ "I'm the queen" → "我是女王" (you translated the words!)
+❌ "Heaven knows" → "天知道" (you translated the words!)
+❌ "A kingdom" → "王国" (you translated the words!)
+❌ Translation is COMPLETELY FORBIDDEN!
 
-WRONG Examples (semantic translation - DO NOT DO THIS):
-❌ "queen" → "女皇" (this translates the meaning)
-❌ "know" → "知道" (this translates the meaning)
-❌ "heaven" → "天堂" (this translates the meaning)
+✅ CORRECT APPROACH (DO THIS):
+Match each syllable by SOUND/PRONUNCIATION only:
+✓ "The snow glows white" → "特 斯諾 哥羅斯 外特" (sounds like /ðə snoʊ gloʊz waɪt/)
+✓ "I'm the queen" → "愛姆 德 奎因" (sounds like /aɪm ðə kwiːn/)
+✓ "Heaven knows" → "海文 耨斯" (sounds like /hɛvən noʊz/)
+✓ "A kingdom" → "阿 金德姆" (sounds like /ə kɪŋdəm/)
 
-CORRECT Examples (phonetic matching only):
-✓ The snow glows white on the mountain tonight → 特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特
-✓ Not a footprint to be seen → 納特 阿 福特普林 特比 辛
-✓ A kingdom of isolation → 阿 金德姆 俄夫 愛瑟雷神
-✓ and it looks like I'm the queen → 安 依特 盧克斯 萊克 愛姆 德 奎因
-  (Note: "queen" → "奎因" by sound, NOT "女皇" by meaning)
+SORAMIMI RULES:
+1. 🚫 NEVER translate meaning - ONLY match pronunciation
+2. 🔊 Every {target_name} character must SOUND like the {source_name}
+3. 📝 Result can be nonsense - meaning doesn't matter
+4. 🎵 Match syllable by syllable phonetically
+5. ✅ Convert ALL lines to {target_name} text
+
+Full Examples:
+✓ "The snow glows white on the mountain tonight" → "特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特"
+✓ "Not a footprint to be seen" → "納特 阿 福特普林 特比 辛"
+✓ "A kingdom of isolation" → "阿 金德姆 俄夫 愛瑟雷神"
+✓ "and it looks like I'm the queen" → "安 依特 盧克斯 萊克 愛姆 德 奎因"
 
 Tools available: {tools_section}
 
@@ -503,11 +509,11 @@ IMPORTANT: ALL lines in soramimi_lines MUST be in {target_name}. DO NOT include 
         ]
 
         # Get language names for clearer prompts
-        source_name = LANGUAGE_NAMES.get(source_lang, source_lang)
+        # source_name = LANGUAGE_NAMES.get(source_lang, source_lang)
         target_name = LANGUAGE_NAMES.get(target_lang, target_lang)
 
         parts = [
-            f"Create SORAMIMI: Convert ALL {source_name} lines to {target_name} text that SOUNDS like the {source_name}:",
+            "🚫 DO NOT TRANSLATE! Create SORAMIMI (phonetic matching ONLY):",
             "",
         ]
 
@@ -517,17 +523,23 @@ IMPORTANT: ALL lines in soramimi_lines MUST be in {target_name}. DO NOT include 
         parts.extend(
             [
                 "",
-                f"CRITICAL RULES:",
-                f"1. ONLY match SOUNDS - DO NOT translate meanings",
-                f"2. Convert EVERY line above to {target_name} text by PRONUNCIATION ONLY",
-                f"3. DO NOT use semantic translations (e.g., 'queen' → '女皇' is WRONG)",
-                f"4. Match phonetics: 'queen' → '奎因', 'know' → '耨', 'heaven' → '海文'",
+                "⚠️ FORBIDDEN - DO NOT output these WRONG translations:",
+                "❌ 'snow white' → '雪光白' (translation!)",
+                "❌ 'kingdom' → '王国' (translation!)",
+                "❌ 'queen' → '女王' (translation!)",
+                "❌ 'heaven knows' → '天知道' (translation!)",
                 "",
-                "Correct Examples (phonetic only, NOT translation):",
-                "The snow glows white on the mountain tonight → 特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特",
-                "Not a footprint to be seen → 納特 阿 福特普林 特比 辛",
-                "and it looks like I'm the queen → 安 依特 盧克斯 萊克 愛姆 德 奎因",
-                "  (Note: 'queen' = 奎因 by SOUND, NOT 女皇 by meaning)",
+                "✅ REQUIRED - Match SOUNDS only:",
+                "'snow' → '斯諾' (sounds like 'snoʊ')",
+                "'queen' → '奎因' (sounds like 'kwiːn')",
+                "'heaven' → '海文' (sounds like 'hɛvən')",
+                "'knows' → '耨斯' (sounds like 'noʊz')",
+                "",
+                "Full correct examples:",
+                "'The snow glows white on the mountain tonight' → '特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特'",
+                "'and it looks like I'm the queen' → '安 依特 盧克斯 萊克 愛姆 德 奎因'",
+                "",
+                f"Convert EVERY line above to {target_name} by SOUND/PRONUNCIATION, NOT by meaning!",
             ]
         )
 
