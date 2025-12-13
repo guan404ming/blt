@@ -6,7 +6,7 @@ import argparse
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-from blt.translators import LyricsTranslationAgent, TranslatorConfig
+from blt.translators import LyricsTranslationAgent, LyricsTranslationAgentConfig
 from blt.translators.analyzer import LyricsAnalyzer
 
 # Load .env file
@@ -93,7 +93,7 @@ def main():
     print()
 
     # Create config
-    config = TranslatorConfig(
+    config = LyricsTranslationAgentConfig(
         model=args.model,
         auto_save=True,
         save_dir=args.save_dir,

@@ -14,7 +14,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 from .models import LyricTranslation, MusicConstraints, SoramimiTranslation
 from .analyzer import LyricsAnalyzer
 from .validator import ConstraintValidator, SoramimiValidator
-from .config import TranslatorConfig, SoramimiConfig
+from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class LyricsTranslationAgent:
 
     def __init__(
         self,
-        config: Optional[TranslatorConfig] = None,
+        config: Optional[LyricsTranslationAgentConfig] = None,
         analyzer: Optional[LyricsAnalyzer] = None,
     ):
         """
@@ -34,7 +34,7 @@ class LyricsTranslationAgent:
             config: Configuration (uses defaults if None)
             analyzer: Lyrics analyzer (creates new if None)
         """
-        self.config = config or TranslatorConfig()
+        self.config = config or LyricsTranslationAgentConfig()
 
         # Core components
         self.analyzer = analyzer or LyricsAnalyzer()
@@ -167,7 +167,7 @@ class SoramimiTranslationAgent:
 
     def __init__(
         self,
-        config: Optional[SoramimiConfig] = None,
+        config: Optional[SoramimiTranslationAgentConfig] = None,
         analyzer: Optional[LyricsAnalyzer] = None,
     ):
         """
@@ -177,7 +177,7 @@ class SoramimiTranslationAgent:
             config: Configuration (uses defaults if None)
             analyzer: Lyrics analyzer (creates new if None)
         """
-        self.config = config or SoramimiConfig()
+        self.config = config or SoramimiTranslationAgentConfig()
 
         # Core components
         self.analyzer = analyzer or LyricsAnalyzer()

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class TranslatorConfig:
+class LyricsTranslationAgentConfig:
     """Unified configuration with prompts and tools"""
 
     # Model settings
@@ -248,7 +248,7 @@ Output final translation."""
 
 
 @dataclass
-class SoramimiConfig:
+class SoramimiTranslationAgentConfig:
     """Configuration for Soramimi Translator"""
 
     # Model settings

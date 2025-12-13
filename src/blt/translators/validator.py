@@ -21,8 +21,8 @@ from pypinyin import lazy_pinyin
 _ft = panphon.distance.Distance()
 
 
-def _chinese_to_pinyin_ipa(text: str) -> str:
-    """Convert Chinese text to IPA via pinyin"""
+def _chinese_to_pinyin(text: str) -> str:
+    """Convert Chinese text via pinyin"""
     # Convert Chinese to pinyin
     pinyin_list = lazy_pinyin(text)
     pinyin_text = " ".join(pinyin_list)
@@ -48,8 +48,8 @@ def calculate_ipa_similarity(ipa1: str, ipa2: str, is_chinese: bool = False) -> 
 
     # For Chinese, convert to pinyin first
     if is_chinese:
-        ipa1 = _chinese_to_pinyin_ipa(ipa1)
-        ipa2 = _chinese_to_pinyin_ipa(ipa2)
+        ipa1 = _chinese_to_pinyin(ipa1)
+        ipa2 = _chinese_to_pinyin(ipa2)
 
     # Normalize: remove spaces, convert to lowercase
     ipa1 = ipa1.replace(" ", "").lower()

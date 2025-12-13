@@ -8,11 +8,10 @@ This example demonstrates the new modular architecture with:
 4. Reusable components
 """
 
-import os
 from dotenv import load_dotenv
 from blt.translators import (
     LyricsTranslationAgent,
-    TranslatorConfig,
+    LyricsTranslationAgentConfig,
 )
 
 load_dotenv()
@@ -48,7 +47,7 @@ def example_custom_config():
     print("=" * 80)
 
     # Create custom configuration
-    config = TranslatorConfig(
+    config = LyricsTranslationAgentConfig(
         model="qwen3:30b-a3b-instruct-2507-q4_K_M",  # Use Ollama model
         auto_save=True,
         save_dir="custom_outputs",
@@ -80,7 +79,7 @@ def example_custom_prompt_builder():
     print("=" * 80)
 
     # Use a faster model configuration
-    config = TranslatorConfig(
+    config = LyricsTranslationAgentConfig(
         model="qwen3:30b-a3b-instruct-2507-q4_K_M",
         max_retries=10,
     )
@@ -149,12 +148,12 @@ def example_reusing_components():
 
     # Create two translators sharing the same analyzer
     translator1 = LyricsTranslationAgent(
-        config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
+        config=LyricsTranslationAgentConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,
     )
 
     translator2 = LyricsTranslationAgent(
-        config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
+        config=LyricsTranslationAgentConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,  # Shared analyzer!
     )
 
