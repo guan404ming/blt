@@ -37,6 +37,10 @@
    - Chinese: Pinyin finals
    - Other languages: IPA phonemes
 
+4. **ipa_similarity**: `float` (ex. 0.5)
+   - Phonetic similarity threshold for soramimi translation
+   - Measured using IPA phoneme matching between source and target
+
 <details open>
 <summary><b>Translation Flow</b></summary>
 
