@@ -23,7 +23,7 @@ class TranslatorConfig:
     """Unified configuration with prompts and tools"""
 
     # Model settings
-    model: str = "llama3.2"  # Ollama model name
+    model: str = "qwen3:30b-a3b-instruct-2507-q4_K_M"  # Ollama model name
     ollama_base_url: str = "http://localhost:11434/v1"
 
     # Output settings
@@ -252,7 +252,7 @@ class SoramimiConfig:
     """Configuration for Soramimi Translator"""
 
     # Model settings
-    model: str = "llama3.2"  # Ollama model name
+    model: str = "qwen3:30b-a3b-instruct-2507-q4_K_M"  # Ollama model name
     ollama_base_url: str = "http://localhost:11434/v1"
 
     # Output settings

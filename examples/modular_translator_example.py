@@ -49,7 +49,7 @@ def example_custom_config():
 
     # Create custom configuration
     config = TranslatorConfig(
-        model="llama3.2",  # Use Ollama model
+        model="qwen3:30b-a3b-instruct-2507-q4_K_M",  # Use Ollama model
         auto_save=True,
         save_dir="custom_outputs",
         save_format="md",
@@ -81,7 +81,7 @@ def example_custom_prompt_builder():
 
     # Use a faster model configuration
     config = TranslatorConfig(
-        model="llama3.2",
+        model="qwen3:30b-a3b-instruct-2507-q4_K_M",
         max_retries=10,
     )
 
@@ -149,12 +149,12 @@ def example_reusing_components():
 
     # Create two translators sharing the same analyzer
     translator1 = LyricsTranslator(
-        config=TranslatorConfig(model="llama3.2"),
+        config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,
     )
 
     translator2 = LyricsTranslator(
-        config=TranslatorConfig(model="llama3.2"),
+        config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,  # Shared analyzer!
     )
 

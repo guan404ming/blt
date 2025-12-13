@@ -56,8 +56,8 @@ def main():
         "-m",
         "--model",
         type=str,
-        default="llama3.2",
-        help="Ollama model to use (default: llama3.2). Run 'ollama pull llama3.2' first.",
+        default="qwen3:30b-a3b-instruct-2507-q4_K_M",
+        help="Ollama model to use (default: qwen3:30b-a3b-instruct-2507-q4_K_M). Run 'ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M' first.",
     )
     parser.add_argument(
         "-v",
