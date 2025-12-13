@@ -279,7 +279,9 @@ class SoramimiTranslator:
                     best_similarity = validation["overall_similarity"]
                     best_translation = translation
                     best_validation = validation
-                    logger.info(f"   ✓ New best: {best_similarity:.1%} (attempt {attempt})")
+                    logger.info(
+                        f"   ✓ New best: {best_similarity:.1%} (attempt {attempt})"
+                    )
 
                 # Check if all lines pass
                 if validation["passed"]:
@@ -310,7 +312,12 @@ Create {target_lang} soramimi that SOUNDS like the {source_lang}."""
                 failed_lines = []
 
                 for i, (score, line, src) in enumerate(
-                    zip(validation["similarities"], translation.soramimi_lines, source_lines), 1
+                    zip(
+                        validation["similarities"],
+                        translation.soramimi_lines,
+                        source_lines,
+                    ),
+                    1,
                 ):
                     if score >= self.config.similarity_threshold:
                         passed_lines.append(f"{i}. {line} ({score:.1%} PASS)")
@@ -324,10 +331,12 @@ Create {target_lang} soramimi that SOUNDS like the {source_lang}."""
                     feedback_parts.append("IMPROVE THESE:\n" + "\n".join(failed_lines))
 
                 feedback = "\n\n".join(feedback_parts)
-                logger.info(f"   Attempt {attempt}: {validation['overall_similarity']:.1%} overall")
+                logger.info(
+                    f"   Attempt {attempt}: {validation['overall_similarity']:.1%} overall"
+                )
 
                 # Build simple retry prompt
-                user_prompt = f"""Attempt {attempt}: {validation['overall_similarity']:.1%} overall. Target: {self.config.similarity_threshold:.0%}+
+                user_prompt = f"""Attempt {attempt}: {validation["overall_similarity"]:.1%} overall. Target: {self.config.similarity_threshold:.0%}+
 
 {feedback}
 
@@ -340,7 +349,9 @@ Keep passing lines UNCHANGED. Only revise failing lines to match pronunciation b
         translation = best_translation
         validation = best_validation
 
-        logger.info(f"   Soramimi creation completed - using best result: {best_similarity:.1%}")
+        logger.info(
+            f"   Soramimi creation completed - using best result: {best_similarity:.1%}"
+        )
 
         # Update final stats
         translation.tool_call_stats = self.config.get_stats()

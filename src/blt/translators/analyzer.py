@@ -12,7 +12,9 @@ from .models import MusicConstraints, WordSegmentation
 
 # Set environment variables for phonemizer
 os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser("~/.local/lib/libespeak-ng.so")
+os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
+    "~/.local/lib/libespeak-ng.so"
+)
 
 
 class LyricsAnalyzer:

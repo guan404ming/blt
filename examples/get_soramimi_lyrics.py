@@ -6,7 +6,9 @@ import os
 
 # Configure phonemizer to use espeak-ng from ~/.local
 os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser("~/.local/lib/libespeak-ng.so")
+os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
+    "~/.local/lib/libespeak-ng.so"
+)
 
 import argparse
 import logging

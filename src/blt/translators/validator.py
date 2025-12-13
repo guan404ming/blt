@@ -402,7 +402,9 @@ class SoramimiValidator:
         # For Chinese, use direct text comparison via pinyin instead of IPA
         is_chinese = target_lang in ("cmn", "zh", "zh-cn", "zh-tw")
         if is_chinese:
-            similarity = calculate_ipa_similarity(source_text, target_text, is_chinese=True)
+            similarity = calculate_ipa_similarity(
+                source_text, target_text, is_chinese=True
+            )
         else:
             similarity = calculate_ipa_similarity(src_ipa, tgt_ipa)
 

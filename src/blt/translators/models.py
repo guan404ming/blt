@@ -134,16 +134,26 @@ class ValidationResult(BaseModel):
 class SoramimiTranslation(BaseModel):
     """空耳翻譯輸出 - Soramimi (phonetic) translation output"""
 
-    soramimi_lines: list[str] = Field(description="Soramimi lyrics in Chinese characters")
-    reasoning: str = Field(default="", description="Translation reasoning and considerations")
+    soramimi_lines: list[str] = Field(
+        description="Soramimi lyrics in Chinese characters"
+    )
+    reasoning: str = Field(
+        default="", description="Translation reasoning and considerations"
+    )
 
     # Optional fields - filled by tools/validator
-    source_ipa: Optional[list[str]] = Field(default=None, description="IPA transcription of source lyrics")
-    target_ipa: Optional[list[str]] = Field(default=None, description="IPA transcription of translated lyrics")
+    source_ipa: Optional[list[str]] = Field(
+        default=None, description="IPA transcription of source lyrics"
+    )
+    target_ipa: Optional[list[str]] = Field(
+        default=None, description="IPA transcription of translated lyrics"
+    )
     similarity_scores: Optional[list[float]] = Field(
         default=None, description="Phonetic similarity score per line (0-1)"
     )
-    overall_similarity: Optional[float] = Field(default=None, description="Overall phonetic similarity (0-1)")
+    overall_similarity: Optional[float] = Field(
+        default=None, description="Overall phonetic similarity (0-1)"
+    )
     tool_call_stats: Optional[dict[str, int]] = Field(
         default=None, description="Tool call statistics: {tool_name: call_count}"
     )
