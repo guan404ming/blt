@@ -1,14 +1,18 @@
 """
-Translate lyrics with music constraints
+Create soramimi (phonetic) translation of lyrics
 """
+
+import os
+
+# Configure phonemizer to use espeak-ng from ~/.local
+os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
+os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser("~/.local/lib/libespeak-ng.so")
 
 import argparse
 import logging
-import os
 from pathlib import Path
 from dotenv import load_dotenv
-from blt.translators import LyricsTranslator, TranslatorConfig
-from blt.translators.analyzer import LyricsAnalyzer
+from blt.translators import SoramimiTranslator, SoramimiConfig
 
 # Load .env file
 load_dotenv()
@@ -22,7 +26,7 @@ logging.basicConfig(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Translate lyrics with music constraints preservation"
+        description="Create soramimi (phonetic) translation of lyrics"
     )
     parser.add_argument(
         "-f",
@@ -56,8 +60,14 @@ def main():
         "-m",
         "--model",
         type=str,
-        default="llama3.2",
-        help="Ollama model to use (default: llama3.2). Run 'ollama pull llama3.2' first.",
+        default="qwen3:30b-a3b-instruct-2507-q4_K_M",
+        help="Ollama model to use (default: qwen3:30b).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.8,
+        help="IPA similarity threshold (default: 0.3)",
     )
     parser.add_argument(
         "-v",
@@ -86,66 +96,64 @@ def main():
         source_lyrics = f.read().strip()
 
     print("=" * 80)
-    print(f"Lyrics Translation: {lyrics_path.name}")
-    print(f"Direction: {args.source_lang} → {args.target_lang}")
+    print(f"Soramimi Translation: {lyrics_path.name}")
+    print(f"Direction: {args.source_lang} -> {args.target_lang}")
+    print(f"Similarity threshold: {args.threshold:.0%}")
     print("=" * 80)
-    print(f"\n【Source Lyrics】({args.source_lang})")
+    print(f"\n[Source Lyrics] ({args.source_lang})")
     print(source_lyrics)
     print()
 
     # Create config
-    config = TranslatorConfig(
+    config = SoramimiConfig(
         model=args.model,
         auto_save=True,
         save_dir=args.save_dir,
         save_format="md",
         default_source_lang=args.source_lang,
         default_target_lang=args.target_lang,
+        similarity_threshold=args.threshold,
         enable_logging=args.verbose,
     )
 
     # Create translator
-    translator = LyricsTranslator(config=config)
-
-    # Extract target constraints
-    analyzer = LyricsAnalyzer()
-    constraints = analyzer.extract_constraints(source_lyrics, args.source_lang)
+    translator = SoramimiTranslator(config=config)
 
     # Translate
     print("\n" + "=" * 80)
-    print("Translating...")
+    print("Creating soramimi translation...")
     print("=" * 80)
 
     result = translator.translate(source_lyrics)
 
     # Display results
-    print("\n【Translation】")
-    for i, line in enumerate(result.translated_lines, 1):
-        print(f"{i}. {line}")
+    print("\n[Soramimi Translation]")
+    for i, (line, score) in enumerate(
+        zip(result.soramimi_lines, result.similarity_scores or []), 1
+    ):
+        status = "PASS" if (score and score >= args.threshold) else "FAIL"
+        print(f"{i}. {line}  ({score:.1%} {status})" if score else f"{i}. {line}")
 
-    print("\n【Syllables】")
-    print(f"  Target: {constraints.syllable_counts}")
-    print(f"  Actual: {result.syllable_counts}")
-    print(f"  Match:  {result.syllable_counts == constraints.syllable_counts}")
-
-    print("\n【Rhymes】")
-    print(f"  Target scheme: {constraints.rhyme_scheme}")
-    print(f"  Actual endings: {result.rhyme_endings}")
-
-    if result.syllable_patterns and constraints.syllable_patterns:
-        print("\n【Patterns】")
-        for i, (target, actual) in enumerate(
-            zip(constraints.syllable_patterns, result.syllable_patterns), 1
+    if result.source_ipa and result.target_ipa and result.similarity_scores:
+        print("\n[IPA Comparison]")
+        for i, (src_ipa, tgt_ipa, score) in enumerate(
+            zip(result.source_ipa, result.target_ipa, result.similarity_scores), 1
         ):
-            match = "✓" if target == actual else "✗"
-            print(f"  {i}. Target: {target}  |  Actual: {actual}  {match}")
+            print(f"Line {i}:")
+            print(f"  Source: {src_ipa}")
+            print(f"  Target: {tgt_ipa}")
+            print(f"  Similarity: {score:.1%}")
+            print()
+
+    if result.overall_similarity:
+        print(f"[Overall Similarity] {result.overall_similarity:.1%}")
 
     if result.tool_call_stats:
-        print("\n【Tool Calls】")
+        print("\n[Tool Calls]")
         for tool_name, count in sorted(result.tool_call_stats.items()):
-            print(f"  • {tool_name}: {count}")
+            print(f"  - {tool_name}: {count}")
 
-    print(f"\n【Reasoning】\n{result.reasoning}")
+    print(f"\n[Reasoning]\n{result.reasoning}")
 
 
 if __name__ == "__main__":

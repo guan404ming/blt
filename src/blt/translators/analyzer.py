@@ -11,8 +11,8 @@ from .models import MusicConstraints, WordSegmentation
 
 
 # Set environment variables for phonemizer
-os.environ["PHONEMIZER_ESPEAK_PATH"] = "/opt/homebrew/bin/espeak-ng"
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
+os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
+os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser("~/.local/lib/libespeak-ng.so")
 
 
 class LyricsAnalyzer:
@@ -23,7 +23,6 @@ class LyricsAnalyzer:
     - Syllable counting (IPA-based)
     - Rhyme detection
     - Syllable pattern analysis
-    - Word segmentation
     """
 
     # IPA patterns
@@ -36,6 +35,26 @@ class LyricsAnalyzer:
         self._segmentation_agent = None
 
     # ==================== CORE ANALYSIS METHODS ====================
+
+    def text_to_ipa(self, text: str, language: str) -> str:
+        """
+        Convert text to IPA (International Phonetic Alphabet)
+
+        Args:
+            text: Text to convert
+            language: Language code (e.g., 'en-us', 'cmn', 'ja')
+
+        Returns:
+            IPA transcription of the text
+        """
+        # Remove punctuation for cleaner IPA
+        punctuation_pattern = r"[,;.!?，。；！？、]+"
+        cleaned_text = re.sub(punctuation_pattern, " ", text).strip()
+
+        if not cleaned_text:
+            return ""
+
+        return self._text_to_ipa(cleaned_text, language)
 
     def count_syllables(self, text: str, language: str) -> int:
         """
@@ -266,10 +285,7 @@ Return the list of words for each line"""
             all_words = response.output.lines
             return [[w for w in words if w.strip()] for words in all_words]
         except Exception as e:
-            raise RuntimeError(
-                f"LLM word segmentation failed: {e}. "
-                "Please ensure GOOGLE_API_KEY is set and valid."
-            )
+            raise RuntimeError(f"LLM word segmentation failed: {e}. ")
 
     def _get_hanlp_tokenizer(self):
         """Lazy load HanLP tokenizer"""

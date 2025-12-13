@@ -129,3 +129,111 @@ class ValidationResult(BaseModel):
     passed: bool = Field(description="是否通過所有約束驗證")
     errors: list[dict] = Field(default_factory=list, description="錯誤列表")
     score: float = Field(default=0.0, description="整體品質評分 (0-1)")
+
+
+class SoramimiTranslation(BaseModel):
+    """空耳翻譯輸出 - Soramimi (phonetic) translation output"""
+
+    soramimi_lines: list[str] = Field(description="Soramimi lyrics in Chinese characters")
+    reasoning: str = Field(default="", description="Translation reasoning and considerations")
+
+    # Optional fields - filled by tools/validator
+    source_ipa: Optional[list[str]] = Field(default=None, description="IPA transcription of source lyrics")
+    target_ipa: Optional[list[str]] = Field(default=None, description="IPA transcription of translated lyrics")
+    similarity_scores: Optional[list[float]] = Field(
+        default=None, description="Phonetic similarity score per line (0-1)"
+    )
+    overall_similarity: Optional[float] = Field(default=None, description="Overall phonetic similarity (0-1)")
+    tool_call_stats: Optional[dict[str, int]] = Field(
+        default=None, description="Tool call statistics: {tool_name: call_count}"
+    )
+
+    def save(self, output_path: str | Path, format: str = "json") -> None:
+        """
+        保存空耳翻譯結果到文件
+
+        Args:
+            output_path: 輸出文件路徑
+            format: 輸出格式 ("json", "txt", "md")
+        """
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if format == "json":
+            self._save_json(output_path)
+        elif format == "txt":
+            self._save_txt(output_path)
+        elif format == "md":
+            self._save_markdown(output_path)
+        else:
+            raise ValueError(f"Unsupported format: {format}")
+
+    def _save_json(self, output_path: Path) -> None:
+        """保存為 JSON 格式"""
+        data = {
+            "timestamp": datetime.now().isoformat(),
+            "soramimi_translation": self.model_dump(),
+        }
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def _save_txt(self, output_path: Path) -> None:
+        """保存為純文本格式"""
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write("=" * 60 + "\n")
+            f.write("空耳翻譯結果 (Soramimi Translation)\n")
+            f.write("=" * 60 + "\n\n")
+
+            for i, (line, src_ipa, tgt_ipa, score) in enumerate(
+                zip(
+                    self.soramimi_lines,
+                    self.source_ipa or [],
+                    self.target_ipa or [],
+                    self.similarity_scores or [],
+                ),
+                1,
+            ):
+                f.write(f"{i}. {line}\n")
+                f.write(f"   Source IPA: {src_ipa}\n")
+                f.write(f"   Target IPA: {tgt_ipa}\n")
+                f.write(f"   Similarity: {score:.1%}\n\n")
+
+            f.write(f"Overall Similarity: {self.overall_similarity:.1%}\n\n")
+
+            if self.tool_call_stats:
+                f.write("工具調用統計:\n")
+                for tool_name, count in self.tool_call_stats.items():
+                    f.write(f"  - {tool_name}: {count}\n")
+                f.write("\n")
+
+            f.write(f"翻譯思路:\n{self.reasoning}\n")
+
+    def _save_markdown(self, output_path: Path) -> None:
+        """保存為 Markdown 格式"""
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write("# 空耳翻譯結果 (Soramimi Translation)\n\n")
+            f.write(f"*生成時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n")
+
+            f.write("## 譯文\n\n")
+            f.write("| # | Translation | Source IPA | Target IPA | Similarity |\n")
+            f.write("|---|-------------|------------|------------|------------|\n")
+            for i, (line, src_ipa, tgt_ipa, score) in enumerate(
+                zip(
+                    self.soramimi_lines,
+                    self.source_ipa or [],
+                    self.target_ipa or [],
+                    self.similarity_scores or [],
+                ),
+                1,
+            ):
+                f.write(f"| {i} | {line} | {src_ipa} | {tgt_ipa} | {score:.1%} |\n")
+
+            f.write(f"\n**Overall Similarity: {self.overall_similarity:.1%}**\n")
+
+            if self.tool_call_stats:
+                f.write("\n## 工具調用統計\n\n")
+                for tool_name, count in self.tool_call_stats.items():
+                    f.write(f"- **{tool_name}**: {count}\n")
+
+            f.write("\n## 翻譯思路\n\n")
+            f.write(f"{self.reasoning}\n")
