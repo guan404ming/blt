@@ -302,7 +302,10 @@ class SoramimiTranslationAgent:
                 logger.info(f"   Current best average: {avg_best:.1%}")
 
                 # Check if all lines pass threshold (based on best so far)
-                all_pass = all(score >= self.config.similarity_threshold for score in best_line_scores)
+                all_pass = all(
+                    score >= self.config.similarity_threshold
+                    for score in best_line_scores
+                )
                 if all_pass:
                     logger.info(f"   ✓ All lines pass threshold on attempt {attempt}")
                     break
@@ -340,13 +343,17 @@ Create {target_lang} soramimi that SOUNDS like the {source_lang}."""
                     else:
                         improve_lines.append(f"{i}. {best_line} ({best_score:.1%})")
 
-                overall_best = sum(best_line_scores) / len(best_line_scores) if best_line_scores else 0
-                logger.info(
-                    f"   Attempt {attempt}: best overall {overall_best:.1%}"
+                overall_best = (
+                    sum(best_line_scores) / len(best_line_scores)
+                    if best_line_scores
+                    else 0
                 )
+                logger.info(f"   Attempt {attempt}: best overall {overall_best:.1%}")
 
                 # Build retry prompt - LOCK passing lines
-                parts = [f"Attempt {attempt}. Target: {self.config.similarity_threshold:.0%}+"]
+                parts = [
+                    f"Attempt {attempt}. Target: {self.config.similarity_threshold:.0%}+"
+                ]
 
                 if locked_lines:
                     parts.append("\nLOCKED (output these EXACTLY as shown):")
@@ -362,20 +369,26 @@ Create {target_lang} soramimi that SOUNDS like the {source_lang}."""
                     logger.info(f"   Max retries ({self.config.max_retries}) reached")
 
         # Build final result from best lines
-        overall_similarity = sum(best_line_scores) / len(best_line_scores) if best_line_scores else 0
-        all_pass = all(score >= self.config.similarity_threshold for score in best_line_scores)
+        overall_similarity = (
+            sum(best_line_scores) / len(best_line_scores) if best_line_scores else 0
+        )
+        all_pass = all(
+            score >= self.config.similarity_threshold for score in best_line_scores
+        )
 
         # Ensure all best lines were set (no None values)
         if any(line is None for line in best_lines):
             raise RuntimeError(
                 f"Some lines were never successfully generated: "
-                f"{[i+1 for i, line in enumerate(best_lines) if line is None]}"
+                f"{[i + 1 for i, line in enumerate(best_lines) if line is None]}"
             )
 
         # Create translation object from best lines
         # IMPORTANT: This uses best_lines which contains the highest-scoring line for each position
         translation = SoramimiTranslation(
-            soramimi_lines=list(best_lines),  # Create new list to avoid reference issues
+            soramimi_lines=list(
+                best_lines
+            ),  # Create new list to avoid reference issues
             source_ipa=[ipa[0] for ipa in best_line_ipas],
             target_ipa=[ipa[1] for ipa in best_line_ipas],
             similarity_scores=list(best_line_scores),  # Create new list
@@ -385,7 +398,9 @@ Create {target_lang} soramimi that SOUNDS like the {source_lang}."""
 
         # Verify the translation matches our best lines
         assert len(translation.soramimi_lines) == len(best_lines), "Line count mismatch"
-        assert translation.soramimi_lines == best_lines, "Translation doesn't match best lines!"
+        assert translation.soramimi_lines == best_lines, (
+            "Translation doesn't match best lines!"
+        )
         assert translation.similarity_scores == best_line_scores, "Scores don't match!"
 
         # Create validation dict for display
