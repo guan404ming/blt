@@ -63,13 +63,13 @@ def main():
         "--model",
         type=str,
         default="qwen3:30b-a3b-instruct-2507-q4_K_M",
-        help="Ollama model to use (default: qwen3:30b).",
+        help="Ollama model to use (default: qwen3:30b-a3b-instruct-2507-q4_K_M).",
     )
     parser.add_argument(
         "--threshold",
         type=float,
         default=0.8,
-        help="IPA similarity threshold (default: 0.3)",
+        help="IPA similarity threshold (default: 0.8)",
     )
     parser.add_argument(
         "-v",

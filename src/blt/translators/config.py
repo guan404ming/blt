@@ -183,7 +183,7 @@ Workflow:
 4. If patterns don't match, restructure the line completely
 5. Repeat (max {self.max_retries} rounds)
 
-SON OUTPUT REQUIRED:
+JSON OUTPUT REQUIRED:
 Return ONLY valid JSON with this structure:
 {{
     translated_lines: list[str] = Field(description="Translated lyrics line by line")
@@ -456,7 +456,7 @@ Return ONLY valid JSON with this structure:
                 其精髓是「音準即可」，即改寫後的句子在發音上相似，可以完全不成句。""",
                 "有一些沒辦法拼出來的字可以用英文代替",
                 "The snow glows white on the mountain tonight → 死鬧勾斯歪動某頓頭奈",
-                "Not a footprint to be seen → 哪惹浮噴 to 比辛"
+                "Not a footprint to be seen → 哪惹浮噴 to 比辛",
                 "A kingdom of isolation → 欸 King 痘媽佛愛收雷神",
             ]
         )

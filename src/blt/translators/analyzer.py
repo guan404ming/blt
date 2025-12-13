@@ -287,7 +287,7 @@ Return the list of words for each line"""
             all_words = response.output.lines
             return [[w for w in words if w.strip()] for words in all_words]
         except Exception as e:
-            raise RuntimeError(f"LLM word segmentation failed: {e}. ")
+            raise RuntimeError(f"LLM word segmentation failed: {e}.")
 
     def _get_hanlp_tokenizer(self):
         """Lazy load HanLP tokenizer"""
