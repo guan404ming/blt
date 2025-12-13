@@ -13,8 +13,8 @@ Architecture:
     SoramimiValidator: Validation logic for phonetic similarity
     TranslatorConfig: Configuration + prompts + tool registration
     SoramimiConfig: Configuration for soramimi translation
-    LyricsTranslator: Main orchestrator for constraint-based translation
-    SoramimiTranslator: Main orchestrator for phonetic translation
+    LyricsTranslationAgent: Main orchestrator for constraint-based translation
+    SoramimiTranslationAgent: Main orchestrator for phonetic translation
 """
 
 # Core components
@@ -33,14 +33,14 @@ from .models import (
 )
 
 # Translators
-from .translator import LyricsTranslator, SoramimiTranslator
+from .agents import LyricsTranslationAgent, SoramimiTranslationAgent
 
 __version__ = "0.1.0"
 
 __all__ = [
-    # Main translators
-    "LyricsTranslator",
-    "SoramimiTranslator",
+    # Main agents
+    "LyricsTranslationAgent",
+    "SoramimiTranslationAgent",
     # Core
     "LyricsAnalyzer",
     "ConstraintValidator",

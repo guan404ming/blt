@@ -15,8 +15,8 @@
 
 | Tool                  | Description                                          |
 | --------------------- | ---------------------------------------------------- |
-| `LyricsTranslator`    | Main translator with syllable/rhyme preservation     |
-| `SoramimiTranslator`  | Phonetic (soramimi/空耳) translator - creates text that sounds like the original |
+| `LyricsTranslationAgent`    | Main translator with syllable/rhyme preservation     |
+| `SoramimiTranslationAgent`  | Phonetic (soramimi/空耳) translator - creates text that sounds like the original |
 
 **Music Constraints Extracted:**
 
@@ -47,7 +47,7 @@
 ```mermaid
 flowchart TD
     A[Source Lyrics] --> B[LyricsAnalyzer]
-    B --> |Extract Constraints| C{LyricsTranslator}
+    B --> |Extract Constraints| C{LyricsTranslationAgent}
     C --> |Generate Translation| D[ConstraintValidator]
     D --> |Check Constraints| E{Valid or Max Retries}
     E --> |No| C

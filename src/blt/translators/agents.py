@@ -19,7 +19,7 @@ from .config import TranslatorConfig, SoramimiConfig
 logger = logging.getLogger(__name__)
 
 
-class LyricsTranslator:
+class LyricsTranslationAgent:
     """Lyrics translator with unified configuration"""
 
     def __init__(
@@ -155,7 +155,7 @@ class LyricsTranslator:
 # ==================== SORAMIMI TRANSLATOR ====================
 
 
-class SoramimiTranslator:
+class SoramimiTranslationAgent:
     """
     Soramimi (phonetic) translator that creates sound-alike translations
 

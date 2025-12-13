@@ -11,7 +11,7 @@ This example demonstrates the new modular architecture with:
 import os
 from dotenv import load_dotenv
 from blt.translators import (
-    LyricsTranslator,
+    LyricsTranslationAgent,
     TranslatorConfig,
 )
 
@@ -25,7 +25,7 @@ def example_basic_usage():
     print("=" * 80)
 
     # Simple initialization - uses all defaults
-    translator = LyricsTranslator()
+    translator = LyricsTranslationAgent()
 
     lyrics = """I love you
 You love me"""
@@ -57,7 +57,7 @@ def example_custom_config():
         enable_logging=False,  # Disable verbose logging
     )
 
-    translator = LyricsTranslator(config=config)
+    translator = LyricsTranslationAgent(config=config)
 
     lyrics = """Hello world
 Nice to meet you"""
@@ -85,7 +85,7 @@ def example_custom_prompt_builder():
         max_retries=10,
     )
 
-    translator = LyricsTranslator(config=config)
+    translator = LyricsTranslationAgent(config=config)
 
     lyrics = """Good morning
 Have a nice day"""
@@ -116,7 +116,7 @@ def example_with_custom_constraints():
         syllable_patterns=[[1, 2], [1, 1, 2]],
     )
 
-    translator = LyricsTranslator()
+    translator = LyricsTranslationAgent()
 
     lyrics = """I love you
 You love me too"""
@@ -148,12 +148,12 @@ def example_reusing_components():
     analyzer = LyricsAnalyzer()
 
     # Create two translators sharing the same analyzer
-    translator1 = LyricsTranslator(
+    translator1 = LyricsTranslationAgent(
         config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,
     )
 
-    translator2 = LyricsTranslator(
+    translator2 = LyricsTranslationAgent(
         config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,  # Shared analyzer!
     )
