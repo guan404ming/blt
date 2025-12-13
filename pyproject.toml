@@ -31,6 +31,7 @@ dependencies = [
     "phonemizer>=3.3.0",
     "dotenv>=0.9.9",
     "hanlp>=2.1.0",
+    "gradio-client>=2.0.1",
 ]
 
 [project.urls]
