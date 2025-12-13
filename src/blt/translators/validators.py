@@ -9,80 +9,24 @@ from .models import (
     ValidationResult,
 )
 from .analyzer import LyricsAnalyzer
-import panphon.distance
-
-
-# ==================== IPA SIMILARITY FUNCTIONS ====================
-
-
-# Initialize panphon feature distance calculator
-from pypinyin import lazy_pinyin
-
-_ft = panphon.distance.Distance()
-
-
-def _chinese_to_pinyin(text: str) -> str:
-    """Convert Chinese text via pinyin"""
-    # Convert Chinese to pinyin
-    pinyin_list = lazy_pinyin(text)
-    pinyin_text = " ".join(pinyin_list)
-    return pinyin_text
-
-
-def calculate_ipa_similarity(ipa1: str, ipa2: str, is_chinese: bool = False) -> float:
-    """
-    Calculate phonetic similarity between two IPA strings using panphon feature-based distance
-
-    Args:
-        ipa1: First IPA string (or Chinese text if is_chinese=True)
-        ipa2: Second IPA string (or Chinese text if is_chinese=True)
-        is_chinese: If True, convert Chinese to pinyin first
-
-    Returns:
-        Similarity score between 0 and 1
-    """
-    if not ipa1 and not ipa2:
-        return 1.0
-    if not ipa1 or not ipa2:
-        return 0.0
-
-    # For Chinese, convert to pinyin first
-    if is_chinese:
-        ipa1 = _chinese_to_pinyin(ipa1)
-        ipa2 = _chinese_to_pinyin(ipa2)
-
-    # Normalize: remove spaces, convert to lowercase
-    ipa1 = ipa1.replace(" ", "").lower()
-    ipa2 = ipa2.replace(" ", "").lower()
-
-    len1, len2 = len(ipa1), len(ipa2)
-
-    if len1 == 0:
-        return 0.0 if len2 > 0 else 1.0
-    if len2 == 0:
-        return 0.0
-
-    # Calculate feature-based edit distance using panphon
-    distance = _ft.feature_edit_distance(ipa1, ipa2)
-    max_len = max(len1, len2)
-
-    # Convert distance to similarity score
-    similarity = 1.0 - (distance / max_len)
-
-    return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
 
 
 class ConstraintValidator:
-    """Validates lyrics translations against music constraints"""
+    """
+    Validates lyrics translations against music constraints
 
-    def __init__(self, analyzer: LyricsAnalyzer = None):
+    This validator works with LyricsAnalyzer to verify that translations
+    meet syllable count, rhyme scheme, and syllable pattern requirements.
+    """
+
+    def __init__(self, analyzer: LyricsAnalyzer):
         """
         Initialize validator
 
         Args:
-            analyzer: LyricsAnalyzer instance (creates new if None)
+            analyzer: LyricsAnalyzer instance for core analysis operations
         """
-        self.analyzer = analyzer or LyricsAnalyzer()
+        self.analyzer = analyzer
 
     # ==================== PUBLIC API (for LLM tools) ====================
 
@@ -296,18 +240,26 @@ class ConstraintValidator:
 
 
 class SoramimiValidator:
-    """Validates soramimi translations by comparing IPA similarity"""
+    """
+    Validates soramimi (phonetic) translations by comparing IPA similarity
+
+    This validator works with LyricsAnalyzer to verify that soramimi translations
+    maintain phonetic similarity to the source text by comparing IPA transcriptions
+    and using feature-based distance calculations.
+    """
 
     def __init__(self, analyzer: LyricsAnalyzer, similarity_threshold: float = 0.6):
         """
         Initialize validator
 
         Args:
-            analyzer: LyricsAnalyzer instance
-            similarity_threshold: Minimum similarity to pass (0-1)
+            analyzer: LyricsAnalyzer instance for IPA conversion and similarity calculations
+            similarity_threshold: Minimum similarity score to pass validation (0.0-1.0)
         """
         self.analyzer = analyzer
         self.similarity_threshold = similarity_threshold
+
+    # ==================== PUBLIC API (for LLM tools) ====================
 
     def compare_ipa(
         self,
@@ -345,9 +297,11 @@ class SoramimiValidator:
 
             # For Chinese, use direct text comparison via pinyin
             if is_chinese:
-                similarity = calculate_ipa_similarity(src, tgt, is_chinese=True)
+                similarity = self.analyzer.calculate_ipa_similarity(
+                    src, tgt, is_chinese=True
+                )
             else:
-                similarity = calculate_ipa_similarity(src_ipa, tgt_ipa)
+                similarity = self.analyzer.calculate_ipa_similarity(src_ipa, tgt_ipa)
             similarities.append(similarity)
 
             if similarity < self.similarity_threshold:
@@ -402,11 +356,11 @@ class SoramimiValidator:
         # For Chinese, use direct text comparison via pinyin instead of IPA
         is_chinese = target_lang in ("cmn", "zh", "zh-cn", "zh-tw")
         if is_chinese:
-            similarity = calculate_ipa_similarity(
+            similarity = self.analyzer.calculate_ipa_similarity(
                 source_text, target_text, is_chinese=True
             )
         else:
-            similarity = calculate_ipa_similarity(src_ipa, tgt_ipa)
+            similarity = self.analyzer.calculate_ipa_similarity(src_ipa, tgt_ipa)
 
         return {
             "source_ipa": src_ipa,

@@ -13,10 +13,10 @@
 
 **IPA-based lyrics translation tools with music constraints:**
 
-| Tool                  | Description                                          |
-| --------------------- | ---------------------------------------------------- |
-| `LyricsTranslationAgent`    | Main translator with syllable/rhyme preservation     |
-| `SoramimiTranslationAgent`  | Phonetic (soramimi/空耳) translator - creates text that sounds like the original |
+| Tool                        | Description                                                           |
+| --------------------------- | --------------------------------------------------------------------- |
+| `LyricsTranslationAgent`    | Main translator with syllable/rhyme preservation                      |
+| `SoramimiTranslationAgent`  | そらみみ (空耳) translator - creates text that sounds like the original |
 
 **Music Constraints Extracted:**
 

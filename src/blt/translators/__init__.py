@@ -19,7 +19,7 @@ Architecture:
 
 # Core components
 from .analyzer import LyricsAnalyzer
-from .validator import ConstraintValidator, SoramimiValidator
+from .validators import ConstraintValidator, SoramimiValidator
 
 # Configuration (includes prompts + tools)
 from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig

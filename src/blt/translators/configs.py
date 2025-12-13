@@ -13,9 +13,25 @@ from pydantic_ai import Agent
 from .analyzer import LyricsAnalyzer
 
 if TYPE_CHECKING:
-    from .validator import ConstraintValidator, SoramimiValidator
+    from .validators import ConstraintValidator, SoramimiValidator
 
 logger = logging.getLogger(__name__)
+
+
+# Language code to name mapping for clearer prompts
+LANGUAGE_NAMES = {
+    "en-us": "English",
+    "en": "English",
+    "cmn": "Chinese",
+    "zh": "Chinese",
+    "zh-cn": "Chinese",
+    "zh-tw": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+}
 
 
 @dataclass
@@ -289,6 +305,7 @@ class SoramimiTranslationAgentConfig:
 
         tools = [
             self._create_get_source_ipa_tool(analyzer),
+            self._create_calculate_ipa_similarity_tool(analyzer),
             self._create_check_ipa_similarity_tool(validator),
             self._create_verify_all_lines_tool(validator),
         ]
@@ -323,6 +340,31 @@ class SoramimiTranslationAgentConfig:
             return {"line_number": line_number, "text": text, "ipa": ipa}
 
         return get_source_ipa
+
+    def _create_calculate_ipa_similarity_tool(
+        self, analyzer: LyricsAnalyzer
+    ) -> Callable:
+        """Create tool to calculate IPA similarity between two strings"""
+
+        def calculate_ipa_similarity(ipa1: str, ipa2: str, is_chinese: bool = False) -> dict:
+            """Calculate phonetic similarity between two IPA strings. Set is_chinese=True for Chinese text."""
+            self._tool_call_stats["calculate_ipa_similarity"] += 1
+
+            similarity = analyzer.calculate_ipa_similarity(ipa1, ipa2, is_chinese)
+
+            if self.enable_logging:
+                logger.info(
+                    f"   calculate_ipa_similarity: {similarity:.1%}"
+                )
+
+            return {
+                "ipa1": ipa1,
+                "ipa2": ipa2,
+                "similarity": similarity,
+                "is_chinese": is_chinese,
+            }
+
+        return calculate_ipa_similarity
 
     def _create_check_ipa_similarity_tool(
         self, validator: "SoramimiValidator"
@@ -402,32 +444,51 @@ class SoramimiTranslationAgentConfig:
             else "Tools will be available"
         )
 
-        return f"""You create SORAMIMI (空耳): {self._target_lang} text that SOUNDS like {self._source_lang}.
+        # Get language names for clearer prompts
+        source_name = LANGUAGE_NAMES.get(self._source_lang, self._source_lang)
+        target_name = LANGUAGE_NAMES.get(self._target_lang, self._target_lang)
+
+        return f"""You create SORAMIMI (空耳): {target_name} text that SOUNDS like {source_name}.
 
 空耳（日語：そらみみ，Soramimi）是一種將聽到的聲音（通常是外語歌曲歌詞）故意「幻聽」或「誤聽」
 改寫成發音近似，以達到方便記憶的二次創作行為
 其精髓是「音準即可」，即改寫後的句子在發音上相似，可以完全不成句。
 
-Examples:
-1. The snow glows white on the mountain tonight → 特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特
-2. Not a footprint to be seen → 納特 阿 福特普林 特比 辛
-3. A kingdom of isolation → 阿 金德姆 俄夫 愛瑟雷神
-4. and it looks like I'm the queen → 安 依特 盧克斯 萊克 愛姆 德 奎因
+CRITICAL RULES:
+1. ONLY match SOUNDS/PRONUNCIATION - IGNORE meaning completely
+2. DO NOT translate words (e.g., "queen" → "女皇" is WRONG, use "奎因/庫林" instead)
+3. DO NOT use semantic equivalents (e.g., "know" → "知道" is WRONG, use "耨" instead)
+4. Match EVERY syllable phonetically - meaning is irrelevant
+5. You MUST convert ALL lines to {target_name} characters/text. DO NOT leave any line in {source_name}.
+
+WRONG Examples (semantic translation - DO NOT DO THIS):
+❌ "queen" → "女皇" (this translates the meaning)
+❌ "know" → "知道" (this translates the meaning)
+❌ "heaven" → "天堂" (this translates the meaning)
+
+CORRECT Examples (phonetic matching only):
+✓ The snow glows white on the mountain tonight → 特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特
+✓ Not a footprint to be seen → 納特 阿 福特普林 特比 辛
+✓ A kingdom of isolation → 阿 金德姆 俄夫 愛瑟雷神
+✓ and it looks like I'm the queen → 安 依特 盧克斯 萊克 愛姆 德 奎因
+  (Note: "queen" → "奎因" by sound, NOT "女皇" by meaning)
 
 Tools available: {tools_section}
 
 Steps:
 1. Use get_source_ipa to understand pronunciation
-2. Find {self._target_lang} characters with similar sounds
+2. Find {target_name} characters with similar sounds
 3. Use verify_all_lines to check similarity (need >= {self.similarity_threshold:.0%})
 4. Repeat (max {self.max_retries} rounds)
 
 JSON OUTPUT REQUIRED:
 Return ONLY valid JSON with this structure:
 {{
-  "soramimi_lines": ["Chinese characters line 1", "Chinese characters line 2", ...],
+  "soramimi_lines": ["{target_name} text line 1", "{target_name} text line 2", ...],
   "reasoning": "your explanation (optional)"
 }}
+
+IMPORTANT: ALL lines in soramimi_lines MUST be in {target_name}. DO NOT include {source_name} text.
 """
 
     def get_user_prompt(
@@ -441,8 +502,12 @@ Return ONLY valid JSON with this structure:
             line.strip() for line in source_lyrics.strip().split("\n") if line.strip()
         ]
 
+        # Get language names for clearer prompts
+        source_name = LANGUAGE_NAMES.get(source_lang, source_lang)
+        target_name = LANGUAGE_NAMES.get(target_lang, target_lang)
+
         parts = [
-            f"Create SORAMIMI: find {target_lang} characters that SOUND like this {source_lang}:",
+            f"Create SORAMIMI: Convert ALL {source_name} lines to {target_name} text that SOUNDS like the {source_name}:",
             "",
         ]
 
@@ -451,13 +516,18 @@ Return ONLY valid JSON with this structure:
 
         parts.extend(
             [
-                """空耳（日語：そらみみ，Soramimi）是一種將聽到的聲音（通常是外語歌曲歌詞）故意「幻聽」或「誤聽」
-                改寫成發音近似，以達到趣味或方便記憶的二次創作行為
-                其精髓是「音準即可」，即改寫後的句子在發音上相似，可以完全不成句。""",
-                "有一些沒辦法拼出來的字可以用英文代替",
-                "The snow glows white on the mountain tonight → 死鬧勾斯歪動某頓頭奈",
-                "Not a footprint to be seen → 哪惹浮噴 to 比辛",
-                "A kingdom of isolation → 欸 King 痘媽佛愛收雷神",
+                "",
+                f"CRITICAL RULES:",
+                f"1. ONLY match SOUNDS - DO NOT translate meanings",
+                f"2. Convert EVERY line above to {target_name} text by PRONUNCIATION ONLY",
+                f"3. DO NOT use semantic translations (e.g., 'queen' → '女皇' is WRONG)",
+                f"4. Match phonetics: 'queen' → '奎因', 'know' → '耨', 'heaven' → '海文'",
+                "",
+                "Correct Examples (phonetic only, NOT translation):",
+                "The snow glows white on the mountain tonight → 特斯諾 哥羅斯 外特 噢恩 德 馬恩廷 托奈特",
+                "Not a footprint to be seen → 納特 阿 福特普林 特比 辛",
+                "and it looks like I'm the queen → 安 依特 盧克斯 萊克 愛姆 德 奎因",
+                "  (Note: 'queen' = 奎因 by SOUND, NOT 女皇 by meaning)",
             ]
         )
 

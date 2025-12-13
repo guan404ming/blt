@@ -13,7 +13,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 
 from .models import LyricTranslation, MusicConstraints, SoramimiTranslation
 from .analyzer import LyricsAnalyzer
-from .validator import ConstraintValidator, SoramimiValidator
+from .validators import ConstraintValidator, SoramimiValidator
 from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig
 
 logger = logging.getLogger(__name__)
