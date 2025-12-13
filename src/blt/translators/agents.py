@@ -232,6 +232,46 @@ class SoramimiTranslationAgent:
         # Reset stats
         self.config.reset_stats()
 
+        # Convert Chinese to pinyin and change source lang to en-us
+        chinese_lang_codes = ["cmn", "zh", "zh-cn", "zh-tw"]
+        if source_lang.lower() in chinese_lang_codes:
+            logger.info(
+                f"   Converting Chinese to pinyin (source_lang: {source_lang} -> en-us)"
+            )
+            # Parse lines first
+            source_lines = [
+                line.strip()
+                for line in source_lyrics.strip().split("\n")
+                if line.strip()
+            ]
+            # Convert each line to pinyin
+            pinyin_lines = [
+                self.analyzer._chinese_to_pinyin(line) for line in source_lines
+            ]
+            # Update source_lyrics and source_lang
+            source_lyrics = "\n".join(pinyin_lines)
+            source_lang = "en-us"
+            logger.info(f"   Converted to pinyin: {pinyin_lines}")
+
+        # Early return if source and target are the same
+        if source_lang == target_lang:
+            logger.info(
+                f"   Source and target languages are the same ({source_lang}), returning original lyrics"
+            )
+            lines = [
+                line.strip()
+                for line in source_lyrics.strip().split("\n")
+                if line.strip()
+            ]
+            return SoramimiTranslation(
+                soramimi_lines=lines,
+                source_ipa=[],
+                target_ipa=[],
+                similarity_scores=[1.0] * len(lines),
+                overall_similarity=1.0,
+                reasoning="Source and target languages are identical",
+            )
+
         # Parse source lines and store in config for tools
         source_lines = [
             line.strip() for line in source_lyrics.strip().split("\n") if line.strip()
