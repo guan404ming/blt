@@ -16,7 +16,6 @@ uv sync
 
 **Required environment variables:**
 ```bash
-export GOOGLE_API_KEY="your-api-key"
 export PHONEMIZER_ESPEAK_PATH="/opt/homebrew/bin/espeak-ng"
 export PHONEMIZER_ESPEAK_LIBRARY="/opt/homebrew/lib/libespeak-ng.dylib"
 ```

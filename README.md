@@ -16,8 +16,7 @@
 | Tool                  | Description                                          |
 | --------------------- | ---------------------------------------------------- |
 | `LyricsTranslator`    | Main translator with syllable/rhyme preservation     |
-| `LyricsAnalyzer`      | Extract music constraints from lyrics                |
-| `ConstraintValidator` | Validate translated lyrics against music constraints |
+| `SoramimiTranslator`  | Phonetic (soramimi/空耳) translator - creates text that sounds like the original |
 
 **Music Constraints Extracted:**
 
@@ -37,6 +36,10 @@
 3. **rhyme_scheme**: `str` (ex. AB)
    - Chinese: Pinyin finals
    - Other languages: IPA phonemes
+
+4. **ipa_similarity**: `float` (ex. 0.5)
+   - Phonetic similarity threshold for soramimi translation
+   - Measured using IPA phoneme matching between source and target
 
 <details open>
 <summary><b>Translation Flow</b></summary>
@@ -86,23 +89,27 @@ uv sync
 
 ## Usage
 
-To generate a translated cover song, use the `examples/gen_translated_song.py` script:
+### Soramimi Translation (Phonetic Matching)
+
+To generate soramimi (空耳) lyrics that sound like the original, use the `examples/get_soramimi_lyrics.py` script:
 
 ```bash
-uv run python examples/gen_translated_song.py \
-    --audio "path/to/your/song.mp3" \
-    --old-lyrics-file "path/to/original/lyrics.txt" \
-    --new-lyrics-file "path/to/new/lyrics.txt" \
-    --output-name "my_cover_song"
+uv run python examples/get_soramimi_lyrics.py
 ```
 
 **Parameters:**
 
-- `--audio`: Path to the original song audio file.
-- `--old-lyrics-file`: Path to a text file containing the original lyrics.
-- `--new-lyrics-file`: Path to a text file containing the new lyrics.
-- `--output-name`: The name for the generated cover song files.
-- `--device`: The device to run the models on (`cuda` or `cpu`).
+- `-f, --file`: Path to source lyrics file (default: `data/lyrics-let-it-go.txt`)
+- `-s, --source`: Source language code (default: `en-us`)
+- `-t, --target`: Target language code (default: `cmn` for Mandarin Chinese)
+- `-m, --model`: Ollama model to use (default: `qwen3:30b-a3b-instruct-2507-q4_K_M`)
+- `--threshold`: Phonetic similarity threshold 0-1 (default: `0.5`)
+- `--save-dir`: Directory to save results (default: `outputs`)
+
+**Requirements:**
+- [Ollama](https://ollama.com/) installed and running
+- espeak-ng installed for IPA analysis
+- Recommended model: `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M`
 
 ## Acknowledgments
 

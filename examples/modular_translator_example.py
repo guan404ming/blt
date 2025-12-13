@@ -49,12 +49,12 @@ def example_custom_config():
 
     # Create custom configuration
     config = TranslatorConfig(
-        model="gemini-2.5-pro",  # Use a different model
+        model="qwen3:30b-a3b-instruct-2507-q4_K_M",  # Use Ollama model
         auto_save=True,
         save_dir="custom_outputs",
         save_format="md",
-        max_verification_rounds=20,
-        enable_tool_logging=False,  # Disable verbose logging
+        max_retries=20,
+        enable_logging=False,  # Disable verbose logging
     )
 
     translator = LyricsTranslator(config=config)
@@ -81,7 +81,7 @@ def example_custom_prompt_builder():
 
     # Use a faster model configuration
     config = TranslatorConfig(
-        model="gemini-2.5-flash",
+        model="qwen3:30b-a3b-instruct-2507-q4_K_M",
         max_retries=10,
     )
 
@@ -149,12 +149,12 @@ def example_reusing_components():
 
     # Create two translators sharing the same analyzer
     translator1 = LyricsTranslator(
-        config=TranslatorConfig(model="gemini-2.5-flash"),
+        config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,
     )
 
     translator2 = LyricsTranslator(
-        config=TranslatorConfig(model="gemini-2.5-pro"),
+        config=TranslatorConfig(model="qwen3:30b-a3b-instruct-2507-q4_K_M"),
         analyzer=analyzer,  # Shared analyzer!
     )
 
@@ -170,10 +170,7 @@ def example_reusing_components():
 
 
 if __name__ == "__main__":
-    # Check API key
-    if not os.getenv("GOOGLE_API_KEY"):
-        print("Please set GOOGLE_API_KEY environment variable")
-        exit(1)
+    # No API key needed for local Hugging Face models
 
     # Run examples
     example_basic_usage()
