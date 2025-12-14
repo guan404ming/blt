@@ -28,7 +28,6 @@ dependencies = [
     "ctc-forced-aligner>=1.0.2",
     "praat-parselmouth>=0.4.6",
     "phonemizer>=3.3.0",
-    "dotenv>=0.9.9",
     "hanlp>=2.1.0",
     "pydantic-ai-slim[openai]>=1.31.0",
     "pydantic-settings>=2.12.0",
