@@ -3,17 +3,21 @@ Create soramimi (phonetic) translation of lyrics
 """
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+import argparse
+import logging
+from blt.translators import SoramimiTranslationAgent, SoramimiTranslationAgentConfig
+
+# Load .env file from project root
+load_dotenv()
 
 # Configure phonemizer to use espeak-ng from ~/.local
 os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
 os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
     "~/.local/lib/libespeak-ng.so"
 )
-
-import argparse
-import logging
-from pathlib import Path
-from blt.translators import SoramimiTranslationAgent, SoramimiTranslationAgentConfig
 
 # Configure logging
 logging.basicConfig(
@@ -73,6 +77,11 @@ def main():
         action="store_true",
         help="Enable verbose logging",
     )
+    parser.add_argument(
+        "--no-langsmith",
+        action="store_true",
+        help="Disable LangSmith tracing (enabled by default)",
+    )
 
     args = parser.parse_args()
 
@@ -95,6 +104,7 @@ def main():
 
     print("=" * 80)
     print(f"Soramimi Translation: {lyrics_path.name}")
+    print("Approach: Phoneme Mapping")
     print(f"Direction: {args.source_lang} -> {args.target_lang}")
     print(f"Similarity threshold: {args.threshold:.0%}")
     print("=" * 80)
@@ -112,6 +122,7 @@ def main():
         default_target_lang=args.target_lang,
         similarity_threshold=args.threshold,
         enable_logging=args.verbose,
+        langsmith_tracing=not args.no_langsmith,  # Enabled by default
     )
 
     # Create translator

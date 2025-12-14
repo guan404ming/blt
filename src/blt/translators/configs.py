@@ -277,9 +277,13 @@ class SoramimiTranslationAgentConfig:
     save_format: str = "json"
 
     # Translation settings
-    max_retries: int = 8  # Reduced from 20 - more is slower without much benefit
+    max_retries: int = 5
     similarity_threshold: float = 0.6
     enable_logging: bool = True
+
+    # LangSmith settings
+    langsmith_tracing: bool = True  # Enable LangSmith tracing
+    langsmith_project: str = "blt"  # LangSmith project name
 
     # Language defaults
     default_source_lang: str = "en-us"
