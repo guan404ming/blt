@@ -3,11 +3,21 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-apache-yellow.svg)](https://opensource.org/license/apache-2-0)
 
-## Overview
-
 **BLT** is a toolkit for song translation and voice synthesis. The toolkit contains three modular components that can be used independently or combined through pre-defined pipelines.
 
-## Toolkit Components
+## Quick Start
+
+```python
+from blt.translators import SoramimiTranslationAgent
+
+# Soramimi translation (phonetic matching)
+agent = SoramimiTranslationAgent()
+result = agent.translate(["Your lyrics here"])
+
+print(result.soramimi_lines)  # Phonetically matched translation
+```
+
+## Components
 
 ### 1. Translator
 
@@ -60,41 +70,27 @@ flowchart TD
 
 </details>
 
-### 2. (WIP) Synthesizer
+### 2. Synthesizer (WIP)
 
-TTS, alignment, and voice synthesis tools:
+| Tool               | Description                       |
+| ------------------ | --------------------------------- |
+| `VocalSeparator`   | Vocal/instrumental separation     |
+| `LyricsAligner`    | Timing alignment                  |
+| `VoiceSynthesizer` | TTS synthesis                     |
+| `RvcConverter`     | Voice conversion (RVC)            |
 
-| Tool               | Description                              |
-| ------------------ | ---------------------------------------- |
-| `VocalSeparator`   | Separate vocals from instrumental tracks |
-| `LyricsAligner`    | Align lyrics timing with audio           |
-| `VoiceSynthesizer` | Synthesize vocals with new lyrics        |
-| `RvcConverter`     | Convert voice using RVC models           |
+### 3. Pipeline (WIP)
 
-### 3. (WIP) Pipeline
-
-Pre-defined combinations of tools:
-
-| Pipeline            | Description                                               |
-| ------------------- | --------------------------------------------------------- |
-| `CoverSongPipeline` | End-to-end pipeline for generating translated cover songs |
+| Pipeline            | Description                   |
+| ------------------- | ----------------------------- |
+| `CoverSongPipeline` | End-to-end translated covers  |
 
 ## Requirements
 
-### System Requirements
-
-- Python 3.11 or higher
-- [espeak-ng](https://github.com/espeak-ng/espeak-ng) - Required for IPA phonetic analysis
-
-### Optional Services
-
-- **For LLM-based Translation:**
-  - [Ollama](https://ollama.com/) - Local LLM inference
-  - [Qwen3](https://github.com/QwenLM/Qwen3) model: `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M`
-
-- **For Voice Conversion (RVC):**
-  - Access to [r3gm/RVC_ZERO](https://huggingface.co/spaces/r3gm/RVC_ZERO) HuggingFace Space
-  - RVC model files (.pth) and index files (.index)
+- Python 3.11+
+- [espeak-ng](https://github.com/espeak-ng/espeak-ng) (IPA analysis)
+- [Ollama](https://ollama.com/) + [Qwen3](https://github.com/QwenLM/Qwen3): `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M`
+- (Optional) [RVC_ZERO](https://huggingface.co/spaces/r3gm/RVC_ZERO) for voice conversion
 
 ## Setup
 
@@ -104,49 +100,9 @@ source .venv/bin/activate
 uv sync
 ```
 
-## Usage
-
-### Soramimi Translation (Phonetic Matching)
-
-To generate soramimi lyrics that sound like the original, use the `examples/get_soramimi_lyrics.py` script:
-
-```bash
-uv run python examples/get_soramimi_lyrics.py
-```
-
-**Parameters:**
-
-- `-f, --file`: Path to source lyrics file (default: `data/lyrics-let-it-go.txt`)
-- `-s, --source`: Source language code (default: `en-us`)
-- `-t, --target`: Target language code (default: `cmn` for Mandarin Chinese)
-- `-m, --model`: Ollama model to use (default: `qwen3:30b-a3b-instruct-2507-q4_K_M`)
-- `--threshold`: Phonetic similarity threshold 0-1 (default: `0.5`)
-- `--save-dir`: Directory to save results (default: `outputs`)
-
 ## Acknowledgments
 
-This project is built on top of excellent open-source libraries and tools:
-
-### Core Libraries
-
-- [PyTorch](https://pytorch.org/) - Deep learning framework
-- [Pydantic AI](https://ai.pydantic.dev/) - LLM application framework
-- [Demucs](https://github.com/facebookresearch/demucs) - Vocal separation (Facebook Research)
-- [XTTS](https://github.com/coqui-ai/TTS) - Text-to-speech synthesis (Coqui AI)
-- [HanLP](https://github.com/hankcs/HanLP) - Chinese NLP toolkit
-- [Phonemizer](https://github.com/bootphon/phonemizer) - IPA phonetic transcription
-- [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner) - Lyrics alignment
-- [Panphon](https://github.com/dmort27/panphon) - Phonetic feature analysis
-- [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) via [r3gm/RVC_ZERO](https://huggingface.co/spaces/r3gm/RVC_ZERO) - Voice conversion
-
-### Audio Processing
-
-- [librosa](https://librosa.org/) - Audio analysis
-- [Praat-Parselmouth](https://github.com/YannickJadoul/Parselmouth) - Acoustic analysis
-
-### Language Models
-
-- [Qwen3](https://github.com/QwenLM/Qwen3) - Open-source LLM for translation
+Built with: [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Qwen3](https://github.com/QwenLM/Qwen3)
 
 ## License
 
