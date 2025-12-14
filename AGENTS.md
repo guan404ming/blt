@@ -1,21 +1,14 @@
-# AGENTS.md - BLT (Better Lyrics Translation Toolkit)
-
-## Project Overview
-
-Python toolkit for song translation with music constraint preservation using **pydantic-ai** agents and **IPA phonemic analysis**.
-
-**Core principle**: Agent-based translation loop with verification tools, not direct LLM translation.
+# Development Guide
 
 ## Setup
 
 ```bash
+# Create virtual environment
 uv venv --python 3.11
 source .venv/bin/activate
 uv sync
-```
 
-**Required environment variables:**
-```bash
+# Configure espeak-ng (required for IPA phonetic analysis)
 export PHONEMIZER_ESPEAK_PATH="/opt/homebrew/bin/espeak-ng"
 export PHONEMIZER_ESPEAK_LIBRARY="/opt/homebrew/lib/libespeak-ng.dylib"
 ```
@@ -23,40 +16,20 @@ export PHONEMIZER_ESPEAK_LIBRARY="/opt/homebrew/lib/libespeak-ng.dylib"
 ## Testing
 
 ```bash
-uv run python -m pytest                        # All tests
-uv run python -m pytest tests/test_translator.py  # Specific file
+uv run python -m pytest                      # Run all tests
+uv run python -m pytest tests/test_file.py   # Run specific test file
 ```
 
-## Critical Context
+## Development Rules
 
-### Constraint Priority
-1. **Syllable patterns** (word-level rhythm) - HIGHEST
-2. **Total syllable count** - CRITICAL
-3. **Rhyme scheme** - OPTIONAL
+**Dependencies:**
+- Use `uv add <package>` to add dependencies (not pip)
+- Use `uv sync` to sync dependencies
 
-**Why**: Singing requires matching rhythmic feel, not just total duration.
+**Code Quality:**
+- Use `ruff` for linting and formatting
+- Follow type hints (Python 3.11+)
 
-### Agent Pattern
-```
-1. Draft translation
-2. Call verify_all_constraints() tool
-3. Read feedback: "Line 1: expected [2,2,1] but got [1,3,1]"
-4. Restructure to match pattern
-5. Repeat (max 15x)
-```
-
-**Never verify constraints via LLM reasoning - always use tools.**
-
-### Tool Registration Order
-```python
-config.register_tools(agent, analyzer, validator)  # Register first
-agent._system_prompt = config.get_system_prompt()  # Then set prompt
-```
-
-## Key Rules
-
-- ✅ Use `uv add` for dependencies (not pip)
-- ✅ Lazy-load heavy models (HanLP, phonemizer)
-- ✅ Prioritize syllable patterns over total count
-- ❌ Don't modify `_system_prompt` before `register_tools()` completes
-- ❌ Don't validate constraints without tools
+**Performance:**
+- Lazy-load heavy models (HanLP, phonemizer)
+- Cache expensive computations where appropriate
