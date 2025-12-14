@@ -199,7 +199,9 @@ class SoramimiTranslationAgent:
         )
 
         # Build graph
-        self.graph = build_soramimi_mapping_graph(self.analyzer, self.validator, self.llm)
+        self.graph = build_soramimi_mapping_graph(
+            self.analyzer, self.validator, self.llm
+        )
 
     def translate(
         self,
@@ -226,7 +228,9 @@ class SoramimiTranslationAgent:
         # Parse lines
         if isinstance(source_lyrics, str):
             source_lines = [
-                line.strip() for line in source_lyrics.strip().split("\n") if line.strip()
+                line.strip()
+                for line in source_lyrics.strip().split("\n")
+                if line.strip()
             ]
         else:
             source_lines = [line.strip() for line in source_lyrics if line.strip()]
@@ -235,7 +239,9 @@ class SoramimiTranslationAgent:
         chinese_lang_codes = ["cmn", "zh", "zh-cn", "zh-tw"]
         if source_lang.lower() in chinese_lang_codes:
             logger.info("   Converting Chinese to pinyin")
-            source_lines = [self.analyzer._chinese_to_pinyin(line) for line in source_lines]
+            source_lines = [
+                self.analyzer._chinese_to_pinyin(line) for line in source_lines
+            ]
             source_lang = "en-us"
 
         # Early return if same language
@@ -279,7 +285,7 @@ class SoramimiTranslationAgent:
             config={
                 "recursion_limit": 100,  # Allow up to 100 node executions
                 "run_name": "SoramimiTranslation",  # LangSmith run name
-            }
+            },
         )
 
         # Build result
@@ -303,7 +309,9 @@ class SoramimiTranslationAgent:
 
         # Display
         elapsed = time.time() - start_time
-        print(f"\n   ✓ Completed in {elapsed:.1f}s - Similarity: {overall_similarity:.1%}")
+        print(
+            f"\n   ✓ Completed in {elapsed:.1f}s - Similarity: {overall_similarity:.1%}"
+        )
 
         # Auto-save
         if self.config.auto_save:
@@ -314,7 +322,9 @@ class SoramimiTranslationAgent:
     def _save(self, translation: SoramimiTranslation, src: str, tgt: str):
         """Save translation"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"soramimi_mapping_{src}_to_{tgt}_{timestamp}.{self.config.save_format}"
+        filename = (
+            f"soramimi_mapping_{src}_to_{tgt}_{timestamp}.{self.config.save_format}"
+        )
         path = os.path.join(self.config.save_dir, filename)
         translation.save(path, format=self.config.save_format)
         print(f"   💾 Saved: {path}")
