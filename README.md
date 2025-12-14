@@ -79,6 +79,23 @@ Pre-defined combinations of tools:
 | ------------------- | --------------------------------------------------------- |
 | `CoverSongPipeline` | End-to-end pipeline for generating translated cover songs |
 
+## Requirements
+
+### System Requirements
+
+- Python 3.11 or higher
+- [espeak-ng](https://github.com/espeak-ng/espeak-ng) - Required for IPA phonetic analysis
+
+### Optional Services
+
+- **For LLM-based Translation:**
+  - [Ollama](https://ollama.com/) - Local LLM inference
+  - [Qwen3](https://github.com/QwenLM/Qwen3) model: `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M`
+
+- **For Voice Conversion (RVC):**
+  - Access to [r3gm/RVC_ZERO](https://huggingface.co/spaces/r3gm/RVC_ZERO) HuggingFace Space
+  - RVC model files (.pth) and index files (.index)
+
 ## Setup
 
 ```bash
@@ -91,7 +108,7 @@ uv sync
 
 ### Soramimi Translation (Phonetic Matching)
 
-To generate soramimi (空耳) lyrics that sound like the original, use the `examples/get_soramimi_lyrics.py` script:
+To generate soramimi lyrics that sound like the original, use the `examples/get_soramimi_lyrics.py` script:
 
 ```bash
 uv run python examples/get_soramimi_lyrics.py
@@ -106,15 +123,30 @@ uv run python examples/get_soramimi_lyrics.py
 - `--threshold`: Phonetic similarity threshold 0-1 (default: `0.5`)
 - `--save-dir`: Directory to save results (default: `outputs`)
 
-**Requirements:**
-- [Ollama](https://ollama.com/) installed and running
-- espeak-ng installed for IPA analysis
-- Recommended model: `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M`
-
 ## Acknowledgments
 
-- [Demucs](https://github.com/facebookresearch/demucs) by Facebook Research
-- [XTTS](https://github.com/coqui-ai/TTS) by Coqui AI
+This project is built on top of excellent open-source libraries and tools:
+
+### Core Libraries
+
+- [PyTorch](https://pytorch.org/) - Deep learning framework
+- [Pydantic AI](https://ai.pydantic.dev/) - LLM application framework
+- [Demucs](https://github.com/facebookresearch/demucs) - Vocal separation (Facebook Research)
+- [XTTS](https://github.com/coqui-ai/TTS) - Text-to-speech synthesis (Coqui AI)
+- [HanLP](https://github.com/hankcs/HanLP) - Chinese NLP toolkit
+- [Phonemizer](https://github.com/bootphon/phonemizer) - IPA phonetic transcription
+- [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner) - Lyrics alignment
+- [Panphon](https://github.com/dmort27/panphon) - Phonetic feature analysis
+- [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) via [r3gm/RVC_ZERO](https://huggingface.co/spaces/r3gm/RVC_ZERO) - Voice conversion
+
+### Audio Processing
+
+- [librosa](https://librosa.org/) - Audio analysis
+- [Praat-Parselmouth](https://github.com/YannickJadoul/Parselmouth) - Acoustic analysis
+
+### Language Models
+
+- [Qwen3](https://github.com/QwenLM/Qwen3) - Open-source LLM for translation
 
 ## License
 

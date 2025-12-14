@@ -5,12 +5,8 @@ Translate lyrics with music constraints
 import argparse
 import logging
 from pathlib import Path
-from dotenv import load_dotenv
 from blt.translators import LyricsTranslationAgent, LyricsTranslationAgentConfig
 from blt.translators.analyzer import LyricsAnalyzer
-
-# Load .env file
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(

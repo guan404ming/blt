@@ -143,7 +143,6 @@ source = { editable = "." }
 dependencies = [
     { name = "ctc-forced-aligner" },
     { name = "demucs" },
-    { name = "dotenv" },
     { name = "gradio-client" },
     { name = "hanlp" },
     { name = "librosa" },
@@ -177,7 +176,6 @@ dev = [
 requires-dist = [
     { name = "ctc-forced-aligner", specifier = ">=1.0.2" },
     { name = "demucs", specifier = ">=4.0.1" },
-    { name = "dotenv", specifier = ">=0.9.9" },
     { name = "gradio-client", specifier = ">=2.0.1" },
     { name = "hanlp", specifier = ">=2.1.0" },
     { name = "librosa", specifier = ">=0.10.0" },
@@ -547,17 +545,6 @@ dependencies = [
     { name = "treetable" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d5/9d/9a13947db237375486c0690f4741dd2b7e1eee20e0ffcb55dbd1b21cc600/dora_search-0.1.12.tar.gz", hash = "sha256:2956fd2c4c7e4b9a4830e83f0d4cf961be45cfba1a2f0570281e91d15ac516fb", size = 87111, upload-time = "2023-05-23T14:36:24.743Z" }
-
-[[package]]
-name = "dotenv"
-version = "0.9.9"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "python-dotenv" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/b7/545d2c10c1fc15e48653c91efde329a790f2eecfbbf2bd16003b5db2bab0/dotenv-0.9.9-py2.py3-none-any.whl", hash = "sha256:29cf74a087b31dafdb5a446b6d7e11cbce8ed2741540e2339c69fbef92c94ce9", size = 1892, upload-time = "2025-02-19T22:15:01.647Z" },
-]
 
 [[package]]
 name = "editdistance"
