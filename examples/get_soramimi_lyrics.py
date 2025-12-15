@@ -3,12 +3,19 @@ Create soramimi (phonetic) translation of lyrics
 """
 
 import os
+import sys
 
-# Configure phonemizer to use espeak-ng from ~/.local
-os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
-    "~/.local/lib/libespeak-ng.so"
-)
+# Configure phonemizer to use espeak-ng
+if sys.platform == "win32":
+    # On Windows, set both the executable and library paths
+    os.environ["PHONEMIZER_ESPEAK_PATH"] = r"C:\Program Files\eSpeak NG\espeak-ng.exe"
+    os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = r"C:\Program Files\eSpeak NG\libespeak-ng.dll"
+else:
+    # On Unix systems, use ~/.local paths
+    os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
+    os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
+        "~/.local/lib/libespeak-ng.so"
+    )
 
 import argparse
 import logging
