@@ -570,7 +570,7 @@ def build_lyrics_translation_graph(analyzer, llm, config):
             target_syllables[current_idx] if current_idx < len(target_syllables) else 0
         )
 
-        print(
+        logger.info(
             f'   🚀 Line {current_idx + 1}/{len(source_lines)}: "{source_line}" → {target_count} syllables'
         )
 
@@ -644,12 +644,12 @@ Revise to have EXACTLY {target_count} syllables. Output ONLY the translation."""
                 best_translation = translation
 
             if actual == target_count:
-                print(
+                logger.info(
                     f'      ✓ Attempt {attempt + 1}: "{translation}" ({actual}/{target_count})'
                 )
                 break
             else:
-                print(
+                logger.info(
                     f'      ⚠ Attempt {attempt + 1}: "{translation}" ({actual}/{target_count})'
                 )
 

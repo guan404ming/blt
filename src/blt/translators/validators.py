@@ -147,11 +147,7 @@ class ConstraintValidator:
                 )
                 if actual == target
             )
-            syllable_score = (
-                matches / len(constraints.syllable_counts)
-                if constraints.syllable_counts
-                else 0
-            )
+            syllable_score = matches / len(constraints.syllable_counts)
         syllables_match = syllable_score == 1.0
 
         # Calculate pattern match score (partial credit)
