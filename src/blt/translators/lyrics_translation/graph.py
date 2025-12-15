@@ -11,6 +11,7 @@ from ..shared.tools import (
     extract_rhyme_ending,
     check_rhyme,
     get_syllable_patterns,
+    analyze_pattern_alignment,
 )
 from .models import LyricsTranslationState
 
@@ -82,6 +83,7 @@ def build_graph(analyzer, validator, llm, config):
         extract_rhyme_ending,
         check_rhyme,
         get_syllable_patterns,
+        analyze_pattern_alignment,
     ]
     llm_with_tools = llm.bind_tools(tools)
 
@@ -180,6 +182,8 @@ Do not include any explanations or notes."""
                     result = check_rhyme.invoke(tool_args)
                 elif tool_name == "get_syllable_patterns":
                     result = get_syllable_patterns.invoke(tool_args)
+                elif tool_name == "analyze_pattern_alignment":
+                    result = analyze_pattern_alignment.invoke(tool_args)
                 else:
                     result = f"Unknown tool: {tool_name}"
 
@@ -308,6 +312,8 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
                         result = check_rhyme.invoke(tool_args)
                     elif tool_name == "get_syllable_patterns":
                         result = get_syllable_patterns.invoke(tool_args)
+                    elif tool_name == "analyze_pattern_alignment":
+                        result = analyze_pattern_alignment.invoke(tool_args)
                     else:
                         result = f"Unknown tool: {tool_name}"
 
@@ -369,6 +375,137 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
             "current_refinement_idx": current_idx + 1,
         }
 
+    def refine_pattern_node(state: LyricsTranslationState) -> dict:
+        """Refine syllable patterns after syllable counts are matched"""
+        source_lines = [
+            line.strip()
+            for line in state["source_lyrics"].strip().split("\n")
+            if line.strip()
+        ]
+        target_patterns = state.get("syllable_patterns") or []
+        translated_lines = list(state.get("translated_lines") or [])
+        target_lang = state["target_lang"]
+
+        if not target_patterns or not translated_lines:
+            return {"translated_lines": translated_lines}
+
+        logger.info("   📏 Phase 2: Refining syllable patterns (word distribution)...")
+
+        # Analyze current patterns
+        current_patterns = analyzer.get_syllable_patterns(translated_lines, target_lang)
+
+        # Find lines that need pattern adjustment
+        lines_needing_adjustment = []
+        for idx in range(min(len(current_patterns), len(target_patterns))):
+            if current_patterns[idx] != target_patterns[idx]:
+                alignment = analyzer.analyze_pattern_alignment(
+                    target_patterns[idx], current_patterns[idx]
+                )
+                if alignment["similarity"] < 1.0:
+                    lines_needing_adjustment.append((idx, alignment))
+
+        if not lines_needing_adjustment:
+            logger.info("   ✓ All patterns already match!")
+            return {"translated_lines": translated_lines}
+
+        logger.info(
+            f"   🔄 Found {len(lines_needing_adjustment)} lines needing pattern adjustment"
+        )
+
+        # Refine each line with pattern mismatch
+        for idx, alignment in lines_needing_adjustment:
+            source_line = source_lines[idx]
+            current_translation = translated_lines[idx]
+            target_pattern = target_patterns[idx]
+            current_pattern = current_patterns[idx]
+            target_syllables = sum(target_pattern)
+
+            # Build suggestions from alignment analysis
+            suggestions = "\n".join(alignment["suggestions"][:3])  # Top 3 suggestions
+
+            prompt = f"""Adjust the word distribution (syllable pattern) in this translation without changing total syllable count.
+
+Original: "{source_line}"
+Current: "{current_translation}"
+
+Current pattern: {current_pattern} (total: {sum(current_pattern)} syllables)
+Target pattern:  {target_pattern} (total: {target_syllables} syllables)
+
+Adjustments needed:
+{suggestions}
+
+Strategy:
+- Keep total syllable count at {target_syllables}
+- Adjust word choice to match the target pattern
+- Maintain meaning as close as possible
+
+Output ONLY the adjusted translation (no quotes, no explanations)."""
+
+            # Attempt pattern-based refinement (without tool calls to avoid language issues)
+            messages = [
+                SystemMessage(content=config.get_system_prompt()),
+                HumanMessage(content=prompt),
+            ]
+            response = llm.invoke(
+                messages
+            )  # Use base LLM without tools for pattern refinement
+
+            # Extract and validate adjusted translation
+            import re
+
+            adjusted = response.content.strip()
+            if adjusted.startswith('"') and adjusted.endswith('"'):
+                adjusted = adjusted[1:-1]
+
+            # Remove code blocks
+            if adjusted.startswith("```") or adjusted.startswith("{"):
+                match = re.search(r'"([^"]+)"', adjusted)
+                if match:
+                    adjusted = match.group(1)
+                else:
+                    for line in adjusted.split("\n"):
+                        line = line.strip()
+                        if (
+                            line
+                            and not line.startswith("{")
+                            and not line.startswith("```")
+                        ):
+                            adjusted = line
+                            break
+
+            adjusted = re.sub(r"^\d+\.\s*", "", adjusted).strip()
+
+            # Verify syllable count is maintained (with error handling for language edge cases)
+            try:
+                adjusted_count = analyzer.count_syllables(adjusted, target_lang)
+                if adjusted_count == target_syllables:
+                    adjusted_pattern = analyzer.get_syllable_patterns(
+                        [adjusted], target_lang
+                    )[0]
+                    adjusted_alignment = analyzer.analyze_pattern_alignment(
+                        target_pattern, adjusted_pattern
+                    )
+
+                    if adjusted_alignment["similarity"] > alignment["similarity"]:
+                        translated_lines[idx] = adjusted
+                        logger.info(
+                            f"      ✓ Line {idx + 1}: pattern improved from {alignment['similarity']:.0%} to {adjusted_alignment['similarity']:.0%}"
+                        )
+                    else:
+                        logger.info(
+                            f"      ⚠ Line {idx + 1}: no improvement, keeping original"
+                        )
+                else:
+                    logger.info(
+                        f"      ⚠ Line {idx + 1}: syllable count changed ({adjusted_count}/{target_syllables}), reverting"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"      ⚠ Line {idx + 1}: pattern validation skipped ({type(e).__name__}), keeping original"
+                )
+
+        return {"translated_lines": translated_lines}
+
     def check_refinement_progress_node(state: LyricsTranslationState) -> dict:
         """Check if all lines have been refined"""
         source_lines = [
@@ -380,7 +517,7 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
         return {"all_lines_done": current_idx >= len(source_lines)}
 
     def calculate_metrics_node(state: LyricsTranslationState) -> dict:
-        """Calculate final translation metrics"""
+        """Calculate final translation metrics with comprehensive pattern scoring"""
         if not state.get("translated_lines"):
             return {
                 "translation_syllable_counts": [],
@@ -403,16 +540,60 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
             translated_lines, target_lang
         )
 
-        # Print summary
-        expected = state.get("syllable_counts") or []
-        matches = sum(1 for exp, act in zip(expected, syllable_counts) if exp == act)
-        score = matches / len(expected) if expected else 0.0
-        print(
-            f"\n   {'✓' if score >= 0.75 else '⚠'} Final: {matches}/{len(expected)} lines match ({score:.0%})"
+        # Calculate metrics
+        expected_counts = state.get("syllable_counts") or []
+        syllable_matches = sum(
+            1 for exp, act in zip(expected_counts, syllable_counts) if exp == act
+        )
+        syllable_score = (
+            syllable_matches / len(expected_counts) if expected_counts else 0.0
         )
 
-        # Build reasoning summary
-        reasoning = f"Translated {len(translated_lines)} lines with {matches}/{len(expected)} matching target syllable counts ({score:.0%} match rate)."
+        # Pattern scoring if patterns are available
+        target_patterns = state.get("syllable_patterns") or []
+        pattern_metrics = None
+        if target_patterns and syllable_patterns:
+            pattern_metrics = analyzer.score_syllable_patterns(
+                target_patterns, syllable_patterns
+            )
+
+        # Print comprehensive summary
+        print("\n   📊 FINAL TRANSLATION METRICS:")
+        print(
+            f"   ├─ Syllable Counts: {syllable_matches}/{len(expected_counts)} lines match ({syllable_score:.0%})"
+        )
+
+        if pattern_metrics:
+            overall_pattern_score = pattern_metrics["overall_score"]
+            exact_rate = pattern_metrics["exact_match_rate"]
+            fuzzy_rate = pattern_metrics["fuzzy_match_rate"]
+            avg_sim = pattern_metrics["average_similarity"]
+
+            print("   ├─ Pattern Distribution:")
+            print(f"   │  ├─ Overall Score: {overall_pattern_score:.0%}")
+            print(f"   │  ├─ Exact Matches: {exact_rate:.0%}")
+            print(f"   │  ├─ Fuzzy Matches (≥80%): {fuzzy_rate:.0%}")
+            print(f"   │  └─ Average Similarity: {avg_sim:.0%}")
+
+            worst = pattern_metrics["worst_line"]
+            if worst:
+                print(
+                    f"   │     (Worst line {worst['line_idx'] + 1}: {worst['similarity']:.0%} similar)"
+                )
+
+        # Build comprehensive reasoning
+        reasoning_parts = [
+            f"Translated {len(translated_lines)} lines.",
+            f"Syllable count accuracy: {syllable_matches}/{len(expected_counts)} lines ({syllable_score:.0%}).",
+        ]
+
+        if pattern_metrics:
+            reasoning_parts.append(
+                f"Pattern distribution score: {pattern_metrics['overall_score']:.0%} "
+                f"({pattern_metrics['exact_match_rate']:.0%} exact, {pattern_metrics['fuzzy_match_rate']:.0%} fuzzy)."
+            )
+
+        reasoning = " ".join(reasoning_parts)
 
         return {
             "translation_syllable_counts": syllable_counts,
@@ -430,23 +611,25 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
     # Build workflow
     workflow = StateGraph(LyricsTranslationState)
 
-    # Add nodes for two-phase approach
+    # Add nodes for three-phase approach
     workflow.add_node("initial_translation", initial_translation_node)
     workflow.add_node("refine_line", refine_line_node)
     workflow.add_node("check_refinement", check_refinement_progress_node)
+    workflow.add_node("refine_pattern", refine_pattern_node)
     workflow.add_node("calculate_metrics", calculate_metrics_node)
 
     # Set entry point
     workflow.set_entry_point("initial_translation")
 
-    # Define edges for two-phase flow
+    # Define edges for three-phase flow
     workflow.add_edge("initial_translation", "refine_line")
     workflow.add_edge("refine_line", "check_refinement")
     workflow.add_conditional_edges(
         "check_refinement",
         should_continue_refinement,
-        {"refine": "refine_line", "calculate": "calculate_metrics"},
+        {"refine": "refine_line", "calculate": "refine_pattern"},
     )
+    workflow.add_edge("refine_pattern", "calculate_metrics")
     workflow.add_edge("calculate_metrics", END)
 
     compiled = workflow.compile()

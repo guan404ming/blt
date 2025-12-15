@@ -20,7 +20,7 @@ class LyricsTranslationState(TypedDict):
     constraints: Optional[dict]  # MusicConstraints as dict
     syllable_counts: Optional[list[int]]
     rhyme_scheme: Optional[str]
-    syllable_patterns: Optional[list[str]]
+    syllable_patterns: Optional[list[list[int]]]
 
     # Translation
     translated_lines: Optional[list[str]]
@@ -29,7 +29,7 @@ class LyricsTranslationState(TypedDict):
     # Metrics
     translation_syllable_counts: Optional[list[int]]
     translation_rhyme_endings: Optional[list[str]]
-    translation_syllable_patterns: Optional[list[str]]
+    translation_syllable_patterns: Optional[list[list[int]]]
 
     # Validation
     validation_passed: Optional[bool]

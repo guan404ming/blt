@@ -58,19 +58,39 @@ class Validator:
 
         # Check syllable patterns if provided (HIGHEST PRIORITY)
         patterns_match = True
+        pattern_similarity_score = 1.0
         syllable_patterns = None
         if target_patterns:
             syllable_patterns = self.analyzer.get_syllable_patterns(lines, language)
             patterns_match = syllable_patterns == target_patterns
 
             if not patterns_match:
-                pattern_feedback = self._build_pattern_feedback(
-                    syllable_patterns, target_patterns
+                # Calculate pattern alignment and similarity score
+                alignments = []
+                total_similarity = 0.0
+                for i, (actual, target) in enumerate(
+                    zip(syllable_patterns, target_patterns)
+                ):
+                    alignment = self.analyzer.analyze_pattern_alignment(target, actual)
+                    alignments.append((i, alignment))
+                    total_similarity += alignment["similarity"]
+
+                pattern_similarity_score = (
+                    total_similarity / len(alignments) if alignments else 0.0
                 )
+
+                pattern_feedback = self._build_pattern_feedback_fuzzy(alignments)
                 if pattern_feedback:
+                    # Adjust severity based on fuzzy similarity
+                    if pattern_similarity_score >= 0.8:
+                        severity = "✓ PATTERN ACCEPTABLE (fuzzy match):"
+                    elif pattern_similarity_score >= 0.6:
+                        severity = "⚠️  PATTERN CLOSE (minor adjustments needed):"
+                    else:
+                        severity = "🚨 CRITICAL: PATTERN MISMATCH (significant adjustments needed):"
+
                     feedback_parts.append(
-                        "🚨 CRITICAL: SYLLABLE PATTERN MISMATCHES (FIX FIRST!):\n\n"
-                        + "\n\n".join(pattern_feedback)
+                        f"{severity}\n\n" + "\n\n".join(pattern_feedback)
                     )
 
         # Syllable feedback (SECOND PRIORITY)
@@ -110,6 +130,7 @@ class Validator:
         if target_patterns:
             result["syllable_patterns"] = syllable_patterns
             result["patterns_match"] = patterns_match
+            result["pattern_similarity_score"] = pattern_similarity_score
 
         return result
 
@@ -187,6 +208,42 @@ class Validator:
                 ]
                 pattern_mismatches.append("\n".join(details))
         return pattern_mismatches
+
+    def _build_pattern_feedback_fuzzy(
+        self, alignments: list[tuple[int, dict]]
+    ) -> list[str]:
+        """Build feedback for pattern mismatches using fuzzy alignment analysis"""
+        pattern_feedback = []
+        for line_idx, alignment in alignments:
+            if not alignment["matches"]:
+                similarity = alignment["similarity"]
+                differences = alignment.get("differences", [])
+
+                # Reconstruct patterns from differences analysis
+                if differences:
+                    # Pattern info is in the differences
+                    details = [f"Line {line_idx + 1}: {similarity:.0%} similar"]
+
+                    # Show target vs current
+                    target_vals = [d["target_syllables"] for d in differences]
+                    current_vals = [d["current_syllables"] for d in differences]
+
+                    target_str = "[" + ", ".join(str(v) for v in target_vals) + "]"
+                    current_str = "[" + ", ".join(str(v) for v in current_vals) + "]"
+
+                    details.append(f"  Actual:  {current_str}")
+                    details.append(f"  Target:  {target_str}")
+
+                    # Add specific suggestions if available
+                    suggestions = alignment.get("suggestions", [])
+                    if suggestions:
+                        details.append("  Suggestions:")
+                        for suggestion in suggestions[:2]:  # Top 2 suggestions
+                            details.append(f"    • {suggestion}")
+
+                    pattern_feedback.append("\n".join(details))
+
+        return pattern_feedback
 
     def _check_rhyme_scheme(
         self, rhyme_endings: list[str], rhyme_scheme: str, language: str

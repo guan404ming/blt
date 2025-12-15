@@ -137,8 +137,15 @@ def main():
         for i, (target, actual) in enumerate(
             zip(constraints.syllable_patterns, result.syllable_patterns), 1
         ):
+            # Calculate pattern similarity
+            alignment = analyzer.analyze_pattern_alignment(target, actual)
+            similarity = alignment["similarity"]
             match = "✓" if target == actual else "✗"
-            print(f"  {i}. Target: {target}  |  Actual: {actual}  {match}")
+
+            # Display with score
+            print(
+                f"  {i}. Target: {target}  |  Actual: {actual}  {match}  ({similarity:.0%})"
+            )
 
     if result.tool_call_stats:
         print("\n【Tool Calls】")
