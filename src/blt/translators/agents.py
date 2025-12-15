@@ -15,7 +15,12 @@ from .models import LyricTranslation, MusicConstraints, SoramimiTranslation
 from .analyzer import LyricsAnalyzer
 from .validators import ConstraintValidator, SoramimiValidator
 from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig
-from .graphs import build_lyrics_translation_graph, build_soramimi_mapping_graph
+from .graphs import (
+    build_lyrics_translation_graph,
+    build_soramimi_mapping_graph,
+    create_lyrics_translation_initial_state,
+    create_soramimi_mapping_initial_state,
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -97,25 +102,9 @@ class LyricsTranslationAgent:
             constraints = self.analyzer.extract_constraints(source_lyrics, source_lang)
 
         # Initialize state
-        initial_state = {
-            "source_lyrics": source_lyrics,
-            "source_lang": source_lang,
-            "target_lang": target_lang,
-            "constraints": None,  # Not used directly in graph
-            "syllable_counts": constraints.syllable_counts,
-            "rhyme_scheme": constraints.rhyme_scheme,
-            "syllable_patterns": constraints.syllable_patterns,
-            "translated_lines": None,
-            "reasoning": None,
-            "translation_syllable_counts": None,
-            "translation_rhyme_endings": None,
-            "translation_syllable_patterns": None,
-            "validation_passed": None,
-            "validation_score": None,
-            "attempt": 1,
-            "max_attempts": 3,
-            "messages": [],
-        }
+        initial_state = create_lyrics_translation_initial_state(
+            source_lyrics, source_lang, target_lang, constraints
+        )
 
         # Run graph
         print("   🚀 Starting lyrics translation...")
@@ -262,27 +251,13 @@ class SoramimiTranslationAgent:
             )
 
         # Initialize state
-        initial_state = {
-            "source_lines": source_lines,
-            "source_lang": source_lang,
-            "target_lang": target_lang,
-            "source_phonemes": [],
-            "phoneme_mapping": {},
-            "mapping_scores": {},
-            "soramimi_lines": None,
-            "source_ipa": None,
-            "target_ipa": None,
-            "similarity_scores": None,
-            "overall_similarity": None,
-            "best_mapping": None,
-            "best_lines": None,
-            "best_scores": None,
-            "best_ipas": None,
-            "attempt": 1,
-            "max_attempts": self.config.max_retries,
-            "threshold": self.config.similarity_threshold,
-            "messages": [],
-        }
+        initial_state = create_soramimi_mapping_initial_state(
+            source_lines,
+            source_lang,
+            target_lang,
+            self.config.max_retries,
+            self.config.similarity_threshold,
+        )
 
         # Run graph
         print("   🗺️  Starting mapping-based soramimi creation...")
