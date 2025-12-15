@@ -77,7 +77,7 @@ flowchart TD
 | `VocalSeparator`   | Vocal/instrumental separation     |
 | `LyricsAligner`    | Timing alignment                  |
 | `VoiceSynthesizer` | TTS synthesis                     |
-| `RvcConverter`     | Voice conversion (RVC)            |
+| `RetrievalBasedVoiceConverter` | Voice conversion (RVC) |
 
 ### 3. Pipeline (WIP)
 

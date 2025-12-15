@@ -9,9 +9,11 @@ This module provides components for:
 from .vocal_separator import VocalSeparator
 from .lyrics_aligner import LyricsAligner
 from .voice_synthesizer import VoiceSynthesizer
+from .voice_converter import RetrievalBasedVoiceConverter
 
 __all__ = [
     "VocalSeparator",
     "LyricsAligner",
     "VoiceSynthesizer",
+    "RetrievalBasedVoiceConverter",
 ]

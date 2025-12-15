@@ -6,7 +6,7 @@ import argparse
 import logging
 from pathlib import Path
 from blt.translators import LyricsTranslationAgent, LyricsTranslationAgentConfig
-from blt.translators.analyzer import LyricsAnalyzer
+from blt.translators import LyricsAnalyzer
 
 from dotenv import load_dotenv
 

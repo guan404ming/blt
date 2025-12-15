@@ -3,12 +3,17 @@ Unified Lyrics Analyzer
 Centralized core functionality for syllable counting, rhyme detection, and pattern analysis
 """
 
+from __future__ import annotations
+
 import re
 import hanlp
 import panphon.distance
 from pypinyin import lazy_pinyin
-from .models import MusicConstraints
 from dotenv import load_dotenv
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..lyrics_translation.models import MusicConstraints
 
 # Load environment variables from .env file
 load_dotenv()
@@ -195,9 +200,7 @@ class LyricsAnalyzer:
 
         return "".join(scheme)
 
-    def extract_constraints(
-        self, source_lyrics: str, source_lang: str
-    ) -> MusicConstraints:
+    def extract_constraints(self, source_lyrics: str, source_lang: str):
         """
         Extract all music constraints from lyrics
 
@@ -208,6 +211,8 @@ class LyricsAnalyzer:
         Returns:
             MusicConstraints object
         """
+        from ..lyrics_translation.models import MusicConstraints
+
         lines = [
             line.strip() for line in source_lyrics.strip().split("\n") if line.strip()
         ]
