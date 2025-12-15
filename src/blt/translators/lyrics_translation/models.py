@@ -145,11 +145,3 @@ class LyricTranslation(BaseModel):
 
             f.write("\n## Translation Reasoning\n\n")
             f.write(f"{self.reasoning}\n")
-
-
-class ValidationResult(BaseModel):
-    """Validation result"""
-
-    passed: bool = Field(description="Whether all constraints are satisfied")
-    errors: list[dict] = Field(default_factory=list, description="Error list")
-    score: float = Field(default=0.0, description="Overall quality score (0-1)")

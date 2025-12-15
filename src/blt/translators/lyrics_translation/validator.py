@@ -1,10 +1,9 @@
-"""Constraint-based validator for lyrics translations"""
+"""Validator for constraint-based lyrics translations"""
 
 from ..shared import LyricsAnalyzer
-from .models import LyricTranslation, MusicConstraints, ValidationResult
 
 
-class ConstraintValidator:
+class Validator:
     """
     Validates lyrics translations against music constraints
 
@@ -112,75 +111,6 @@ class ConstraintValidator:
             result["patterns_match"] = patterns_match
 
         return result
-
-    def validate(
-        self,
-        translation: LyricTranslation,
-        constraints: MusicConstraints,
-        language: str,
-    ) -> ValidationResult:
-        """
-        Validate translation result
-
-        Args:
-            translation: Translation to validate
-            constraints: Target constraints
-            language: Language code for rhyme checking
-
-        Returns:
-            ValidationResult with pass/fail and score
-        """
-        # Calculate syllable match score (partial credit)
-        syllable_score = 0.0
-        if translation.syllable_counts and constraints.syllable_counts:
-            matches = sum(
-                1
-                for actual, target in zip(
-                    translation.syllable_counts, constraints.syllable_counts
-                )
-                if actual == target
-            )
-            syllable_score = matches / len(constraints.syllable_counts)
-        syllables_match = syllable_score == 1.0
-
-        # Calculate pattern match score (partial credit)
-        pattern_score = 0.0
-        if constraints.syllable_patterns and translation.syllable_patterns:
-            matches = sum(
-                1
-                for actual, target in zip(
-                    translation.syllable_patterns, constraints.syllable_patterns
-                )
-                if actual == target
-            )
-            pattern_score = (
-                matches / len(constraints.syllable_patterns)
-                if constraints.syllable_patterns
-                else 0
-            )
-        else:
-            pattern_score = 1.0  # No patterns to check
-        patterns_match = pattern_score == 1.0
-
-        # Check rhymes
-        rhymes_valid = True
-        if constraints.rhyme_scheme:
-            rhymes_valid, _ = self._check_rhyme_scheme(
-                translation.rhyme_endings, constraints.rhyme_scheme, language
-            )
-
-        # For cross-language translation, syllable count is most important
-        # Pattern matching is difficult because word structures differ between languages
-        passed = syllables_match and patterns_match
-
-        # Calculate weighted score (syllables 70%, patterns 20%, rhymes 10%)
-        score = (
-            (syllable_score * 0.7)
-            + (pattern_score * 0.2)
-            + (1.0 if rhymes_valid else 0.0) * 0.1
-        )
-
-        return ValidationResult(passed=passed, errors=[], score=score)
 
     # ==================== PRIVATE HELPERS ====================
 

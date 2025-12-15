@@ -1,6 +1,6 @@
 """
 Tool definitions for constraint-based lyrics translation
-Wraps ConstraintValidator.verify_all_constraints with LLM-friendly tools
+Wraps Validator.verify_all_constraints with LLM-friendly tools
 """
 
 from langchain_core.tools import tool
@@ -13,7 +13,7 @@ def create_translation_tools(analyzer, validator):
 
     Args:
         analyzer: LyricsAnalyzer instance
-        validator: ConstraintValidator instance
+        validator: Validator instance
 
     Returns:
         List of tool functions that can be bound to LLM

@@ -9,8 +9,8 @@ This module provides:
 
 Architecture:
     LyricsAnalyzer: Core analysis (syllables, rhymes, patterns, IPA)
-    ConstraintValidator: Validation logic for constraint-based translation
-    SoramimiValidator: Validation logic for phonetic similarity
+    lyrics_translation.Validator: Validation logic for constraint-based translation
+    soramimi_translation.Validator: Validation logic for phonetic similarity
     LyricsTranslationAgentConfig: Configuration + prompts + tool registration
     SoramimiTranslationAgentConfig: Configuration for soramimi translation
     LyricsTranslationAgent: Main orchestrator for constraint-based translation
@@ -22,7 +22,6 @@ from .shared import LyricsAnalyzer
 from .lyrics_translation.models import (
     LyricTranslation,
     MusicConstraints,
-    ValidationResult,
 )
 from .soramimi_translation.models import SoramimiTranslation
 
@@ -47,6 +46,5 @@ __all__ = [
     # Models
     "LyricTranslation",
     "MusicConstraints",
-    "ValidationResult",
     "SoramimiTranslation",
 ]

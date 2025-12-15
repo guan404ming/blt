@@ -60,7 +60,7 @@ def build_graph(analyzer, validator, llm, config):
 
     Args:
         analyzer: LyricsAnalyzer instance
-        validator: ConstraintValidator instance
+        validator: Validator instance
         llm: LLM instance (ChatOllama)
         config: LyricsTranslationAgentConfig instance
 
@@ -194,6 +194,7 @@ Revise to have EXACTLY {target_count} syllables. Output ONLY the translation."""
                 "translation_syllable_counts": [],
                 "translation_rhyme_endings": [],
                 "translation_syllable_patterns": [],
+                "reasoning": "No lines were translated.",
             }
 
         translated_lines = state["translated_lines"]
@@ -218,10 +219,14 @@ Revise to have EXACTLY {target_count} syllables. Output ONLY the translation."""
             f"\n   {'✓' if score >= 0.75 else '⚠'} Final: {matches}/{len(expected)} lines match ({score:.0%})"
         )
 
+        # Build reasoning summary
+        reasoning = f"Translated {len(translated_lines)} lines with {matches}/{len(expected)} matching target syllable counts ({score:.0%} match rate)."
+
         return {
             "translation_syllable_counts": syllable_counts,
             "translation_rhyme_endings": rhyme_endings,
             "translation_syllable_patterns": syllable_patterns,
+            "reasoning": reasoning,
         }
 
     def should_continue(state: LyricsTranslationState) -> str:

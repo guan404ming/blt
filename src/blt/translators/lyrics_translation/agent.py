@@ -21,7 +21,7 @@ from .graph import (
     build_graph,
     create_initial_state,
 )
-from .validator import ConstraintValidator
+from .validator import Validator
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class LyricsTranslationAgent:
         """
         self.config = config or LyricsTranslationAgentConfig()
         self.analyzer = analyzer or LyricsAnalyzer()
-        self.validator = ConstraintValidator(self.analyzer)
+        self.validator = Validator(self.analyzer)
 
         # Configure LangSmith
         if hasattr(self.config, "langsmith_tracing") and self.config.langsmith_tracing:
@@ -112,23 +112,32 @@ class LyricsTranslationAgent:
         )
 
         # Build result
+        translated_lines = final_state.get("translated_lines") or []
         translation = LyricTranslation(
-            translated_lines=final_state.get("translated_lines") or [],
+            translated_lines=translated_lines,
             reasoning=final_state.get("reasoning") or "",
             syllable_counts=final_state.get("translation_syllable_counts") or [],
             rhyme_endings=final_state.get("translation_rhyme_endings") or [],
             syllable_patterns=final_state.get("translation_syllable_patterns") or [],
         )
 
-        # Validate using the validator
-        validation = self.validator.validate(translation, constraints, target_lang)
+        # Verify constraints
+        verification = self.validator.verify_all_constraints(
+            translated_lines,
+            target_lang,
+            constraints.syllable_counts,
+            constraints.rhyme_scheme or "",
+            constraints.syllable_patterns,
+        )
 
         # Display
         elapsed = time.time() - start_time
-        if validation.passed:
+        if verification.get("syllables_match") and verification.get(
+            "rhymes_valid", True
+        ):
             print(f"\n   ✓ All constraints satisfied ({elapsed:.1f}s)")
         else:
-            print(f"\n   ⚠ Score: {validation.score:.0%} ({elapsed:.1f}s)")
+            print(f"\n   ⚠ Some constraints not met ({elapsed:.1f}s)")
 
         # Auto-save
         if self.config.auto_save:

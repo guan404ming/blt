@@ -18,7 +18,7 @@ from ..shared import LyricsAnalyzer
 from .config import SoramimiTranslationAgentConfig
 from .models import SoramimiTranslation
 from .graph import build_graph, create_initial_state
-from .validator import SoramimiValidator
+from .validator import Validator
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class SoramimiTranslationAgent:
         """Initialize soramimi translator"""
         self.config = config or SoramimiTranslationAgentConfig()
         self.analyzer = analyzer or LyricsAnalyzer()
-        self.validator = SoramimiValidator(
+        self.validator = Validator(
             self.analyzer,
             self.config.similarity_threshold,
         )

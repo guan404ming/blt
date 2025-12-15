@@ -1,9 +1,9 @@
-"""Soramimi (phonetic) validator for phoneme-based translations"""
+"""Validator for soramimi (phonetic) translations"""
 
 from ..shared import LyricsAnalyzer
 
 
-class SoramimiValidator:
+class Validator:
     """
     Validates soramimi (phonetic) translations by comparing IPA similarity
 

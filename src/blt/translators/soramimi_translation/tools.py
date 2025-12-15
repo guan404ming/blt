@@ -1,6 +1,6 @@
 """
 Tool definitions for soramimi (phonetic) translation
-Wraps SoramimiValidator.verify_all_constraints with LLM-friendly tools
+Wraps Validator.verify_all_constraints with LLM-friendly tools
 """
 
 from langchain_core.tools import tool
@@ -13,7 +13,7 @@ def create_soramimi_tools(analyzer, validator):
 
     Args:
         analyzer: LyricsAnalyzer instance for IPA conversion
-        validator: SoramimiValidator instance for phonetic similarity checking
+        validator: Validator instance for phonetic similarity checking
 
     Returns:
         List of tool functions that can be bound to LLM

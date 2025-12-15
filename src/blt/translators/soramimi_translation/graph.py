@@ -65,7 +65,7 @@ def build_graph(analyzer, validator, llm):
 
     Args:
         analyzer: LyricsAnalyzer instance
-        validator: SoramimiValidator instance
+        validator: Validator instance
         llm: LLM instance (ChatOllama)
 
     Returns:
