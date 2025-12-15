@@ -10,7 +10,7 @@ from .models import LyricsTranslationState
 logger = logging.getLogger(__name__)
 
 
-def create_lyrics_translation_initial_state(
+def create_initial_state(
     source_lyrics: str,
     source_lang: str,
     target_lang: str,
@@ -50,7 +50,7 @@ def create_lyrics_translation_initial_state(
     }
 
 
-def build_lyrics_translation_graph(analyzer, llm, config):
+def build_graph(analyzer, llm, config):
     """
     Build the constraint-based lyrics translation graph using ReAct pattern.
 

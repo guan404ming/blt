@@ -17,7 +17,7 @@ from langchain_ollama import ChatOllama
 from ..shared import LyricsAnalyzer
 from .config import SoramimiTranslationAgentConfig
 from .models import SoramimiTranslation
-from .graph import build_soramimi_mapping_graph, create_soramimi_mapping_initial_state
+from .graph import build_graph, create_initial_state
 from .validator import SoramimiValidator
 
 load_dotenv()
@@ -58,9 +58,7 @@ class SoramimiTranslationAgent:
         )
 
         # Build graph
-        self.graph = build_soramimi_mapping_graph(
-            self.analyzer, self.validator, self.llm
-        )
+        self.graph = build_graph(self.analyzer, self.validator, self.llm)
 
     def translate(
         self,
@@ -115,7 +113,7 @@ class SoramimiTranslationAgent:
             )
 
         # Initialize state
-        initial_state = create_soramimi_mapping_initial_state(
+        initial_state = create_initial_state(
             source_lines,
             source_lang,
             target_lang,

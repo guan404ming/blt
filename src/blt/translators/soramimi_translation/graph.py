@@ -12,7 +12,7 @@ from .models import SoramimiTranslationState
 logger = logging.getLogger(__name__)
 
 
-def create_soramimi_mapping_initial_state(
+def create_initial_state(
     source_lines: list[str],
     source_lang: str,
     target_lang: str,
@@ -55,7 +55,7 @@ def create_soramimi_mapping_initial_state(
     }
 
 
-def build_soramimi_mapping_graph(analyzer, validator, llm):
+def build_graph(analyzer, validator, llm):
     """
     Build the mapping-based soramimi translation graph using ReAct pattern.
 

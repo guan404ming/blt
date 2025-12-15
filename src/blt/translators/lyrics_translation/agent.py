@@ -18,8 +18,8 @@ from ..shared import LyricsAnalyzer
 from .config import LyricsTranslationAgentConfig
 from .models import LyricTranslation, MusicConstraints
 from .graph import (
-    build_lyrics_translation_graph,
-    create_lyrics_translation_initial_state,
+    build_graph,
+    create_initial_state,
 )
 from .validator import ConstraintValidator
 
@@ -65,9 +65,7 @@ class LyricsTranslationAgent:
         )
 
         # Build graph
-        self.graph = build_lyrics_translation_graph(
-            self.analyzer, self.llm, self.config
-        )
+        self.graph = build_graph(self.analyzer, self.llm, self.config)
 
     def translate(
         self,
@@ -99,7 +97,7 @@ class LyricsTranslationAgent:
             constraints = self.analyzer.extract_constraints(source_lyrics, source_lang)
 
         # Initialize state
-        initial_state = create_lyrics_translation_initial_state(
+        initial_state = create_initial_state(
             source_lyrics, source_lang, target_lang, constraints
         )
 
