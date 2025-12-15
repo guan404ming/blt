@@ -117,3 +117,52 @@ def calculate_ipa_similarity(ipa1: str, ipa2: str, is_chinese: bool = False) -> 
         Similarity score between 0 and 1
     """
     return _analyzer.calculate_ipa_similarity(ipa1, ipa2, is_chinese)
+
+
+@tool
+def analyze_pattern_alignment(
+    target_pattern: list[int], current_pattern: list[int]
+) -> dict:
+    """
+    Analyze alignment between target and current syllable patterns.
+    Returns detailed feedback on mismatches and improvement suggestions.
+
+    Args:
+        target_pattern: Target syllable pattern, e.g., [1, 2, 2, 1] (1 syllable in word 1, 2 in word 2, etc.)
+        current_pattern: Current/actual syllable pattern, e.g., [1, 1, 2, 2]
+
+    Returns:
+        Dictionary containing:
+        - 'matches': Whether patterns match exactly
+        - 'similarity': Similarity score from 0 to 1
+        - 'differences': List of word-by-word differences
+        - 'suggestions': List of improvement suggestions
+        - 'total_syllables_match': Whether total syllable counts match
+    """
+    return _analyzer.analyze_pattern_alignment(target_pattern, current_pattern)
+
+
+@tool
+def score_syllable_patterns(
+    target_patterns: list[list[int]], current_patterns: list[list[int]]
+) -> dict:
+    """
+    Score overall syllable pattern quality across all lines.
+    Provides comprehensive metrics for pattern matching quality.
+
+    Args:
+        target_patterns: List of target syllable patterns, e.g., [[1, 2, 1], [2, 1, 2]]
+        current_patterns: List of current syllable patterns
+
+    Returns:
+        Dictionary containing overall pattern matching scores:
+        - 'overall_score': Weighted overall score from 0 to 1
+        - 'exact_match_rate': Percentage of exact matches
+        - 'fuzzy_match_rate': Percentage of fuzzy matches (≥0.8 similarity)
+        - 'average_similarity': Average similarity score
+        - 'worst_line': Details about the worst-matching line
+        - 'best_line': Details about the best-matching line
+        - 'total_syllables_error': Total syllable count error
+        - 'pattern_distribution_score': How well word distribution matches
+    """
+    return _analyzer.score_syllable_patterns(target_patterns, current_patterns)

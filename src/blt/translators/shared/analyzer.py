@@ -271,6 +271,249 @@ class LyricsAnalyzer:
 
         return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
 
+    def analyze_pattern_alignment(
+        self, target_pattern: list[int], current_pattern: list[int]
+    ) -> dict:
+        """
+        Analyze alignment between target and current syllable patterns.
+        Returns detailed feedback on mismatches and suggestions.
+
+        Args:
+            target_pattern: Target syllable pattern, e.g., [1, 2, 2, 1]
+            current_pattern: Current/actual syllable pattern, e.g., [1, 1, 2, 2]
+
+        Returns:
+            Dictionary containing:
+                - 'matches': bool - Whether patterns match exactly
+                - 'similarity': float - Similarity score (0-1)
+                - 'differences': list[dict] - Word-by-word differences
+                - 'suggestions': list[str] - Improvement suggestions
+                - 'total_syllables_match': bool - Whether total syllable count matches
+        """
+        if not target_pattern or not current_pattern:
+            return {
+                "matches": target_pattern == current_pattern,
+                "similarity": 0.0 if target_pattern != current_pattern else 1.0,
+                "differences": [],
+                "suggestions": [],
+                "total_syllables_match": sum(target_pattern or [])
+                == sum(current_pattern or []),
+            }
+
+        target_total = sum(target_pattern)
+        current_total = sum(current_pattern)
+        exact_match = target_pattern == current_pattern
+
+        # Calculate position-by-position differences
+        differences = []
+        max_len = max(len(target_pattern), len(current_pattern))
+
+        for i in range(max_len):
+            target_val = target_pattern[i] if i < len(target_pattern) else 0
+            current_val = current_pattern[i] if i < len(current_pattern) else 0
+            diff = current_val - target_val
+
+            if diff != 0:
+                differences.append(
+                    {
+                        "word_position": i,
+                        "target_syllables": target_val,
+                        "current_syllables": current_val,
+                        "difference": diff,
+                    }
+                )
+
+        # Generate suggestions
+        suggestions = []
+        if not exact_match:
+            if len(target_pattern) != len(current_pattern):
+                suggestions.append(
+                    f"Word count mismatch: target has {len(target_pattern)} words, current has {len(current_pattern)} words"
+                )
+
+            if target_total != current_total:
+                syllable_diff = target_total - current_total
+                if syllable_diff > 0:
+                    suggestions.append(f"Need to add {syllable_diff} syllables overall")
+                else:
+                    suggestions.append(
+                        f"Need to remove {-syllable_diff} syllables overall"
+                    )
+
+            for diff_info in differences:
+                pos = diff_info["word_position"]
+                diff = diff_info["difference"]
+                if diff > 0:
+                    suggestions.append(
+                        f"Word {pos + 1}: has {diff} too many syllables (target {diff_info['target_syllables']}, current {diff_info['current_syllables']})"
+                    )
+                else:
+                    suggestions.append(
+                        f"Word {pos + 1}: needs {-diff} more syllables (target {diff_info['target_syllables']}, current {diff_info['current_syllables']})"
+                    )
+
+        # Calculate similarity score using simple metrics
+        # 1. Position-by-position differences
+        position_similarity = (
+            1.0
+            if not differences
+            else 1.0 - (sum(abs(d["difference"]) for d in differences) / target_total)
+        )
+
+        # 2. Length difference penalty
+        length_similarity = (
+            1.0
+            if len(target_pattern) == len(current_pattern)
+            else max(
+                0.0,
+                1.0 - (abs(len(target_pattern) - len(current_pattern)) / max_len),
+            )
+        )
+
+        # 3. Total syllable match penalty
+        total_similarity = (
+            1.0
+            if target_total == current_total
+            else max(0.0, 1.0 - (abs(target_total - current_total) / target_total))
+        )
+
+        # Weighted similarity (prioritize exact matches in key areas)
+        similarity = (
+            (position_similarity * 0.5)
+            + (length_similarity * 0.25)
+            + (total_similarity * 0.25)
+        )
+
+        return {
+            "matches": exact_match,
+            "similarity": max(0.0, min(1.0, similarity)),
+            "differences": differences,
+            "suggestions": suggestions,
+            "total_syllables_match": target_total == current_total,
+        }
+
+    def score_syllable_patterns(
+        self, target_patterns: list[list[int]], current_patterns: list[list[int]]
+    ) -> dict:
+        """
+        Score overall syllable pattern quality across all lines.
+        Provides comprehensive metrics for pattern matching.
+
+        Args:
+            target_patterns: Target syllable patterns for all lines
+            current_patterns: Current syllable patterns for all lines
+
+        Returns:
+            Dictionary containing:
+                - 'overall_score': float (0-1) - Weighted overall score
+                - 'exact_match_rate': float (0-1) - Percentage of exact matches
+                - 'fuzzy_match_rate': float (0-1) - Percentage of fuzzy matches (>0.8 similarity)
+                - 'average_similarity': float (0-1) - Average similarity across all lines
+                - 'worst_line': dict - Info about the worst-matching line
+                - 'best_line': dict - Info about the best-matching line
+                - 'total_syllables_error': int - Absolute error in total syllables
+                - 'pattern_distribution_score': float - How well word distribution matches
+        """
+        if not target_patterns or not current_patterns:
+            return {
+                "overall_score": 0.0,
+                "exact_match_rate": 0.0,
+                "fuzzy_match_rate": 0.0,
+                "average_similarity": 0.0,
+                "worst_line": None,
+                "best_line": None,
+                "total_syllables_error": 0,
+                "pattern_distribution_score": 0.0,
+            }
+
+        # Align patterns (handle different lengths)
+        max_lines = max(len(target_patterns), len(current_patterns))
+        alignments = []
+        exact_matches = 0
+        fuzzy_matches = 0  # 0.8+ similarity
+        total_similarity = 0.0
+        worst_alignment = None
+        worst_similarity = 1.0
+        best_alignment = None
+        best_similarity = 0.0
+
+        for i in range(max_lines):
+            target = target_patterns[i] if i < len(target_patterns) else []
+            current = current_patterns[i] if i < len(current_patterns) else []
+
+            alignment = self.analyze_pattern_alignment(target, current)
+            alignments.append((i, alignment))
+
+            # Track statistics
+            similarity = alignment["similarity"]
+            total_similarity += similarity
+
+            if alignment["matches"]:
+                exact_matches += 1
+
+            if similarity >= 0.8:
+                fuzzy_matches += 1
+
+            # Track worst and best
+            if similarity < worst_similarity:
+                worst_similarity = similarity
+                worst_alignment = (i, alignment)
+
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_alignment = (i, alignment)
+
+        # Calculate aggregate scores
+        exact_match_rate = exact_matches / max_lines if max_lines > 0 else 0.0
+        fuzzy_match_rate = fuzzy_matches / max_lines if max_lines > 0 else 0.0
+        average_similarity = total_similarity / max_lines if max_lines > 0 else 0.0
+
+        # Calculate total syllables error
+        target_total = sum(sum(p) for p in target_patterns)
+        current_total = sum(sum(p) for p in current_patterns)
+        total_syllables_error = abs(target_total - current_total)
+
+        # Pattern distribution score: balance between exact matches and fuzzy matches
+        # Heavily weight exact matches, moderately weight fuzzy matches
+        pattern_distribution_score = (exact_match_rate * 0.7) + (fuzzy_match_rate * 0.3)
+
+        # Overall score: combination of exact matches, average similarity, and total syllables
+        syllable_score = (
+            1.0
+            if total_syllables_error == 0
+            else max(0.0, 1.0 - (total_syllables_error / target_total))
+        )
+        overall_score = (
+            (exact_match_rate * 0.4)
+            + (average_similarity * 0.3)
+            + (syllable_score * 0.3)
+        )
+
+        return {
+            "overall_score": max(0.0, min(1.0, overall_score)),
+            "exact_match_rate": exact_match_rate,
+            "fuzzy_match_rate": fuzzy_match_rate,
+            "average_similarity": average_similarity,
+            "worst_line": {
+                "line_idx": worst_alignment[0],
+                "similarity": worst_alignment[1]["similarity"],
+                "target": worst_alignment[1].get("target_pattern", []),
+                "current": worst_alignment[1].get("current_pattern", []),
+            }
+            if worst_alignment
+            else None,
+            "best_line": {
+                "line_idx": best_alignment[0],
+                "similarity": best_alignment[1]["similarity"],
+                "target": best_alignment[1].get("target_pattern", []),
+                "current": best_alignment[1].get("current_pattern", []),
+            }
+            if best_alignment
+            else None,
+            "total_syllables_error": total_syllables_error,
+            "pattern_distribution_score": pattern_distribution_score,
+        }
+
     # ==================== PRIVATE HELPERS ====================
 
     def _chinese_to_pinyin(self, text: str) -> str:

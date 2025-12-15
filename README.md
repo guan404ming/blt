@@ -58,7 +58,7 @@ print(result.soramimi_lines)  # Phonetically matched translation
 flowchart TD
     A[Source Lyrics] --> B[LyricsAnalyzer]
     B --> |Extract Constraints| C{TranslationAgent}
-    C --> |Generate Translation| D[ConstraintValidator]
+    C --> |Generate Translation| D[Validator]
     D --> |Check Constraints| E{Valid or Max Retries}
     E --> |No| C
     E --> |Yes| F[Target Lyrics]

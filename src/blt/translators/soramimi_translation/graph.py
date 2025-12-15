@@ -73,7 +73,7 @@ def build_graph(analyzer, validator, llm):
     """
     validator_tools = validator.get_tools()
     tools = [text_to_ipa] + validator_tools
-    llm.bind_tools(tools)
+    llm_with_tools = llm.bind_tools(tools)
 
     # Cache for fallback mappings per language
     fallback_cache = {}
@@ -124,7 +124,7 @@ def build_graph(analyzer, validator, llm):
             prompt = get_refinement_prompt(state)
 
         # Call LLM
-        response = llm.invoke([{"role": "user", "content": prompt}])
+        response = llm_with_tools.invoke([{"role": "user", "content": prompt}])
 
         try:
             result = json.loads(response.content)
@@ -388,4 +388,8 @@ Return JSON with improved mappings:
     )
     workflow.add_edge("refine_mapping", "build_mapping")
 
-    return workflow.compile()
+    compiled = workflow.compile()
+    mermaid_str = compiled.get_graph().draw_mermaid()
+    print(mermaid_str)
+
+    return compiled
