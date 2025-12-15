@@ -7,9 +7,8 @@ import os
 import re
 import hanlp
 import panphon.distance
-from pydantic_ai import Agent
 from pypinyin import lazy_pinyin
-from .models import MusicConstraints, WordSegmentation
+from .models import MusicConstraints
 
 
 # Set environment variables for phonemizer
@@ -39,7 +38,6 @@ class LyricsAnalyzer:
     def __init__(self):
         """Initialize analyzer with lazy-loaded components"""
         self._hanlp_tokenizer = None
-        self._segmentation_agent = None
 
     # ==================== CORE ANALYSIS METHODS ====================
 
@@ -326,24 +324,16 @@ class LyricsAnalyzer:
             return self._segment_with_llm(lines, language)
 
     def _segment_with_llm(self, lines: list[str], language: str) -> list[list[str]]:
-        """Segment words using LLM (fallback for unsupported languages)"""
-        agent = self._get_segmentation_agent()
-
-        lines_text = "\n".join(f"{i + 1}. {line}" for i, line in enumerate(lines))
-        prompt = f"""Segment these {language} lyrics lines into words:
-
-{lines_text}
-
-Language: {language}
-
-Return the list of words for each line"""
-
-        try:
-            response = agent.run_sync(prompt)
-            all_words = response.output.lines
-            return [[w for w in words if w.strip()] for words in all_words]
-        except Exception as e:
-            raise RuntimeError(f"LLM word segmentation failed: {e}.")
+        """Segment words using simple space splitting (fallback for unsupported languages)"""
+        # For unsupported languages, use simple space-based splitting
+        # This is a fallback and may not be accurate for all languages
+        all_segmented_words = []
+        for line in lines:
+            # Remove punctuation and split on whitespace
+            cleaned_line = re.sub(r"[^\w\s'-]", "", line)
+            segmented_line = [word for word in cleaned_line.split() if word.strip()]
+            all_segmented_words.append(segmented_line)
+        return all_segmented_words
 
     def _get_hanlp_tokenizer(self):
         """Lazy load HanLP tokenizer"""
@@ -352,29 +342,3 @@ Return the list of words for each line"""
                 hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH
             )
         return self._hanlp_tokenizer
-
-    def _get_segmentation_agent(self):
-        """Lazy load segmentation agent"""
-        if self._segmentation_agent is None:
-            system_prompt = self._get_segmentation_system_prompt()
-            self._segmentation_agent = Agent(
-                system_prompt=system_prompt, output_type=WordSegmentation
-            )
-        return self._segmentation_agent
-
-    def _get_segmentation_system_prompt(self) -> str:
-        """Get system prompt for word segmentation"""
-        return """You are a word segmentation expert for song lyrics.
-
-Your task is to segment multiple lines of lyrics into individual words or singable units.
-
-CRITICAL RULES:
-1. NEVER include punctuation marks as separate words
-2. ALWAYS remove all punctuation
-3. ONLY return actual words
-4. Process ALL lines and return segmentation for each line
-
-For English: Keep contractions together, split on spaces
-For Chinese: Split into smallest singable units
-
-Return segmentation for ALL lines, with NO punctuation marks."""

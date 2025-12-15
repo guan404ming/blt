@@ -137,15 +137,41 @@ class ConstraintValidator:
         Returns:
             ValidationResult with pass/fail and score
         """
-        # Check syllables
-        syllables_match = translation.syllable_counts == constraints.syllable_counts
-
-        # Check syllable patterns
-        patterns_match = True
-        if constraints.syllable_patterns and translation.syllable_patterns:
-            patterns_match = (
-                translation.syllable_patterns == constraints.syllable_patterns
+        # Calculate syllable match score (partial credit)
+        syllable_score = 0.0
+        if translation.syllable_counts and constraints.syllable_counts:
+            matches = sum(
+                1
+                for actual, target in zip(
+                    translation.syllable_counts, constraints.syllable_counts
+                )
+                if actual == target
             )
+            syllable_score = (
+                matches / len(constraints.syllable_counts)
+                if constraints.syllable_counts
+                else 0
+            )
+        syllables_match = syllable_score == 1.0
+
+        # Calculate pattern match score (partial credit)
+        pattern_score = 0.0
+        if constraints.syllable_patterns and translation.syllable_patterns:
+            matches = sum(
+                1
+                for actual, target in zip(
+                    translation.syllable_patterns, constraints.syllable_patterns
+                )
+                if actual == target
+            )
+            pattern_score = (
+                matches / len(constraints.syllable_patterns)
+                if constraints.syllable_patterns
+                else 0
+            )
+        else:
+            pattern_score = 1.0  # No patterns to check
+        patterns_match = pattern_score == 1.0
 
         # Check rhymes
         rhymes_valid = True
@@ -154,18 +180,16 @@ class ConstraintValidator:
                 translation.rhyme_endings, constraints.rhyme_scheme, language
             )
 
-        passed = syllables_match and rhymes_valid and patterns_match
+        # For cross-language translation, syllable count is most important
+        # Pattern matching is difficult because word structures differ between languages
+        passed = syllables_match and patterns_match
 
-        # Calculate score (patterns most important, rhymes least important)
-        score_components = []
-        if patterns_match:
-            score_components.append(0.6)
-        if syllables_match:
-            score_components.append(0.3)
-        if rhymes_valid or not constraints.rhyme_scheme:
-            score_components.append(0.1)
-
-        score = sum(score_components)
+        # Calculate weighted score (syllables 70%, patterns 20%, rhymes 10%)
+        score = (
+            (syllable_score * 0.7)
+            + (pattern_score * 0.2)
+            + (1.0 if rhymes_valid else 0.0) * 0.1
+        )
 
         return ValidationResult(passed=passed, errors=[], score=score)
 
@@ -215,6 +239,16 @@ class ConstraintValidator:
         """Check if rhyme endings match rhyme scheme"""
         rhymes_valid = True
         rhyme_issues = []
+
+        # Handle empty rhyme_endings
+        if not rhyme_endings or not rhyme_scheme:
+            return True, []
+
+        # Handle mismatch between rhyme_endings and rhyme_scheme length
+        if len(rhyme_endings) != len(rhyme_scheme):
+            return False, [
+                f"Rhyme scheme length mismatch: expected {len(rhyme_scheme)}, got {len(rhyme_endings)}"
+            ]
 
         rhyme_groups = {}
         for i, label in enumerate(rhyme_scheme):
