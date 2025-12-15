@@ -2,7 +2,6 @@
 Create soramimi (phonetic) translation of lyrics
 """
 
-import os
 from pathlib import Path
 from dotenv import load_dotenv
 

@@ -18,22 +18,21 @@ Architecture:
 """
 
 # Core components
-from .analyzer import LyricsAnalyzer
-from .validators import ConstraintValidator, SoramimiValidator
-
-# Configuration (includes prompts + tools)
-from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig
-
-# Models
-from .models import (
+from .shared import (
+    LyricsAnalyzer,
     LyricTranslation,
     MusicConstraints,
     ValidationResult,
     SoramimiTranslation,
 )
 
+# Agent configurations
+from .lyrics_translation.config import LyricsTranslationAgentConfig
+from .soramimi_translation.config import SoramimiTranslationAgentConfig
+
 # Translators
-from .agents import LyricsTranslationAgent, SoramimiTranslationAgent
+from .lyrics_translation import LyricsTranslationAgent
+from .soramimi_translation import SoramimiTranslationAgent
 
 __version__ = "0.1.0"
 
@@ -43,8 +42,6 @@ __all__ = [
     "SoramimiTranslationAgent",
     # Core
     "LyricsAnalyzer",
-    "ConstraintValidator",
-    "SoramimiValidator",
     "LyricsTranslationAgentConfig",
     "SoramimiTranslationAgentConfig",
     # Models
