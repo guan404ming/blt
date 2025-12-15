@@ -3,46 +3,11 @@ Constraint-based lyrics translation graph following ReAct pattern
 """
 
 import logging
-from typing import TypedDict, Optional, Annotated
-from operator import add
 from langgraph.graph import StateGraph, END
 from .tools import create_translation_tools
+from .models import LyricsTranslationState
 
 logger = logging.getLogger(__name__)
-
-
-class LyricsTranslationState(TypedDict):
-    """State for constraint-based lyrics translation graph"""
-
-    # Input
-    source_lyrics: str
-    source_lang: str
-    target_lang: str
-
-    # Constraints
-    constraints: Optional[dict]  # MusicConstraints as dict
-    syllable_counts: Optional[list[int]]
-    rhyme_scheme: Optional[str]
-    syllable_patterns: Optional[list[str]]
-
-    # Translation
-    translated_lines: Optional[list[str]]
-    reasoning: Optional[str]
-
-    # Metrics
-    translation_syllable_counts: Optional[list[int]]
-    translation_rhyme_endings: Optional[list[str]]
-    translation_syllable_patterns: Optional[list[str]]
-
-    # Validation
-    validation_passed: Optional[bool]
-    validation_score: Optional[float]
-
-    # Control
-    attempt: int
-    max_attempts: int
-    all_lines_done: Optional[bool]
-    messages: Annotated[list, add]
 
 
 def create_lyrics_translation_initial_state(

@@ -4,46 +4,12 @@ Mapping-based soramimi (空耳) translation graph following ReAct pattern
 
 import json
 import logging
-from typing import TypedDict, Optional, Annotated
-from operator import add
 from langgraph.graph import StateGraph, END
 from .tools import create_soramimi_tools
 from .utils import load_mapping
+from .models import SoramimiTranslationState
 
 logger = logging.getLogger(__name__)
-
-
-class SoramimiMappingState(TypedDict):
-    """State for mapping-based soramimi translation graph"""
-
-    # Source information
-    source_lines: list[str]
-    source_lang: str
-    target_lang: str
-
-    # Phoneme mapping
-    source_phonemes: list[str]  # Unique phonemes from source
-    phoneme_mapping: dict[str, str]  # phoneme -> target character/syllable
-    mapping_scores: dict[str, float]  # phoneme -> similarity score
-
-    # Current translation
-    soramimi_lines: Optional[list[str]]
-    source_ipa: Optional[list[str]]
-    target_ipa: Optional[list[str]]
-    similarity_scores: Optional[list[float]]
-    overall_similarity: Optional[float]
-
-    # Best results
-    best_mapping: Optional[dict[str, str]]
-    best_lines: Optional[list[str]]
-    best_scores: Optional[list[float]]
-    best_ipas: Optional[list[tuple[str, str]]]
-
-    # Control
-    attempt: int
-    max_attempts: int
-    threshold: float
-    messages: Annotated[list, add]
 
 
 def create_soramimi_mapping_initial_state(
@@ -52,7 +18,7 @@ def create_soramimi_mapping_initial_state(
     target_lang: str,
     max_attempts: int,
     threshold: float,
-) -> SoramimiMappingState:
+) -> SoramimiTranslationState:
     """
     Create initial state for soramimi mapping graph
 
@@ -64,7 +30,7 @@ def create_soramimi_mapping_initial_state(
         threshold: Similarity threshold for stopping refinement
 
     Returns:
-        SoramimiMappingState initialized with all required fields
+        SoramimiTranslationState initialized with all required fields
     """
     return {
         "source_lines": source_lines,
@@ -118,7 +84,7 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
             fallback_cache[target_lang] = load_mapping(target_lang)
         return fallback_cache[target_lang]
 
-    def extract_phonemes_node(state: SoramimiMappingState) -> dict:
+    def extract_phonemes_node(state: SoramimiTranslationState) -> dict:
         """Extract unique phonemes from source lyrics"""
 
         print("   🔍 Extracting phonemes from source...")
@@ -144,7 +110,7 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
             "source_ipa": source_ipas,
         }
 
-    def build_mapping_node(state: SoramimiMappingState) -> dict:
+    def build_mapping_node(state: SoramimiTranslationState) -> dict:
         """Build or refine phoneme mapping"""
 
         attempt = state["attempt"]
@@ -191,7 +157,7 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
                 + [{"role": "assistant", "content": response.content}],
             }
 
-    def apply_mapping_node(state: SoramimiMappingState) -> dict:
+    def apply_mapping_node(state: SoramimiTranslationState) -> dict:
         """Apply phoneme mapping to generate soramimi"""
 
         print("   🎨 Applying mapping to generate soramimi...")
@@ -227,7 +193,7 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
 
         return {"soramimi_lines": soramimi_lines}
 
-    def validate_node(state: SoramimiMappingState) -> dict:
+    def validate_node(state: SoramimiTranslationState) -> dict:
         """Validate phonetic similarity"""
 
         if not state.get("soramimi_lines"):
@@ -284,11 +250,11 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
             "best_mapping": best_mapping,
         }
 
-    def refine_mapping_node(state: SoramimiMappingState) -> dict:
+    def refine_mapping_node(state: SoramimiTranslationState) -> dict:
         """Increment attempt counter"""
         return {"attempt": state["attempt"] + 1}
 
-    def should_continue(state: SoramimiMappingState) -> str:
+    def should_continue(state: SoramimiTranslationState) -> str:
         """Decide whether to continue refining"""
 
         best_scores = state.get("best_scores", [])
@@ -308,7 +274,7 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
         print("   🔁 Refining mapping...")
         return "refine"
 
-    def get_initial_mapping_prompt(state: SoramimiMappingState) -> str:
+    def get_initial_mapping_prompt(state: SoramimiTranslationState) -> str:
         """Generate initial mapping prompt"""
 
         # Show all phonemes
@@ -342,7 +308,7 @@ Return COMPLETE JSON mapping (MUST include all {len(state["source_phonemes"])} p
 CRITICAL: Every phoneme from the list above MUST have a mapping. Missing even one phoneme is unacceptable!
 """
 
-    def get_refinement_prompt(state: SoramimiMappingState) -> str:
+    def get_refinement_prompt(state: SoramimiTranslationState) -> str:
         """Generate refinement prompt"""
 
         current_mapping = state["phoneme_mapping"]
@@ -396,7 +362,7 @@ Return JSON with improved mappings:
 """
 
     # Build workflow
-    workflow = StateGraph(SoramimiMappingState)
+    workflow = StateGraph(SoramimiTranslationState)
 
     # Add nodes
     workflow.add_node("extract_phonemes", extract_phonemes_node)

@@ -3,8 +3,42 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TypedDict, Annotated
+from operator import add
 from pydantic import BaseModel, Field
+
+
+class SoramimiTranslationState(TypedDict):
+    """State for mapping-based soramimi translation graph"""
+
+    # Source information
+    source_lines: list[str]
+    source_lang: str
+    target_lang: str
+
+    # Phoneme mapping
+    source_phonemes: list[str]  # Unique phonemes from source
+    phoneme_mapping: dict[str, str]  # phoneme -> target character/syllable
+    mapping_scores: dict[str, float]  # phoneme -> similarity score
+
+    # Current translation
+    soramimi_lines: Optional[list[str]]
+    source_ipa: Optional[list[str]]
+    target_ipa: Optional[list[str]]
+    similarity_scores: Optional[list[float]]
+    overall_similarity: Optional[float]
+
+    # Best results
+    best_mapping: Optional[dict[str, str]]
+    best_lines: Optional[list[str]]
+    best_scores: Optional[list[float]]
+    best_ipas: Optional[list[tuple[str, str]]]
+
+    # Control
+    attempt: int
+    max_attempts: int
+    threshold: float
+    messages: Annotated[list, add]
 
 
 class SoramimiTranslation(BaseModel):
