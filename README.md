@@ -96,6 +96,13 @@ To generate soramimi (空耳) lyrics that sound like the original, use the `exam
 ```bash
 uv run python examples/get_soramimi_lyrics.py
 ```
+### RVC vocal convert
+
+To generate rvc vocal that change original vocal to desired vocal, use the `examples/get_rvc_vocal.py` scripts. Brfore running the scrips, create `examples/RVC_model` and place model.pt and model.index:
+
+```bash
+uv run python examples/get_rvc_vocal.py
+```
 
 **Parameters:**
 
