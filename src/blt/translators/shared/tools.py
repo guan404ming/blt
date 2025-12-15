@@ -33,7 +33,9 @@ def create_translation_tools(analyzer):
         return analyzer.count_syllables(text, language)
 
     @tool
-    def verify_translation(translation: str, target_syllables: int, language: str) -> dict:
+    def verify_translation(
+        translation: str, target_syllables: int, language: str
+    ) -> dict:
         """
         Verify if a translation has the target number of syllables.
 

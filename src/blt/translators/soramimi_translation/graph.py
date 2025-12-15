@@ -8,7 +8,7 @@ from typing import TypedDict, Optional, Annotated
 from operator import add
 from langgraph.graph import StateGraph, END
 from ..shared import create_soramimi_tools
-from . import fallback_loader
+from .utils import load_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
     def get_fallback_mapping(target_lang: str) -> dict[str, str]:
         """Get or load fallback mapping for target language"""
         if target_lang not in fallback_cache:
-            fallback_cache[target_lang] = fallback_loader.load_mapping(target_lang)
+            fallback_cache[target_lang] = load_mapping(target_lang)
         return fallback_cache[target_lang]
 
     def extract_phonemes_node(state: SoramimiMappingState) -> dict:

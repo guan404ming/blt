@@ -20,7 +20,10 @@ from ..shared import (
     LyricsAnalyzer,
 )
 from .config import LyricsTranslationAgentConfig
-from .graph import build_lyrics_translation_graph, create_lyrics_translation_initial_state
+from .graph import (
+    build_lyrics_translation_graph,
+    create_lyrics_translation_initial_state,
+)
 from .validator import ConstraintValidator
 
 load_dotenv()
