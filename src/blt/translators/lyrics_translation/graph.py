@@ -101,7 +101,7 @@ def build_graph(analyzer, validator, llm, config):
 
         # Build comprehensive prompt with all 3 constraints
         lines_with_targets = "\n".join(
-            f'{i+1}. "{line}" → {syllable_counts[i] if i < len(syllable_counts) else "?"} syllables'
+            f'{i + 1}. "{line}" → {syllable_counts[i] if i < len(syllable_counts) else "?"} syllables'
             for i, line in enumerate(source_lines)
         )
 
@@ -109,8 +109,8 @@ def build_graph(analyzer, validator, llm, config):
         patterns_str = ""
         if syllable_patterns:
             patterns_str = "\n".join(
-                f'  Line {i+1}: {pattern}'
-                for i, pattern in enumerate(syllable_patterns[:len(source_lines)])
+                f"  Line {i + 1}: {pattern}"
+                for i, pattern in enumerate(syllable_patterns[: len(source_lines)])
             )
 
         prompt = f"""You are a professional lyrics translator. Translate ALL the following lyrics to {target_lang} while meeting ALL 3 musical constraints.
@@ -122,10 +122,10 @@ CONSTRAINT 1: SYLLABLE COUNTS (MUST MATCH EXACTLY)
 Each line must have EXACTLY the specified syllable count above.
 
 CONSTRAINT 2: RHYME SCHEME
-Rhyme pattern: {rhyme_scheme if rhyme_scheme else 'preserve the original rhyme scheme'}
+Rhyme pattern: {rhyme_scheme if rhyme_scheme else "preserve the original rhyme scheme"}
 
 CONSTRAINT 3: SYLLABLE PATTERNS (words with specified syllable distribution)
-{patterns_str if patterns_str else 'Maintain natural word syllable distribution'}
+{patterns_str if patterns_str else "Maintain natural word syllable distribution"}
 
 QUALITY REQUIREMENTS:
 - Maintain poetic quality and emotional impact
@@ -157,24 +157,28 @@ Do not include any explanations or notes."""
             iteration += 1
 
             # Add assistant response with tool calls to messages
-            messages.append(AIMessage(content=response.content or "", tool_calls=response.tool_calls))
+            messages.append(
+                AIMessage(
+                    content=response.content or "", tool_calls=response.tool_calls
+                )
+            )
 
             # Build and add tool results
             for tool_call in response.tool_calls:
-                tool_name = tool_call['name']
-                tool_args = tool_call['args']
-                tool_id = tool_call['id']
+                tool_name = tool_call["name"]
+                tool_args = tool_call["args"]
+                tool_id = tool_call["id"]
 
                 # Execute the tool
-                if tool_name == 'count_syllables':
+                if tool_name == "count_syllables":
                     result = count_syllables.invoke(tool_args)
-                elif tool_name == 'text_to_ipa':
+                elif tool_name == "text_to_ipa":
                     result = text_to_ipa.invoke(tool_args)
-                elif tool_name == 'extract_rhyme_ending':
+                elif tool_name == "extract_rhyme_ending":
                     result = extract_rhyme_ending.invoke(tool_args)
-                elif tool_name == 'check_rhyme':
+                elif tool_name == "check_rhyme":
                     result = check_rhyme.invoke(tool_args)
-                elif tool_name == 'get_syllable_patterns':
+                elif tool_name == "get_syllable_patterns":
                     result = get_syllable_patterns.invoke(tool_args)
                 else:
                     result = f"Unknown tool: {tool_name}"
@@ -187,7 +191,9 @@ Do not include any explanations or notes."""
         # Parse translations from response
         translated_lines = _extract_translations(response.content, len(source_lines))
 
-        logger.info(f"   ✓ Generated {len(translated_lines)} initial translations (3 constraints)")
+        logger.info(
+            f"   ✓ Generated {len(translated_lines)} initial translations (3 constraints)"
+        )
 
         return {
             "translated_lines": translated_lines,
@@ -217,10 +223,12 @@ Do not include any explanations or notes."""
         target_count = (
             target_syllables[current_idx] if current_idx < len(target_syllables) else 0
         )
-        current_translation = translated_lines[current_idx] if current_idx < len(translated_lines) else ""
+        current_translation = (
+            translated_lines[current_idx] if current_idx < len(translated_lines) else ""
+        )
 
         logger.info(
-            f'   🔧 Refining syllables: Line {current_idx + 1}/{len(source_lines)}: {target_count} syllables'
+            f"   🔧 Refining syllables: Line {current_idx + 1}/{len(source_lines)}: {target_count} syllables"
         )
 
         # Check initial translation
@@ -275,34 +283,43 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
             # Process tool calls in agentic loop
             max_refinement_iterations = 5
             refinement_iteration = 0
-            while response.tool_calls and refinement_iteration < max_refinement_iterations:
+            while (
+                response.tool_calls and refinement_iteration < max_refinement_iterations
+            ):
                 refinement_iteration += 1
-                messages.append(AIMessage(content=response.content or "", tool_calls=response.tool_calls))
+                messages.append(
+                    AIMessage(
+                        content=response.content or "", tool_calls=response.tool_calls
+                    )
+                )
 
                 for tool_call in response.tool_calls:
-                    tool_name = tool_call['name']
-                    tool_args = tool_call['args']
-                    tool_id = tool_call['id']
+                    tool_name = tool_call["name"]
+                    tool_args = tool_call["args"]
+                    tool_id = tool_call["id"]
 
-                    if tool_name == 'count_syllables':
+                    if tool_name == "count_syllables":
                         result = count_syllables.invoke(tool_args)
-                    elif tool_name == 'text_to_ipa':
+                    elif tool_name == "text_to_ipa":
                         result = text_to_ipa.invoke(tool_args)
-                    elif tool_name == 'extract_rhyme_ending':
+                    elif tool_name == "extract_rhyme_ending":
                         result = extract_rhyme_ending.invoke(tool_args)
-                    elif tool_name == 'check_rhyme':
+                    elif tool_name == "check_rhyme":
                         result = check_rhyme.invoke(tool_args)
-                    elif tool_name == 'get_syllable_patterns':
+                    elif tool_name == "get_syllable_patterns":
                         result = get_syllable_patterns.invoke(tool_args)
                     else:
                         result = f"Unknown tool: {tool_name}"
 
-                    messages.append(ToolMessage(content=str(result), tool_call_id=tool_id))
+                    messages.append(
+                        ToolMessage(content=str(result), tool_call_id=tool_id)
+                    )
 
                 response = llm_with_tools.invoke(messages)
 
             # Extract translation
             import re
+
             translation = response.content.strip()
 
             # Remove quotes
@@ -317,12 +334,16 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
                 else:
                     for line in translation.split("\n"):
                         line = line.strip()
-                        if line and not line.startswith("{") and not line.startswith("```"):
+                        if (
+                            line
+                            and not line.startswith("{")
+                            and not line.startswith("```")
+                        ):
                             translation = line
                             break
 
             # Remove numbered prefix (e.g., "1. text" -> "text")
-            translation = re.sub(r'^\d+\.\s*', '', translation).strip()
+            translation = re.sub(r"^\d+\.\s*", "", translation).strip()
 
             # Check syllable count
             actual = analyzer.count_syllables(translation, target_lang)
@@ -456,10 +477,10 @@ def _extract_translations(text: str, num_lines: int) -> list[str]:
 
     # If not enough lines, try simple line splitting and remove any leading numbers
     if len(lines) < num_lines:
-        raw_lines = [line.strip() for line in text.split('\n') if line.strip()]
+        raw_lines = [line.strip() for line in text.split("\n") if line.strip()]
         for line in raw_lines:
             # Remove leading number and dot pattern: "1. text" -> "text"
-            cleaned = re.sub(r'^\d+\.\s*', '', line).strip()
+            cleaned = re.sub(r"^\d+\.\s*", "", line).strip()
             if cleaned:
                 lines.append(cleaned)
 
