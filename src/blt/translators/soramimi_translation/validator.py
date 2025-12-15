@@ -25,7 +25,7 @@ class SoramimiValidator:
 
     # ==================== PUBLIC API (for LLM tools) ====================
 
-    def compare_ipa(
+    def verify_all_constraints(
         self,
         source_lines: list[str],
         target_lines: list[str],
@@ -33,16 +33,22 @@ class SoramimiValidator:
         target_lang: str,
     ) -> dict:
         """
-        Compare IPA of source and target lyrics
+        Verify all phonetic constraints by comparing IPA similarity
 
         Args:
             source_lines: Source lyrics lines
-            target_lines: Target lyrics lines
+            target_lines: Target lyrics lines (translations to verify)
             source_lang: Source language code
             target_lang: Target language code
 
         Returns:
-            dict with IPA comparisons and similarity scores
+            dict with:
+            - source_ipas: IPA transcriptions of source lines
+            - target_ipas: IPA transcriptions of target lines
+            - similarities: Similarity score for each line (0-1)
+            - overall_similarity: Overall similarity across all lines
+            - passed: Whether all lines meet similarity threshold
+            - feedback: Detailed feedback on constraint violations
         """
         source_ipas = []
         target_ipas = []

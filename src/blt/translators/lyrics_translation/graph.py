@@ -50,7 +50,7 @@ def create_initial_state(
     }
 
 
-def build_graph(analyzer, llm, config):
+def build_graph(analyzer, validator, llm, config):
     """
     Build the constraint-based lyrics translation graph using ReAct pattern.
 
@@ -60,6 +60,7 @@ def build_graph(analyzer, llm, config):
 
     Args:
         analyzer: LyricsAnalyzer instance
+        validator: ConstraintValidator instance
         llm: LLM instance (ChatOllama)
         config: LyricsTranslationAgentConfig instance
 
@@ -67,7 +68,7 @@ def build_graph(analyzer, llm, config):
         Compiled LangGraph workflow
     """
     # Create and bind tools
-    tools = create_translation_tools(analyzer)
+    tools = create_translation_tools(analyzer, validator)
     llm.bind_tools(tools)
 
     def translate_line_node(state: LyricsTranslationState) -> dict:

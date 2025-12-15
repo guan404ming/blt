@@ -65,7 +65,7 @@ class LyricsTranslationAgent:
         )
 
         # Build graph
-        self.graph = build_graph(self.analyzer, self.llm, self.config)
+        self.graph = build_graph(self.analyzer, self.validator, self.llm, self.config)
 
     def translate(
         self,

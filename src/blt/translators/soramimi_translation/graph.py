@@ -202,7 +202,7 @@ def build_graph(analyzer, validator, llm):
                 "overall_similarity": 0.0,
             }
 
-        validation = validator.compare_ipa(
+        validation = validator.verify_all_constraints(
             state["source_lines"],
             state["soramimi_lines"],
             state["source_lang"],

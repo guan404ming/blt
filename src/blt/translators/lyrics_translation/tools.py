@@ -1,58 +1,53 @@
 """
 Tool definitions for constraint-based lyrics translation
+Wraps ConstraintValidator.verify_all_constraints with LLM-friendly tools
 """
 
 from langchain_core.tools import tool
 from ..shared.tools import count_syllables
 
 
-def create_translation_tools(analyzer):
+def create_translation_tools(analyzer, validator):
     """
     Create tool functions for lyrics translation
 
     Args:
         analyzer: LyricsAnalyzer instance
+        validator: ConstraintValidator instance
 
     Returns:
         List of tool functions that can be bound to LLM
     """
 
     @tool
-    def verify_translation(
-        translation: str, target_syllables: int, language: str
+    def verify_all_constraints(
+        lines: list[str],
+        language: str,
+        target_syllables: list[int],
+        rhyme_scheme: str = "",
+        target_patterns: list[list[int]] | None = None,
     ) -> dict:
         """
-        Verify if a translation has the target number of syllables.
+        Verify all translation constraints at once.
 
-        Use this to check if your translation meets the syllable requirement.
+        Use this to check if your translation meets all syllable count, rhyme, and pattern requirements.
 
         Args:
-            translation: The translated text to verify
-            target_syllables: The target syllable count
-            language: The language code (e.g., 'en', 'zh', 'ja')
+            lines: List of translated lines
+            language: The language code (e.g., 'en-us', 'cmn', 'ja')
+            target_syllables: Target syllable count for each line
+            rhyme_scheme: Rhyme scheme (e.g., "AABB")
+            target_patterns: Optional target syllable patterns
 
         Returns:
             A dictionary with:
-            - passed: True if syllable count matches target
-            - actual: The actual syllable count
-            - feedback: Guidance if the count doesn't match
+            - syllables: Actual syllable counts
+            - syllables_match: Whether syllables match
+            - feedback: Detailed feedback on constraint violations
+            - passed: Whether all constraints are satisfied
         """
-        actual = analyzer.count_syllables(translation, language)
-        passed = actual == target_syllables
-        diff = actual - target_syllables
+        return validator.verify_all_constraints(
+            lines, language, target_syllables, rhyme_scheme, target_patterns
+        )
 
-        if diff > 0:
-            feedback = f"Too many syllables! Need {diff} fewer."
-        elif diff < 0:
-            feedback = f"Too few syllables! Need {abs(diff)} more."
-        else:
-            feedback = "Perfect! Syllable count matches."
-
-        return {
-            "passed": passed,
-            "actual": actual,
-            "target": target_syllables,
-            "feedback": feedback,
-        }
-
-    return [count_syllables, verify_translation]
+    return [count_syllables, verify_all_constraints]
