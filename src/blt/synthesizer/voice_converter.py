@@ -3,7 +3,7 @@ import shutil
 from gradio_client import Client, handle_file
 
 
-class RvcConverter:
+class RetrievalBasedVoiceConverter:
     def __init__(self, api_source="r3gm/RVC_ZERO"):
         """
         Initialize the RVC synthesizer.

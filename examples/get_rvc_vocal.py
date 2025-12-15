@@ -1,6 +1,6 @@
 import argparse
 import os
-from blt.synthesizer.rvc_converter import RvcConverter
+from blt.synthesizer import RetrievalBasedVoiceConverter
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
         return
 
     try:
-        converter = RvcConverter()
+        converter = RetrievalBasedVoiceConverter()
         converter.run(
             audio_path=args.input,
             model_path=args.model,
