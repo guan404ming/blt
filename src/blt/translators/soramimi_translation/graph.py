@@ -5,7 +5,7 @@ Mapping-based soramimi (空耳) translation graph following ReAct pattern
 import json
 import logging
 from langgraph.graph import StateGraph, END
-from .tools import create_soramimi_tools
+from ..shared.tools import text_to_ipa
 from .utils import load_mapping
 from .models import SoramimiTranslationState
 
@@ -71,8 +71,8 @@ def build_graph(analyzer, validator, llm):
     Returns:
         Compiled LangGraph workflow
     """
-    # Create and bind tools
-    tools = create_soramimi_tools(analyzer, validator)
+    validator_tools = validator.get_tools()
+    tools = [text_to_ipa] + validator_tools
     llm.bind_tools(tools)
 
     # Cache for fallback mappings per language

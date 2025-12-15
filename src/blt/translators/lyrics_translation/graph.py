@@ -4,7 +4,7 @@ Constraint-based lyrics translation graph following ReAct pattern
 
 import logging
 from langgraph.graph import StateGraph, END
-from .tools import create_translation_tools
+from ..shared.tools import count_syllables
 from .models import LyricsTranslationState
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,8 @@ def build_graph(analyzer, validator, llm, config):
     Returns:
         Compiled LangGraph workflow
     """
-    # Create and bind tools
-    tools = create_translation_tools(analyzer, validator)
+    validator_tools = validator.get_tools()
+    tools = [count_syllables] + validator_tools
     llm.bind_tools(tools)
 
     def translate_line_node(state: LyricsTranslationState) -> dict:

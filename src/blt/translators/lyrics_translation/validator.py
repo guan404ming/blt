@@ -1,5 +1,6 @@
 """Validator for constraint-based lyrics translations"""
 
+from langchain_core.tools import tool
 from ..shared import LyricsAnalyzer
 
 
@@ -111,6 +112,41 @@ class Validator:
             result["patterns_match"] = patterns_match
 
         return result
+
+    # ==================== TOOLS FOR LLM ====================
+
+    def get_tools(self):
+        """Get LLM-callable tools for this validator"""
+        validator = self
+
+        @tool
+        def verify_all_constraints_tool(
+            lines: list[str],
+            language: str,
+            target_syllables: list[int],
+            rhyme_scheme: str = "",
+            target_patterns: list[list[int]] | None = None,
+        ) -> dict:
+            """
+            Verify all translation constraints at once.
+
+            Use this to check if your translation meets all syllable count, rhyme, and pattern requirements.
+
+            Args:
+                lines: List of translated lines
+                language: The language code (e.g., 'en-us', 'cmn', 'ja')
+                target_syllables: Target syllable count for each line
+                rhyme_scheme: Rhyme scheme (e.g., "AABB")
+                target_patterns: Optional target syllable patterns
+
+            Returns:
+                A dictionary with constraint verification results and feedback
+            """
+            return validator.verify_all_constraints(
+                lines, language, target_syllables, rhyme_scheme, target_patterns
+            )
+
+        return [verify_all_constraints_tool]
 
     # ==================== PRIVATE HELPERS ====================
 

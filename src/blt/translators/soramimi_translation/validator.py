@@ -1,5 +1,6 @@
 """Validator for soramimi (phonetic) translations"""
 
+from langchain_core.tools import tool
 from ..shared import LyricsAnalyzer
 
 
@@ -100,3 +101,36 @@ class Validator:
             "passed": passed,
             "feedback": feedback,
         }
+
+    # ==================== TOOLS FOR LLM ====================
+
+    def get_tools(self):
+        """Get LLM-callable tools for this validator"""
+        validator = self
+
+        @tool
+        def verify_all_constraints_tool(
+            source_lines: list[str],
+            target_lines: list[str],
+            source_lang: str,
+            target_lang: str,
+        ) -> dict:
+            """
+            Verify all phonetic constraints by comparing IPA similarity.
+
+            Use this to check if your soramimi mapping produces phonetically similar results.
+
+            Args:
+                source_lines: Source lyrics lines
+                target_lines: Target lyrics lines (translations to verify)
+                source_lang: Source language code (e.g., 'en-us', 'cmn', 'ja')
+                target_lang: Target language code (e.g., 'en-us', 'cmn', 'ja')
+
+            Returns:
+                A dictionary with constraint verification results and feedback
+            """
+            return validator.verify_all_constraints(
+                source_lines, target_lines, source_lang, target_lang
+            )
+
+        return [verify_all_constraints_tool]
