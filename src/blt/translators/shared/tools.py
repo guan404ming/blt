@@ -1,132 +1,121 @@
 """
-Tool definitions for translation workflows
+Tool definitions for lyrics analysis - wraps all analyzer functions
 """
 
 from langchain_core.tools import tool
+from .analyzer import LyricsAnalyzer
+
+# Initialize analyzer instance for all tools
+_analyzer = LyricsAnalyzer()
 
 
-def create_translation_tools(analyzer):
+# ==================== ANALYZER TOOLS ====================
+
+
+@tool
+def count_syllables(text: str, language: str) -> int:
     """
-    Create tool functions for lyrics translation
+    Count the number of syllables in the given text.
 
     Args:
-        analyzer: LyricsAnalyzer instance
+        text: The text to count syllables in
+        language: The language code (e.g., 'en-us', 'cmn', 'ja')
 
     Returns:
-        List of tool functions that can be bound to LLM
+        The number of syllables in the text
     """
-
-    @tool
-    def count_syllables(text: str, language: str) -> int:
-        """
-        Count the number of syllables in the given text.
-
-        Use this to verify your translation has the correct syllable count.
-
-        Args:
-            text: The text to count syllables in
-            language: The language code (e.g., 'en', 'zh', 'ja')
-
-        Returns:
-            The number of syllables in the text
-        """
-        return analyzer.count_syllables(text, language)
-
-    @tool
-    def verify_translation(
-        translation: str, target_syllables: int, language: str
-    ) -> dict:
-        """
-        Verify if a translation has the target number of syllables.
-
-        Use this to check if your translation meets the syllable requirement.
-
-        Args:
-            translation: The translated text to verify
-            target_syllables: The target syllable count
-            language: The language code (e.g., 'en', 'zh', 'ja')
-
-        Returns:
-            A dictionary with:
-            - passed: True if syllable count matches target
-            - actual: The actual syllable count
-            - feedback: Guidance if the count doesn't match
-        """
-        actual = analyzer.count_syllables(translation, language)
-        passed = actual == target_syllables
-        diff = actual - target_syllables
-
-        if diff > 0:
-            feedback = f"Too many syllables! Need {diff} fewer."
-        elif diff < 0:
-            feedback = f"Too few syllables! Need {abs(diff)} more."
-        else:
-            feedback = "Perfect! Syllable count matches."
-
-        return {
-            "passed": passed,
-            "actual": actual,
-            "target": target_syllables,
-            "feedback": feedback,
-        }
-
-    return [count_syllables, verify_translation]
+    return _analyzer.count_syllables(text, language)
 
 
-def create_soramimi_tools(analyzer, validator):
+@tool
+def text_to_ipa(text: str, language: str) -> str:
     """
-    Create tool functions for soramimi translation
+    Convert text to IPA (International Phonetic Alphabet) representation.
 
     Args:
-        analyzer: LyricsAnalyzer instance
-        validator: SoramimiValidator instance
+        text: The text to convert
+        language: The language code (e.g., 'en-us', 'cmn', 'ja')
 
     Returns:
-        List of tool functions that can be bound to LLM
+        The IPA transcription
     """
+    return _analyzer.text_to_ipa(text, language)
 
-    @tool
-    def get_phoneme_ipa(text: str, language: str) -> str:
-        """
-        Get the IPA (International Phonetic Alphabet) representation of text.
 
-        Use this to understand the phonetic structure of the source text.
+@tool
+def extract_rhyme_ending(text: str, language: str) -> str:
+    """
+    Extract the rhyme ending (final syllable/sound) from text.
 
-        Args:
-            text: The text to convert to IPA
-            language: The language code (e.g., 'en', 'zh', 'ja')
+    Args:
+        text: The text to analyze
+        language: The language code (e.g., 'en-us', 'cmn', 'ja')
 
-        Returns:
-            The IPA representation
-        """
-        return analyzer.text_to_ipa(text, language)
+    Returns:
+        The rhyme ending string
+    """
+    return _analyzer.extract_rhyme_ending(text, language)
 
-    @tool
-    def check_phonetic_similarity(
-        source_text: str, target_text: str, source_lang: str, target_lang: str
-    ) -> dict:
-        """
-        Check phonetic similarity between source and target text.
 
-        Use this to verify that your soramimi mapping produces phonetically similar results.
+@tool
+def check_rhyme(text1: str, text2: str, language: str) -> bool:
+    """
+    Check if two pieces of text rhyme with each other.
 
-        Args:
-            source_text: The original source text
-            target_text: The proposed soramimi translation
-            source_lang: The source language code
-            target_lang: The target language code
+    Args:
+        text1: First text
+        text2: Second text
+        language: The language code (e.g., 'en-us', 'cmn', 'ja')
 
-        Returns:
-            A dictionary with similarity score and details
-        """
-        validation = validator.compare_ipa(
-            [source_text], [target_text], source_lang, target_lang
-        )
-        return {
-            "similarity_score": validation["overall_similarity"],
-            "source_ipa": validation["source_ipas"][0],
-            "target_ipa": validation["target_ipas"][0],
-            "details": f"Similarity: {validation['overall_similarity']:.1%}",
-        }
+    Returns:
+        True if texts rhyme, False otherwise
+    """
+    return _analyzer.check_rhyme(text1, text2, language)
 
-    return [get_phoneme_ipa, check_phonetic_similarity]
+
+@tool
+def get_syllable_patterns(lines: list[str], language: str) -> list[list[int]]:
+    """
+    Get syllable pattern (syllables per word) for multiple lines.
+
+    Args:
+        lines: List of text lines to analyze
+        language: The language code (e.g., 'en-us', 'cmn', 'ja')
+
+    Returns:
+        List of syllable patterns, e.g., [[1, 1, 3], [1, 2, 1]]
+    """
+    return _analyzer.get_syllable_patterns(lines, language)
+
+
+@tool
+def detect_rhyme_scheme(lines: list[str], language: str) -> str:
+    """
+    Detect the rhyme scheme from a list of lines.
+
+    Args:
+        lines: List of text lines
+        language: The language code (e.g., 'en-us', 'cmn', 'ja')
+
+    Returns:
+        Rhyme scheme string (e.g., "AABB", "ABAB")
+    """
+    return _analyzer.detect_rhyme_scheme(lines, language)
+
+
+@tool
+def calculate_ipa_similarity(
+    ipa1: str, ipa2: str, is_chinese: bool = False
+) -> float:
+    """
+    Calculate phonetic similarity between two IPA strings.
+
+    Args:
+        ipa1: First IPA string (or Chinese text if is_chinese=True)
+        ipa2: Second IPA string (or Chinese text if is_chinese=True)
+        is_chinese: If True, convert Chinese to pinyin first
+
+    Returns:
+        Similarity score between 0 and 1
+    """
+    return _analyzer.calculate_ipa_similarity(ipa1, ipa2, is_chinese)

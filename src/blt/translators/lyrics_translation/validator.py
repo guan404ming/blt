@@ -1,11 +1,7 @@
 """Constraint-based validator for lyrics translations"""
 
-from ..shared import (
-    LyricTranslation,
-    MusicConstraints,
-    ValidationResult,
-    LyricsAnalyzer,
-)
+from ..shared import LyricsAnalyzer
+from .models import LyricTranslation, MusicConstraints, ValidationResult
 
 
 class ConstraintValidator:

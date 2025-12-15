@@ -6,7 +6,7 @@ import logging
 from typing import TypedDict, Optional, Annotated
 from operator import add
 from langgraph.graph import StateGraph, END
-from ..shared import create_translation_tools
+from .tools import create_translation_tools
 
 logger = logging.getLogger(__name__)
 

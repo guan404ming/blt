@@ -14,12 +14,9 @@ from dotenv import load_dotenv
 
 from langchain_ollama import ChatOllama
 
-from ..shared import (
-    LyricTranslation,
-    MusicConstraints,
-    LyricsAnalyzer,
-)
+from ..shared import LyricsAnalyzer
 from .config import LyricsTranslationAgentConfig
+from .models import LyricTranslation, MusicConstraints
 from .graph import (
     build_lyrics_translation_graph,
     create_lyrics_translation_initial_state,

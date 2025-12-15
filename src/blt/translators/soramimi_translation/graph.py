@@ -7,7 +7,7 @@ import logging
 from typing import TypedDict, Optional, Annotated
 from operator import add
 from langgraph.graph import StateGraph, END
-from ..shared import create_soramimi_tools
+from .tools import create_soramimi_tools
 from .utils import load_mapping
 
 logger = logging.getLogger(__name__)

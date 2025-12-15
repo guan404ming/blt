@@ -14,8 +14,9 @@ from dotenv import load_dotenv
 
 from langchain_ollama import ChatOllama
 
-from ..shared import SoramimiTranslation, LyricsAnalyzer
+from ..shared import LyricsAnalyzer
 from .config import SoramimiTranslationAgentConfig
+from .models import SoramimiTranslation
 from .graph import build_soramimi_mapping_graph, create_soramimi_mapping_initial_state
 from .validator import SoramimiValidator
 

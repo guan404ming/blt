@@ -18,13 +18,13 @@ Architecture:
 """
 
 # Core components
-from .shared import (
-    LyricsAnalyzer,
+from .shared import LyricsAnalyzer
+from .lyrics_translation.models import (
     LyricTranslation,
     MusicConstraints,
     ValidationResult,
-    SoramimiTranslation,
 )
+from .soramimi_translation.models import SoramimiTranslation
 
 # Agent configurations
 from .lyrics_translation.config import LyricsTranslationAgentConfig
