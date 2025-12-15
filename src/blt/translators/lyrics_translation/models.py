@@ -39,6 +39,7 @@ class LyricsTranslationState(TypedDict):
     attempt: int
     max_attempts: int
     all_lines_done: Optional[bool]
+    current_refinement_idx: int
     messages: Annotated[list, add]
 
 

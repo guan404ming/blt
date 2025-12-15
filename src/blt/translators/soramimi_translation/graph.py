@@ -388,4 +388,8 @@ Return JSON with improved mappings:
     )
     workflow.add_edge("refine_mapping", "build_mapping")
 
-    return workflow.compile()
+    compiled = workflow.compile()
+    mermaid_str = compiled.get_graph().draw_mermaid()
+    print(mermaid_str)
+
+    return compiled

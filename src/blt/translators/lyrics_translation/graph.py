@@ -4,7 +4,14 @@ Constraint-based lyrics translation graph following ReAct pattern
 
 import logging
 from langgraph.graph import StateGraph, END
-from ..shared.tools import count_syllables
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
+from ..shared.tools import (
+    count_syllables,
+    text_to_ipa,
+    extract_rhyme_ending,
+    check_rhyme,
+    get_syllable_patterns,
+)
 from .models import LyricsTranslationState
 
 logger = logging.getLogger(__name__)
@@ -46,6 +53,7 @@ def create_initial_state(
         "attempt": 1,
         "max_attempts": 3,
         "all_lines_done": None,
+        "current_refinement_idx": 0,
         "messages": [],
     }
 
@@ -54,9 +62,9 @@ def build_graph(analyzer, validator, llm, config):
     """
     Build the constraint-based lyrics translation graph using ReAct pattern.
 
-    The graph uses a reasoning-acting cycle where the LLM reasons about the
-    translation, uses tools to verify syllable counts, and iterates until
-    all constraints are satisfied.
+    The graph uses a two-phase approach:
+    1. Initial translation: LLM translates all lines at once considering global constraints
+    2. Refinement: Line-by-line verification and correction to meet syllable/rhyme targets
 
     Args:
         analyzer: LyricsAnalyzer instance
@@ -67,12 +75,127 @@ def build_graph(analyzer, validator, llm, config):
     Returns:
         Compiled LangGraph workflow
     """
-    validator_tools = validator.get_tools()
-    tools = [count_syllables] + validator_tools
-    llm.bind_tools(tools)
+    # Bind essential tools to LLM for verification and analysis
+    tools = [
+        count_syllables,
+        text_to_ipa,
+        extract_rhyme_ending,
+        check_rhyme,
+        get_syllable_patterns,
+    ]
+    llm_with_tools = llm.bind_tools(tools)
 
-    def translate_line_node(state: LyricsTranslationState) -> dict:
-        """Translate one line at a time with iterative verification"""
+    def initial_translation_node(state: LyricsTranslationState) -> dict:
+        """Translate all lines at once considering 3 constraints: syllables, rhyme, patterns"""
+        source_lines = [
+            line.strip()
+            for line in state["source_lyrics"].strip().split("\n")
+            if line.strip()
+        ]
+        target_lang = state["target_lang"]
+        syllable_counts = state["syllable_counts"] or []
+        rhyme_scheme = state["rhyme_scheme"] or ""
+        syllable_patterns = state["syllable_patterns"] or []
+
+        logger.info("   🌍 Phase 1: Initial translation (considering 3 constraints)...")
+
+        # Build comprehensive prompt with all 3 constraints
+        lines_with_targets = "\n".join(
+            f'{i+1}. "{line}" → {syllable_counts[i] if i < len(syllable_counts) else "?"} syllables'
+            for i, line in enumerate(source_lines)
+        )
+
+        # Format syllable patterns
+        patterns_str = ""
+        if syllable_patterns:
+            patterns_str = "\n".join(
+                f'  Line {i+1}: {pattern}'
+                for i, pattern in enumerate(syllable_patterns[:len(source_lines)])
+            )
+
+        prompt = f"""You are a professional lyrics translator. Translate ALL the following lyrics to {target_lang} while meeting ALL 3 musical constraints.
+
+SOURCE LYRICS:
+{lines_with_targets}
+
+CONSTRAINT 1: SYLLABLE COUNTS (MUST MATCH EXACTLY)
+Each line must have EXACTLY the specified syllable count above.
+
+CONSTRAINT 2: RHYME SCHEME
+Rhyme pattern: {rhyme_scheme if rhyme_scheme else 'preserve the original rhyme scheme'}
+
+CONSTRAINT 3: SYLLABLE PATTERNS (words with specified syllable distribution)
+{patterns_str if patterns_str else 'Maintain natural word syllable distribution'}
+
+QUALITY REQUIREMENTS:
+- Maintain poetic quality and emotional impact
+- Preserve musical flow and rhythm
+- Ensure natural language (not forced/artificial)
+
+Use the available tools to verify:
+1. Syllable counts match exactly
+2. Rhyme scheme is correct
+3. Syllable patterns are maintained
+
+OUTPUT FORMAT:
+Return ONLY the translated lines, one per line, WITHOUT numbered prefixes.
+Do not include "1.", "2.", etc. - just the translation text.
+Do not include any explanations or notes."""
+
+        # Run agentic loop: invoke LLM, process tool calls, repeat until we get content
+        messages = [
+            SystemMessage(content=config.get_system_prompt()),
+            HumanMessage(content=prompt),
+        ]
+
+        response = llm_with_tools.invoke(messages)
+
+        # Process tool calls in a loop until LLM provides actual translations
+        max_iterations = 10
+        iteration = 0
+        while response.tool_calls and iteration < max_iterations:
+            iteration += 1
+
+            # Add assistant response with tool calls to messages
+            messages.append(AIMessage(content=response.content or "", tool_calls=response.tool_calls))
+
+            # Build and add tool results
+            for tool_call in response.tool_calls:
+                tool_name = tool_call['name']
+                tool_args = tool_call['args']
+                tool_id = tool_call['id']
+
+                # Execute the tool
+                if tool_name == 'count_syllables':
+                    result = count_syllables.invoke(tool_args)
+                elif tool_name == 'text_to_ipa':
+                    result = text_to_ipa.invoke(tool_args)
+                elif tool_name == 'extract_rhyme_ending':
+                    result = extract_rhyme_ending.invoke(tool_args)
+                elif tool_name == 'check_rhyme':
+                    result = check_rhyme.invoke(tool_args)
+                elif tool_name == 'get_syllable_patterns':
+                    result = get_syllable_patterns.invoke(tool_args)
+                else:
+                    result = f"Unknown tool: {tool_name}"
+
+                messages.append(ToolMessage(content=str(result), tool_call_id=tool_id))
+
+            # Invoke LLM again with tool results
+            response = llm_with_tools.invoke(messages)
+
+        # Parse translations from response
+        translated_lines = _extract_translations(response.content, len(source_lines))
+
+        logger.info(f"   ✓ Generated {len(translated_lines)} initial translations (3 constraints)")
+
+        return {
+            "translated_lines": translated_lines,
+            "current_refinement_idx": 0,
+        }
+
+    def refine_line_node(state: LyricsTranslationState) -> dict:
+        """Refine one line at a time - focus ONLY on syllable count"""
         source_lines = [
             line.strip()
             for line in state["source_lyrics"].strip().split("\n")
@@ -80,81 +203,126 @@ def build_graph(analyzer, validator, llm, config):
         ]
         target_syllables = state["syllable_counts"] or []
         translated_lines = list(state.get("translated_lines") or [])
-        current_idx = len(translated_lines)
+        current_idx = state.get("current_refinement_idx", 0)
         target_lang = state["target_lang"]
 
         if current_idx >= len(source_lines):
             return {"translated_lines": translated_lines}
 
+        # Ensure translated_lines has enough slots for all source lines
+        while len(translated_lines) < len(source_lines):
+            translated_lines.append("")
+
         source_line = source_lines[current_idx]
         target_count = (
             target_syllables[current_idx] if current_idx < len(target_syllables) else 0
         )
+        current_translation = translated_lines[current_idx] if current_idx < len(translated_lines) else ""
 
         logger.info(
-            f'   🚀 Line {current_idx + 1}/{len(source_lines)}: "{source_line}" → {target_count} syllables'
+            f'   🔧 Refining syllables: Line {current_idx + 1}/{len(source_lines)}: {target_count} syllables'
         )
 
-        # Simple iterative approach - translate and verify
-        max_attempts = 5
-        best_translation = ""
-        best_diff = float("inf")
+        # Check initial translation
+        actual = analyzer.count_syllables(current_translation, target_lang)
+
+        if actual == target_count:
+            logger.info(
+                f'      ✓ Line {current_idx + 1} already correct: "{current_translation}" ({actual}/{target_count})'
+            )
+            return {
+                "translated_lines": translated_lines,
+                "current_refinement_idx": current_idx + 1,
+            }
+
+        # Iterative refinement - focus only on syllable count
+        max_attempts = 10
+        best_translation = current_translation
+        best_diff = abs(actual - target_count)
 
         for attempt in range(max_attempts):
-            # Build prompt with feedback
-            if attempt == 0:
-                prompt = f"""Translate to {target_lang} with EXACTLY {target_count} syllables:
+            # Calculate feedback for syllable adjustment
+            actual = analyzer.count_syllables(best_translation, target_lang)
+            diff = actual - target_count
 
-"{source_line}"
-
-Output ONLY the translation, nothing else."""
+            if diff > 0:
+                feedback = f"Too long by {diff} syllable(s). Remove words or use shorter alternatives."
             else:
-                actual = analyzer.count_syllables(best_translation, target_lang)
-                diff = actual - target_count
-                if diff > 0:
-                    feedback = (
-                        f"Too long ({actual} syllables). Remove {diff} syllable(s)."
-                    )
-                else:
-                    feedback = (
-                        f"Too short ({actual} syllables). Add {abs(diff)} syllable(s)."
-                    )
+                feedback = f"Too short by {abs(diff)} syllable(s). Add words or use longer alternatives."
 
-                prompt = f"""Your translation "{best_translation}" has {actual} syllables but needs {target_count}.
-{feedback}
+            prompt = f"""Adjust this translation to have EXACTLY {target_count} syllables.
+Focus ONLY on syllable count - minimize meaning changes.
 
-Revise to have EXACTLY {target_count} syllables. Output ONLY the translation."""
+Original: "{source_line}"
+Current: "{best_translation}"
+Current syllables: {actual}/{target_count}
+Action: {feedback}
 
-            response = llm.invoke(
-                [
-                    {"role": "system", "content": config.get_system_prompt()},
-                    {"role": "user", "content": prompt},
-                ]
-            )
+STRATEGIES:
+- If too long: remove adjectives, use shorter words, merge concepts
+- If too short: add descriptive words, use longer characters, expand descriptions
 
-            # Extract translation from response
+Keep the core meaning as close as possible to the current translation.
+Output ONLY the adjusted translation (no quotes, no explanations)."""
+
+            # Run agentic loop for refinement
+            messages = [
+                SystemMessage(content=config.get_system_prompt()),
+                HumanMessage(content=prompt),
+            ]
+            response = llm_with_tools.invoke(messages)
+
+            # Process tool calls in agentic loop
+            max_refinement_iterations = 5
+            refinement_iteration = 0
+            while response.tool_calls and refinement_iteration < max_refinement_iterations:
+                refinement_iteration += 1
+                messages.append(AIMessage(content=response.content or "", tool_calls=response.tool_calls))
+
+                for tool_call in response.tool_calls:
+                    tool_name = tool_call['name']
+                    tool_args = tool_call['args']
+                    tool_id = tool_call['id']
+
+                    if tool_name == 'count_syllables':
+                        result = count_syllables.invoke(tool_args)
+                    elif tool_name == 'text_to_ipa':
+                        result = text_to_ipa.invoke(tool_args)
+                    elif tool_name == 'extract_rhyme_ending':
+                        result = extract_rhyme_ending.invoke(tool_args)
+                    elif tool_name == 'check_rhyme':
+                        result = check_rhyme.invoke(tool_args)
+                    elif tool_name == 'get_syllable_patterns':
+                        result = get_syllable_patterns.invoke(tool_args)
+                    else:
+                        result = f"Unknown tool: {tool_name}"
+
+                    messages.append(ToolMessage(content=str(result), tool_call_id=tool_id))
+
+                response = llm_with_tools.invoke(messages)
+
+            # Extract translation
+            import re
             translation = response.content.strip()
-            # Clean up common formatting issues
+
+            # Remove quotes
             if translation.startswith('"') and translation.endswith('"'):
                 translation = translation[1:-1]
-            if translation.startswith("```") or translation.startswith("{"):
-                # Try to extract just the text
-                import re
 
+            # Remove code blocks
+            if translation.startswith("```") or translation.startswith("{"):
                 match = re.search(r'"([^"]+)"', translation)
                 if match:
                     translation = match.group(1)
                 else:
-                    # Just take the first line that looks like text
                     for line in translation.split("\n"):
                         line = line.strip()
-                        if (
-                            line
-                            and not line.startswith("{")
-                            and not line.startswith("```")
-                        ):
+                        if line and not line.startswith("{") and not line.startswith("```"):
                             translation = line
                             break
+
+            # Remove numbered prefix (e.g., "1. text" -> "text")
+            translation = re.sub(r'^\d+\.\s*', '', translation).strip()
 
             # Check syllable count
             actual = analyzer.count_syllables(translation, target_lang)
@@ -174,18 +342,21 @@ Revise to have EXACTLY {target_count} syllables. Output ONLY the translation."""
                     f'      ⚠ Attempt {attempt + 1}: "{translation}" ({actual}/{target_count})'
                 )
 
-        translated_lines.append(best_translation)
-        return {"translated_lines": translated_lines}
+        translated_lines[current_idx] = best_translation
+        return {
+            "translated_lines": translated_lines,
+            "current_refinement_idx": current_idx + 1,
+        }
 
-    def check_progress_node(state: LyricsTranslationState) -> dict:
-        """Check if all lines are translated"""
+    def check_refinement_progress_node(state: LyricsTranslationState) -> dict:
+        """Check if all lines have been refined"""
         source_lines = [
             line.strip()
             for line in state["source_lyrics"].strip().split("\n")
             if line.strip()
         ]
-        translated_lines = state.get("translated_lines") or []
-        return {"all_lines_done": len(translated_lines) >= len(source_lines)}
+        current_idx = state.get("current_refinement_idx", 0)
+        return {"all_lines_done": current_idx >= len(source_lines)}
 
     def calculate_metrics_node(state: LyricsTranslationState) -> dict:
         """Calculate final translation metrics"""
@@ -229,27 +400,76 @@ Revise to have EXACTLY {target_count} syllables. Output ONLY the translation."""
             "reasoning": reasoning,
         }
 
-    def should_continue(state: LyricsTranslationState) -> str:
-        """Decide whether to translate next line or finish"""
+    def should_continue_refinement(state: LyricsTranslationState) -> str:
+        """Decide whether to refine next line or finish"""
         if state.get("all_lines_done"):
             return "calculate"
-        return "translate"
+        return "refine"
 
     # Build workflow
     workflow = StateGraph(LyricsTranslationState)
 
-    workflow.add_node("translate_line", translate_line_node)
-    workflow.add_node("check_progress", check_progress_node)
+    # Add nodes for two-phase approach
+    workflow.add_node("initial_translation", initial_translation_node)
+    workflow.add_node("refine_line", refine_line_node)
+    workflow.add_node("check_refinement", check_refinement_progress_node)
     workflow.add_node("calculate_metrics", calculate_metrics_node)
 
-    workflow.set_entry_point("translate_line")
+    # Set entry point
+    workflow.set_entry_point("initial_translation")
 
-    workflow.add_edge("translate_line", "check_progress")
+    # Define edges for two-phase flow
+    workflow.add_edge("initial_translation", "refine_line")
+    workflow.add_edge("refine_line", "check_refinement")
     workflow.add_conditional_edges(
-        "check_progress",
-        should_continue,
-        {"translate": "translate_line", "calculate": "calculate_metrics"},
+        "check_refinement",
+        should_continue_refinement,
+        {"refine": "refine_line", "calculate": "calculate_metrics"},
     )
     workflow.add_edge("calculate_metrics", END)
 
-    return workflow.compile()
+    compiled = workflow.compile()
+    mermaid_str = compiled.get_graph().draw_mermaid()
+    print(mermaid_str)
+
+    return compiled
+
+
+def _extract_translations(text: str, num_lines: int) -> list[str]:
+    """
+    Extract translated lines from LLM response.
+
+    Tries to parse numbered list or newline-separated lines.
+    Removes numbered prefixes like "1.", "2.", etc.
+    """
+    import re
+
+    lines = []
+
+    # Try to match numbered format: 1. "translation" or 1. translation
+    # Captures text after the number and dot, removing the number
+    pattern = r'^\s*\d+\.\s*["\']?([^"\']*?)["\']?\s*$'
+    for match in re.finditer(pattern, text, re.MULTILINE):
+        extracted = match.group(1).strip()
+        if extracted:
+            lines.append(extracted)
+
+    # If not enough lines, try simple line splitting and remove any leading numbers
+    if len(lines) < num_lines:
+        raw_lines = [line.strip() for line in text.split('\n') if line.strip()]
+        for line in raw_lines:
+            # Remove leading number and dot pattern: "1. text" -> "text"
+            cleaned = re.sub(r'^\d+\.\s*', '', line).strip()
+            if cleaned:
+                lines.append(cleaned)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_lines = []
+    for line in lines:
+        if line not in seen:
+            seen.add(line)
+            unique_lines.append(line)
+
+    # Trim to exact number of lines needed
+    return unique_lines[:num_lines]
