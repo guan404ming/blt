@@ -1,17 +1,22 @@
 """
-Constraint-based lyrics translation graph
+Constraint-based lyrics translation graph following ReAct pattern
 """
 
 import logging
 from langgraph.graph import StateGraph, END
-from .state import LyricsTranslationState
+from .states import LyricsTranslationState
+from .tools import create_translation_tools
 
 logger = logging.getLogger(__name__)
 
 
 def build_lyrics_translation_graph(analyzer, llm, config):
     """
-    Build the constraint-based lyrics translation graph - processes line by line with tools
+    Build the constraint-based lyrics translation graph using ReAct pattern.
+
+    The graph uses a reasoning-acting cycle where the LLM reasons about the
+    translation, uses tools to verify syllable counts, and iterates until
+    all constraints are satisfied.
 
     Args:
         analyzer: LyricsAnalyzer instance
@@ -19,81 +24,11 @@ def build_lyrics_translation_graph(analyzer, llm, config):
         config: LyricsTranslationAgentConfig instance
 
     Returns:
-        Compiled LangGraph
+        Compiled LangGraph workflow
     """
-    from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-
-    # Create tool functions that LLM can call
-    def count_syllables_tool(text: str, language: str) -> dict:
-        """Count syllables in text"""
-        count = analyzer.count_syllables(text, language)
-        return {"text": text, "syllable_count": count}
-
-    def verify_translation_tool(
-        translation: str, target_syllables: int, language: str
-    ) -> dict:
-        """Verify if translation has target syllable count"""
-        actual = analyzer.count_syllables(translation, language)
-        passed = actual == target_syllables
-        diff = actual - target_syllables
-        if diff > 0:
-            feedback = f"Too many! Remove {diff} syllable(s)."
-        elif diff < 0:
-            feedback = f"Too few! Add {abs(diff)} syllable(s)."
-        else:
-            feedback = "Perfect match!"
-        return {
-            "translation": translation,
-            "target": target_syllables,
-            "actual": actual,
-            "passed": passed,
-            "feedback": feedback,
-        }
-
-    # Define tools schema for LLM
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "count_syllables",
-                "description": "Count syllables in the given text. Use this to check your translation.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "text": {
-                            "type": "string",
-                            "description": "The text to count syllables in",
-                        }
-                    },
-                    "required": ["text"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "verify_translation",
-                "description": "Verify if translation has the correct syllable count. Returns pass/fail.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "translation": {
-                            "type": "string",
-                            "description": "Your translation to verify",
-                        },
-                        "target_syllables": {
-                            "type": "integer",
-                            "description": "The target syllable count",
-                        },
-                    },
-                    "required": ["translation", "target_syllables"],
-                },
-            },
-        },
-    ]
-
-    # Bind tools to LLM
-    llm_with_tools = llm.bind_tools(tools)
+    # Create and bind tools
+    tools = create_translation_tools(analyzer)
+    llm.bind_tools(tools)
 
     def translate_line_node(state: LyricsTranslationState) -> dict:
         """Translate one line at a time with iterative verification"""

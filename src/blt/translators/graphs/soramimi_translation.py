@@ -1,12 +1,13 @@
 """
-Mapping-based soramimi (空耳) translation graph
+Mapping-based soramimi (空耳) translation graph following ReAct pattern
 """
 
 import json
 import logging
 from pathlib import Path
 from langgraph.graph import StateGraph, END
-from .state import SoramimiMappingState
+from .states import SoramimiMappingState
+from .tools import create_soramimi_tools
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,11 @@ def _load_fallback_mapping(target_lang: str) -> dict[str, str]:
 
 def build_soramimi_mapping_graph(analyzer, validator, llm):
     """
-    Build the mapping-based soramimi translation graph
+    Build the mapping-based soramimi translation graph using ReAct pattern.
+
+    The graph uses a reasoning-acting cycle where the LLM reasons about phoneme
+    mappings, uses tools to verify phonetic similarity, and iteratively refines
+    the mapping until reaching the similarity threshold.
 
     Args:
         analyzer: LyricsAnalyzer instance
@@ -76,8 +81,11 @@ def build_soramimi_mapping_graph(analyzer, validator, llm):
         llm: LLM instance (ChatOllama)
 
     Returns:
-        Compiled LangGraph
+        Compiled LangGraph workflow
     """
+    # Create and bind tools
+    tools = create_soramimi_tools(analyzer, validator)
+    llm.bind_tools(tools)
 
     # Cache for fallback mappings per language
     fallback_cache = {}
