@@ -8,11 +8,16 @@ from pathlib import Path
 from blt.translators import LyricsTranslationAgent, LyricsTranslationAgentConfig
 from blt.translators.analyzer import LyricsAnalyzer
 
+from dotenv import load_dotenv
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
 )
+
+# Load .env file from project root
+load_dotenv()
 
 
 def main():

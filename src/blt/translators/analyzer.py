@@ -3,19 +3,15 @@ Unified Lyrics Analyzer
 Centralized core functionality for syllable counting, rhyme detection, and pattern analysis
 """
 
-import os
 import re
 import hanlp
 import panphon.distance
 from pypinyin import lazy_pinyin
 from .models import MusicConstraints
+from dotenv import load_dotenv
 
-
-# Set environment variables for phonemizer
-os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
-    "~/.local/lib/libespeak-ng.so"
-)
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize panphon feature distance calculator
 _ft = panphon.distance.Distance()

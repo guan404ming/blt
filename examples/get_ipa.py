@@ -8,13 +8,12 @@ Installation:
 Language support: 100+ languages via espeak-ng
 """
 
-import os
 import re
 from phonemizer import phonemize
+from dotenv import load_dotenv
 
-# Set environment variables for phonemizer to find espeak-ng
-os.environ["PHONEMIZER_ESPEAK_PATH"] = "/opt/homebrew/bin/espeak-ng"
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = "/opt/homebrew/lib/libespeak-ng.dylib"
+# Load .env file from project root
+load_dotenv()
 
 
 def count_syllables_from_ipa(ipa_text):
