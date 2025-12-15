@@ -7,17 +7,18 @@ import os
 import time
 from datetime import datetime
 from typing import Optional
-from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.ollama import OllamaProvider
 
+from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 
 from .models import LyricTranslation, MusicConstraints, SoramimiTranslation
 from .analyzer import LyricsAnalyzer
 from .validators import ConstraintValidator, SoramimiValidator
 from .configs import LyricsTranslationAgentConfig, SoramimiTranslationAgentConfig
-from .graphs import build_soramimi_mapping_graph
+from .graphs import build_lyrics_translation_graph, build_soramimi_mapping_graph
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -43,25 +44,28 @@ class LyricsTranslationAgent:
         self.analyzer = analyzer or LyricsAnalyzer()
         self.validator = ConstraintValidator(self.analyzer)
 
-        # Configure Ollama model
-        model = OpenAIChatModel(
-            model_name=self.config.model,
-            provider=OllamaProvider(base_url=self.config.ollama_base_url),
+        # Configure LangSmith
+        if hasattr(self.config, "langsmith_tracing") and self.config.langsmith_tracing:
+            os.environ["LANGCHAIN_TRACING_V2"] = "true"
+            os.environ["LANGCHAIN_PROJECT"] = getattr(
+                self.config, "langsmith_project", "blt"
+            )
+            if not os.getenv("LANGCHAIN_API_KEY"):
+                logger.warning(
+                    "LangSmith tracing enabled but LANGCHAIN_API_KEY not set."
+                )
+
+        # Create LLM
+        self.llm = ChatOllama(
+            model=self.config.model,
+            base_url=self.config.ollama_base_url.replace("/v1", ""),
+            temperature=0.7,
         )
 
-        # Initialize agent (without system prompt yet)
-        self.agent = Agent(
-            model=model,
-            output_type=LyricTranslation,
-            system_prompt="",  # Will be set dynamically
-            model_settings={"format": "json"},
+        # Build graph
+        self.graph = build_lyrics_translation_graph(
+            self.analyzer, self.llm, self.config
         )
-
-        # Register tools (this populates tool metadata in config)
-        self.config.register_tools(self.agent, self.analyzer, self.validator)
-
-        # Now set system prompt based on registered tools
-        self.agent._system_prompt = self.config.get_system_prompt()
 
     def translate(
         self,
@@ -88,57 +92,59 @@ class LyricsTranslationAgent:
         source_lang = source_lang or self.config.default_source_lang
         target_lang = target_lang or self.config.default_target_lang
 
-        # Reset stats
-        self.config.reset_stats()
-
         # Extract constraints
         if constraints is None:
             constraints = self.analyzer.extract_constraints(source_lyrics, source_lang)
 
-        # Build prompt (dynamically generated)
-        user_prompt = self.config.get_user_prompt(
-            source_lyrics,
-            source_lang,
-            target_lang,
-            constraints.syllable_counts,
-            constraints.rhyme_scheme or "",
-            constraints.syllable_patterns,
+        # Initialize state
+        initial_state = {
+            "source_lyrics": source_lyrics,
+            "source_lang": source_lang,
+            "target_lang": target_lang,
+            "constraints": None,  # Not used directly in graph
+            "syllable_counts": constraints.syllable_counts,
+            "rhyme_scheme": constraints.rhyme_scheme,
+            "syllable_patterns": constraints.syllable_patterns,
+            "translated_lines": None,
+            "reasoning": None,
+            "translation_syllable_counts": None,
+            "translation_rhyme_endings": None,
+            "translation_syllable_patterns": None,
+            "validation_passed": None,
+            "validation_score": None,
+            "attempt": 1,
+            "max_attempts": 3,
+            "messages": [],
+        }
+
+        # Run graph
+        print("   🚀 Starting lyrics translation...")
+        final_state = self.graph.invoke(
+            initial_state,
+            config={
+                "recursion_limit": 50,
+                "run_name": "LyricsTranslation",
+            },
         )
 
-        # Translate
-        logger.info("🚀 Starting translation...")
-        result = self.agent.run_sync(user_prompt)
-        translation = result.output
-        logger.info("✅ Translation completed")
-
-        # Calculate metrics
-        translation.syllable_counts = [
-            self.analyzer.count_syllables(line, target_lang)
-            for line in translation.translated_lines
-        ]
-        translation.rhyme_endings = [
-            self.analyzer.extract_rhyme_ending(line, target_lang)
-            for line in translation.translated_lines
-        ]
-        translation.syllable_patterns = self.analyzer.get_syllable_patterns(
-            translation.translated_lines, target_lang
+        # Build result
+        translation = LyricTranslation(
+            translated_lines=final_state.get("translated_lines") or [],
+            reasoning=final_state.get("reasoning") or "",
+            syllable_counts=final_state.get("translation_syllable_counts") or [],
+            rhyme_endings=final_state.get("translation_rhyme_endings") or [],
+            syllable_patterns=final_state.get("translation_syllable_patterns") or [],
         )
-        translation.tool_call_stats = self.config.get_stats()
 
-        # Validate
+        # Validate using the validator
         validation = self.validator.validate(translation, constraints, target_lang)
 
         # Display
         elapsed = time.time() - start_time
         if validation.passed:
-            print(f"✓ All constraints satisfied ({elapsed:.1f}s)")
+            print(f"\n   ✓ All constraints satisfied ({elapsed:.1f}s)")
         else:
-            print(f"⚠ Score: {validation.score:.0%} ({elapsed:.1f}s)")
-
-        if self.config.get_stats():
-            print("\n📊 Tool Calls:")
-            for name, count in sorted(self.config.get_stats().items()):
-                print(f"   {name}: {count}")
+            print(f"\n   ⚠ Score: {validation.score:.0%} ({elapsed:.1f}s)")
 
         # Auto-save
         if self.config.auto_save:

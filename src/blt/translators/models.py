@@ -10,14 +10,6 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class WordSegmentation(BaseModel):
-    """詞彙分割結果 (LLM-based segmentation output for multiple lines)"""
-
-    lines: list[list[str]] = Field(
-        description="List of segmented words for each line, e.g., [['I', \"don't\", 'like', 'you'], ['You', 'like', 'me']]"
-    )
-
-
 class MusicConstraints(BaseModel):
     """音樂約束條件"""
 
