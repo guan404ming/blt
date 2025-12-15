@@ -2,7 +2,7 @@
 LangGraph state and graph definitions for translation workflows
 """
 
-from .state import (
+from .states import (
     LyricsTranslationState,
     SoramimiMappingState,
     create_lyrics_translation_initial_state,
