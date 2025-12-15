@@ -13,12 +13,6 @@ from blt.translators import SoramimiTranslationAgent, SoramimiTranslationAgentCo
 # Load .env file from project root
 load_dotenv()
 
-# Configure phonemizer to use espeak-ng from ~/.local
-os.environ["PHONEMIZER_ESPEAK_PATH"] = os.path.expanduser("~/.local/bin/espeak-ng")
-os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = os.path.expanduser(
-    "~/.local/lib/libespeak-ng.so"
-)
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
