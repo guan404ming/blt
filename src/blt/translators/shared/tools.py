@@ -104,9 +104,7 @@ def detect_rhyme_scheme(lines: list[str], language: str) -> str:
 
 
 @tool
-def calculate_ipa_similarity(
-    ipa1: str, ipa2: str, is_chinese: bool = False
-) -> float:
+def calculate_ipa_similarity(ipa1: str, ipa2: str, is_chinese: bool = False) -> float:
     """
     Calculate phonetic similarity between two IPA strings.
 
