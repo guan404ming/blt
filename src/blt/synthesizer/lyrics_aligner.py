@@ -482,7 +482,7 @@ class WhisperLyricsAligner:
 
                 # Use align method from stable-ts
                 result = self.model.align(
-                    audio_path=str(audio_path),
+                    str(audio_path),  # audio parameter (positional)
                     text=clean_lyrics,
                     language=language,
                 )
@@ -503,7 +503,9 @@ class WhisperLyricsAligner:
                     if hasattr(segment, "words"):
                         # Word-level timing available
                         for word_info in segment.words:
-                            if hasattr(word_info, "start") and hasattr(word_info, "end"):
+                            if hasattr(word_info, "start") and hasattr(
+                                word_info, "end"
+                            ):
                                 word_timings.append(
                                     WordTiming(
                                         word=word_info.word,
@@ -729,7 +731,9 @@ class WhisperLyricsAligner:
             return []
 
         time_per_sentence = (
-            total_duration / len(new_sentences) if len(new_sentences) > 0 else total_duration
+            total_duration / len(new_sentences)
+            if len(new_sentences) > 0
+            else total_duration
         )
 
         for i, new_sentence in enumerate(new_sentences):

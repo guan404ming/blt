@@ -62,6 +62,7 @@ lyrics_translation_output/
 *.pt
 *.pth
 *.bin
+*.index
 
 # Logs
 logs/

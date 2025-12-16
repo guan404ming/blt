@@ -54,7 +54,7 @@ class VocalSeparator:
         print(f"Separating audio using {self.model_name}...")
 
         # Create wrapper script to patch torchaudio before demucs runs
-        wrapper = '''
+        wrapper = """
 import torch
 import torchaudio
 import soundfile as sf
@@ -73,7 +73,7 @@ torchaudio.save = patched_save
 # Now run demucs
 from demucs.separate import main
 main()
-'''
+"""
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(wrapper)
