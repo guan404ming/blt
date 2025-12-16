@@ -13,7 +13,6 @@ import json
 
 from blt.synthesizer.vocal_separator import VocalSeparator
 from blt.synthesizer.lyrics_aligner import LyricsAligner
-from blt.synthesizer.voice_synthesizer import VoiceSynthesizer
 
 
 class CoverSongPipeline:
@@ -58,11 +57,6 @@ class CoverSongPipeline:
 
         self.aligner = LyricsAligner(
             model_name=aligner_model,
-            device=device,
-        )
-
-        self.synthesizer = VoiceSynthesizer(
-            model_name=synthesizer_model,
             device=device,
         )
 

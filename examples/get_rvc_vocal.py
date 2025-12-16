@@ -15,26 +15,15 @@ def main():
     )
     parser.add_argument(
         "--model",
-        help="RVC model (.pth) file (default: RVC_model/model.pth)",
+        default="examples/model.pth",
+        help="RVC model (.pth) file (default: examples/model.pth)",
     )
     parser.add_argument(
         "--index",
-        help="RVC index (.index) file (default: RVC_model/model.index)",
+        default="examples/model.index",
+        help="RVC index (.index) file (default: examples/model.index)",
     )
     args = parser.parse_args()
-
-    if not os.path.isfile(args.input):
-        print(f"Input file not found: {args.input}")
-        return
-    if not os.path.isfile(args.input):
-        print(f"Vocal reference file not found: {args.input}")
-        return
-    if not os.path.isfile(args.model):
-        print(f"Model file not found: {args.model}")
-        return
-    if not os.path.isfile(args.index):
-        print(f"Index file not found: {args.index}")
-        return
 
     try:
         converter = RetrievalBasedVoiceConverter()
