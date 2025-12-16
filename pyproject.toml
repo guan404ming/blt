@@ -39,6 +39,7 @@ dependencies = [
     "stable-ts>=1.14.7",
     "openai-whisper>=20250101",
     "opencc-python-reimplemented>=0.1.7",
+    "opencv-python>=4.11.0.86",
 ]
 
 [project.urls]

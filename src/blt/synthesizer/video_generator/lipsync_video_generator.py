@@ -42,7 +42,14 @@ class LipSyncedVideoGenerator:
             wav2lip_dir = module_dir / "Wav2Lip"
 
         self.wav2lip_dir = Path(wav2lip_dir)
-        self.checkpoint_path = checkpoint_path
+
+        # Resolve checkpoint path to absolute if it's relative
+        checkpoint_path_obj = Path(checkpoint_path)
+        if not checkpoint_path_obj.is_absolute():
+            # Try to resolve from current directory first
+            checkpoint_path_obj = checkpoint_path_obj.resolve()
+        self.checkpoint_path = str(checkpoint_path_obj)
+
         self.device = device or ("cuda" if self._has_cuda() else "cpu")
 
         print("Initializing LipSyncedVideoGenerator")

@@ -32,8 +32,8 @@ def main():
     print()
 
     try:
-        # Create generator
-        generator = LipSyncedVideoGenerator()
+        # Create generator with checkpoint from assets
+        generator = LipSyncedVideoGenerator(checkpoint_path="assets/wav2lip_gan.pth")
 
         # Generate lip-synced video
         result_path = generator.generate(
