@@ -1,0 +1,28 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: MainStyle,Noto Sans CJK TC,60,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,65,1
+Style: SubStyle,Noto Sans CJK TC,40,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,15,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:04.54,MainStyle,,0,0,0,,{\df2}{\k80}我{\k43}只{\k50}能{\k57}永{\k40}遠{\k48}讀{\k29}著{\k55}對{\k48}白
+Dialogue: 0,0:00:00.00,0:00:04.54,SubStyle,,0,0,0,,{\df2}{\k454}wo zhi neng yong yuan du zhe dui bai
+Dialogue: 0,0:00:04.54,0:00:08.36,MainStyle,,0,0,0,,{\df2}{\k71}讀{\k46}著{\k44}我{\k47}給{\k52}妳{\k33}的{\k41}傷{\k43}害
+Dialogue: 0,0:00:04.54,0:00:08.36,SubStyle,,0,0,0,,{\df2}{\k381}du zhe wo gei ni de shang hai
+Dialogue: 0,0:00:08.36,0:00:11.18,MainStyle,,0,0,0,,{\df2}{\k56}我{\k25}原{\k35}諒{\k66}不了{\k24} -{\k74}我
+Dialogue: 0,0:00:08.36,0:00:11.18,SubStyle,,0,0,0,,{\df2}{\k282}wo yuan liang bu liao wo
+Dialogue: 0,0:00:11.18,0:00:15.56,MainStyle,,0,0,0,,{\df2}{\k46}就{\k35}請{\k56}妳{\k40}當{\k57}作{\k60}我{\k35}已{\k58}不{\k48}在
+Dialogue: 0,0:00:11.18,0:00:15.56,SubStyle,,0,0,0,,{\df2}{\k438}jiu qing ni dang zuo wo yi bu zai
+Dialogue: 0,0:00:15.56,0:00:20.02,MainStyle,,0,0,0,,{\df2}{\k83}我{\k50}睜{\k54}開{\k53}雙{\k33}眼{\k51}看{\k33}著{\k53}空{\k30}白
+Dialogue: 0,0:00:15.56,0:00:20.02,SubStyle,,0,0,0,,{\df2}{\k445}wo zheng kai shuang yan kan zhe kong bai
+Dialogue: 0,0:00:20.02,0:00:24.12,MainStyle,,0,0,0,,{\df2}{\k76}忘{\k51}記{\k67}妳{\k28}對{\k67}我的{\k73}期{\k44}待
+Dialogue: 0,0:00:20.02,0:00:24.12,SubStyle,,0,0,0,,{\df2}{\k410}wang ji ni dui wo de qi dai
+Dialogue: 0,0:00:24.12,0:00:26.52,MainStyle,,0,0,0,,{\df2}{\k73}讀{\k69}完了{\k96}依{\k0}賴
+Dialogue: 0,0:00:24.12,0:00:26.52,SubStyle,,0,0,0,,{\df2}{\k239}du wan le yi lai
+Dialogue: 0,0:00:26.52,0:00:29.42,MainStyle,,0,0,0,,{\df2}{\k74}我{\k47}很{\k32}快{\k56}就{\k41}離{\k38}開
+Dialogue: 0,0:00:26.52,0:00:29.42,SubStyle,,0,0,0,,{\df2}{\k290}wo hen kuai jiu li kai
