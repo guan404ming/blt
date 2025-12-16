@@ -7,8 +7,9 @@
 
 ## Demo
 
-https://github.com/user-attachments/assets/demo.mp4
-
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/d3f89b35-903b-4c1b-857b-a13c93be719b" width="400" />  
+</div>
 
 ## Quick Start
 
