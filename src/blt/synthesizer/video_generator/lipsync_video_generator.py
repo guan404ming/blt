@@ -38,7 +38,7 @@ class LipSyncedVideoGenerator:
         """
         # Auto-detect Wav2Lip directory if not provided
         if wav2lip_dir is None:
-            module_dir = Path(__file__).parent.parent
+            module_dir = Path(__file__).parent
             wav2lip_dir = module_dir / "Wav2Lip"
 
         self.wav2lip_dir = Path(wav2lip_dir)
