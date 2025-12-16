@@ -19,19 +19,19 @@ Architecture:
 
 # Core components
 from .shared import LyricsAnalyzer
-from .lyrics_translation.models import (
+from .lyrics_translator.models import (
     LyricTranslation,
     MusicConstraints,
 )
-from .soramimi_translation.models import SoramimiTranslation
+from .soramimi_translator.models import SoramimiTranslation
 
 # Agent configurations
-from .lyrics_translation.config import LyricsTranslationAgentConfig
-from .soramimi_translation.config import SoramimiTranslationAgentConfig
+from .lyrics_translator.config import LyricsTranslationAgentConfig
+from .soramimi_translator.config import SoramimiTranslationAgentConfig
 
 # Translators
-from .lyrics_translation import LyricsTranslationAgent
-from .soramimi_translation import SoramimiTranslationAgent
+from .lyrics_translator import LyricsTranslationAgent
+from .soramimi_translator import SoramimiTranslationAgent
 
 __version__ = "0.1.0"
 
