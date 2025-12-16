@@ -1,7 +1,7 @@
 # 🥪 BLT - Better Lyrics Translation Toolkit
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-apache-yellow.svg)](https://opensource.org/license/apache-2-0)
+[![License: Apache](https://img.shields.io/badge/License-apache-yellow.svg)](https://opensource.org/license/apache-2-0)
 
 **BLT** is a toolkit for lyrics and singing voice. The toolkit contains three modular components that can be used independently or combined through pre-defined pipelines.
 
@@ -120,12 +120,6 @@ Download and place these model files in `assets/`:
 
 ## Acknowledgments
 
-Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip), [Whisper](https://github.com/openai/whisper), [Qwen3](https://github.com/QwenLM/Qwen3)
-
-## Disclaimer
+Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Demucs](https://github.com/facebookresearch/demucs), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip), [Whisper](https://github.com/openai/whisper), [Qwen3](https://github.com/QwenLM/Qwen3)
 
 This project is intended for **research and educational purposes only**. All demo content is used for demonstration purposes. If you believe any content infringes on your rights, please contact us and we will remove it promptly.
-
-## License
-
-Apache License 2.0
