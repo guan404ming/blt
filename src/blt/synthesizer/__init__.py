@@ -11,6 +11,7 @@ from .vocal_separator import VocalSeparator
 from .lyrics_aligner import LyricsAligner, WhisperLyricsAligner
 from .voice_converter import RetrievalBasedVoiceConverter
 from .wav2lip import Wav2Lip
+from .audio_mixer import AudioMixer
 
 __all__ = [
     "VocalSeparator",
@@ -19,4 +20,5 @@ __all__ = [
     "VoiceSynthesizer",
     "RetrievalBasedVoiceConverter",
     "Wav2Lip",
+    "AudioMixer",
 ]

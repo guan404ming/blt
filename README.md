@@ -77,6 +77,7 @@ flowchart TD
 | `VocalSeparator`   | Vocal / instrumental separation                     |
 | `VoiceConverter`   | Voice conversion (RVC)                              |
 | `LyricsAligner`    | Timing alignment                                    |
+| `AudioMixer`       | Audio mixing with automatic resampling              |
 | `VideoGenerator`   | Video generation (KTV, Lip-Synced)                  | 
 
 ### 3. Pipeline (WIP)

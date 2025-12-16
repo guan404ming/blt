@@ -9,10 +9,10 @@ from blt.synthesizer import VocalSeparator
 
 def main():
     # Input audio file
-    input_audio = "examples/擱淺.mp3"
+    input_audio = "assets/擱淺.mp3"
 
     # Output directory for separated files
-    output_dir = "examples/separated_audio"
+    output_dir = "assets/separated_audio"
 
     print("=" * 60)
     print("VOCAL SEPARATION EXAMPLE")
