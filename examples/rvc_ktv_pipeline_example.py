@@ -29,7 +29,7 @@ def main():
     # Read lyrics from file
     lyrics_file = "assets/lyrics-擱淺.txt"
     try:
-        with open(lyrics_file, 'r', encoding='utf-8') as f:
+        with open(lyrics_file, "r", encoding="utf-8") as f:
             main_lyrics = f.read()
     except FileNotFoundError:
         print(f"❌ Lyrics file not found: {lyrics_file}")
@@ -105,6 +105,7 @@ wo hen kuai jiu li kai
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 
