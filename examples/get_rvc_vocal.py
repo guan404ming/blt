@@ -1,5 +1,4 @@
 import argparse
-import os
 from blt.synthesizer import RetrievalBasedVoiceConverter
 
 
@@ -7,34 +6,21 @@ def main():
     parser = argparse.ArgumentParser(description="RVC vocal conversion for audio files")
     parser.add_argument(
         "--input",
-        default="examples/vocal-擱淺.wav",
+        default="assets/vocal-擱淺.wav",
         help="Vocal reference wav file (default: 擱淺_vocal.wav)",
     )
-    parser.add_argument(
-        "--output", default="examples/", help="Output .mp3 or .wav file"
-    )
+    parser.add_argument("--output", default="assets/", help="Output .mp3 or .wav file")
     parser.add_argument(
         "--model",
-        help="RVC model (.pth) file (default: RVC_model/model.pth)",
+        default="assets/model.pth",
+        help="RVC model (.pth) file (default: assets/model.pth)",
     )
     parser.add_argument(
         "--index",
-        help="RVC index (.index) file (default: RVC_model/model.index)",
+        default="assets/model.index",
+        help="RVC index (.index) file (default: assets/model.index)",
     )
     args = parser.parse_args()
-
-    if not os.path.isfile(args.input):
-        print(f"Input file not found: {args.input}")
-        return
-    if not os.path.isfile(args.input):
-        print(f"Vocal reference file not found: {args.input}")
-        return
-    if not os.path.isfile(args.model):
-        print(f"Model file not found: {args.model}")
-        return
-    if not os.path.isfile(args.index):
-        print(f"Index file not found: {args.index}")
-        return
 
     try:
         converter = RetrievalBasedVoiceConverter()

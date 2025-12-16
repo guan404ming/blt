@@ -9,9 +9,9 @@ This module provides components for:
 
 from .vocal_separator import VocalSeparator
 from .lyrics_aligner import LyricsAligner, WhisperLyricsAligner
-from .voice_synthesizer import VoiceSynthesizer
 from .voice_converter import RetrievalBasedVoiceConverter
-from .wav2lip import Wav2Lip
+from .audio_mixer import AudioMixer
+from .video_generator import LipSyncedVideoGenerator, KTVVideoGenerator
 
 __all__ = [
     "VocalSeparator",
@@ -19,5 +19,7 @@ __all__ = [
     "WhisperLyricsAligner",
     "VoiceSynthesizer",
     "RetrievalBasedVoiceConverter",
-    "Wav2Lip",
+    "AudioMixer",
+    "LipSyncedVideoGenerator",
+    "KTVVideoGenerator",
 ]

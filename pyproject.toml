@@ -38,6 +38,7 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "stable-ts>=1.14.7",
     "openai-whisper>=20250101",
+    "opencc-python-reimplemented>=0.1.7",
 ]
 
 [project.urls]

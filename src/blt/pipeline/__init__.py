@@ -1,9 +1,9 @@
-"""Cover Song Generation Pipeline.
+"""Pipeline for RVC voice conversion and KTV video generation.
 
-This module provides an end-to-end pipeline for generating cover songs
-with new lyrics while preserving the original singer's voice characteristics.
+This module provides end-to-end pipeline for:
+- RVC voice conversion with KTV video generation
 """
 
-from .cover_song_pipeline import CoverSongPipeline
+from .rvc_ktv_pipeline import RVCKTVPipeline
 
-__all__ = ["CoverSongPipeline"]
+__all__ = ["RVCKTVPipeline"]
