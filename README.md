@@ -5,6 +5,12 @@
 
 **BLT** is a toolkit for lyrics and singing voice. The toolkit contains three modular components that can be used independently or combined through pre-defined pipelines.
 
+## Demo
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/d3f89b35-903b-4c1b-857b-a13c93be719b" width="400" />  
+</div>
+
 ## Quick Start
 
 ```python
@@ -115,6 +121,10 @@ Download and place these model files in `assets/`:
 ## Acknowledgments
 
 Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip), [Whisper](https://github.com/openai/whisper), [Qwen3](https://github.com/QwenLM/Qwen3)
+
+## Disclaimer
+
+This project is intended for **research and educational purposes only**. All demo content is used for demonstration purposes. If you believe any content infringes on your rights, please contact us and we will remove it promptly.
 
 ## License
 
