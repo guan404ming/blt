@@ -93,7 +93,6 @@ flowchart TD
 - [Ollama](https://ollama.com/) + [Qwen3](https://github.com/QwenLM/Qwen3): `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M`
 - (Optional) [LangSmith](https://smith.langchain.com/) API key for tracing/monitoring
 - (Optional) [RVC_ZERO](https://huggingface.co/spaces/r3gm/RVC_ZERO) for voice conversion
-- (Optional) [Wav2Lip checkpoint](https://github.com/Rudrabha/Wav2Lip#getting-the-weights) for lip-sync video generation
 
 ## Setup
 
@@ -103,7 +102,15 @@ source .venv/bin/activate
 uv sync
 ```
 
-**Note**: Wav2Lip code is vendored in this repository (~290KB). For lip-sync functionality, download the model checkpoint separately and place it in `assets/wav2lip_gan.pth`.
+### Model Files
+
+Download and place these model files in `assets/`:
+
+- **Wav2Lip model** (for lip-sync): `assets/wav2lip_gan.pth`
+  - Download: https://huggingface.co/spaces/r3gm/rvc_zero
+
+- **RVC model** (for voice conversion): `assets/model.pth` and `assets/model.index`
+  - Download from RVC model repositories or train your own
 
 ## Acknowledgments
 
