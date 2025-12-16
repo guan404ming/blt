@@ -21,7 +21,7 @@ from pathlib import Path
 def main():
     # Paths
     examples_dir = Path(__file__).parent
-    wav2lip_dir = Path("/home/gmchiu/Documents/GitHub/blt/Wav2Lip")
+    wav2lip_dir = examples_dir.parent / "src" / "blt" / "synthesizer" / "Wav2Lip"
 
     face_image = examples_dir / "godtone.jpg"
     audio_file = examples_dir / "擱淺.mp3"

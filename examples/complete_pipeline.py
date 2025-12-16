@@ -259,7 +259,8 @@ def main():
         return
 
     lipsync_video_path = output_dir / "lipsync_video.mp4"
-    success = use_wav2lip("Wav2Lip", face_image, mixed_path, lipsync_video_path)
+    wav2lip_dir = examples_dir.parent / "src" / "blt" / "synthesizer" / "Wav2Lip"
+    success = use_wav2lip(wav2lip_dir, face_image, mixed_path, lipsync_video_path)
 
     if lipsync_video_path.exists():
         size_mb = lipsync_video_path.stat().st_size / (1024 * 1024)
