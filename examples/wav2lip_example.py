@@ -1,16 +1,16 @@
-"""Wav2Lip Example - Simple Lip-Sync Generation
+"""Example: Generate lip-synced video using Wav2Lip.
 
-This example demonstrates Wav2Lip usage to create a lip-synced video from:
-- A face image (godtone.jpg)
-- An audio file (擱淺.mp3 or any audio)
+This example demonstrates how to use Wav2Lip to create a lip-synced video from:
+- A face image (assets/godtone.jpg)
+- An audio file (assets/擱淺_mixed.wav)
 
 Requirements:
-1. Wav2Lip repository cloned at: /home/gmchiu/Documents/GitHub/blt/Wav2Lip
+1. Wav2Lip repository at: src/blt/synthesizer/Wav2Lip
 2. Checkpoint at: Wav2Lip/checkpoints/wav2lip_gan.pth
 3. Face detection model at: Wav2Lip/face_detection/detection/sfd/s3fd.pth
 
 Usage:
-    python examples/wav2lip_example.py
+    uv run examples/wav2lip_example.py
 """
 
 import sys
@@ -19,14 +19,16 @@ from pathlib import Path
 
 
 def main():
-    # Paths
+    # Input files (resolve to absolute paths for use across directory changes)
+    face_image = Path("assets/godtone.jpg").resolve()
+    audio_file = Path("assets/擱淺_mixed.wav").resolve()
+
+    # Output video file
+    output_video = Path("assets/wav2lip_output.mp4").resolve()
+
+    # Wav2Lip paths
     examples_dir = Path(__file__).parent
     wav2lip_dir = examples_dir.parent / "src" / "blt" / "synthesizer" / "Wav2Lip"
-
-    face_image = examples_dir / "godtone.jpg"
-    audio_file = examples_dir / "擱淺.mp3"
-    output_video = examples_dir / "wav2lip_output.mp4"
-
     checkpoint = "checkpoints/wav2lip_gan.pth"
 
     print("=" * 60)
@@ -57,9 +59,9 @@ def main():
     # Change to Wav2Lip directory and run
     print("🎬 Running Wav2Lip...")
     print(f"   Command: python inference.py --checkpoint_path {checkpoint}")
-    print(f"            --face {face_image.resolve()}")
-    print(f"            --audio {audio_file.resolve()}")
-    print(f"            --outfile {output_video.resolve()}")
+    print(f"            --face {face_image}")
+    print(f"            --audio {audio_file}")
+    print(f"            --outfile {output_video}")
     print()
 
     import os
@@ -75,11 +77,11 @@ def main():
             "--checkpoint_path",
             checkpoint,
             "--face",
-            str(face_image.resolve()),
+            str(face_image),
             "--audio",
-            str(audio_file.resolve()),
+            str(audio_file),
             "--outfile",
-            str(output_video.resolve()),
+            str(output_video),
             "--resize_factor",
             "1",  # 1 = best quality, 2 = faster
         ]
