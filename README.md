@@ -72,12 +72,12 @@ flowchart TD
 
 ### 2. Synthesizer (WIP)
 
-| Tool               | Description                       |
-| ------------------ | --------------------------------- |
-| `VocalSeparator`   | Vocal/instrumental separation     |
-| `LyricsAligner`    | Timing alignment                  |
-| `VoiceSynthesizer` | TTS synthesis                     |
-| `RetrievalBasedVoiceConverter` | Voice conversion (RVC) |
+| Tool               | Description                                         |
+| ------------------ | --------------------------------------------------- |
+| `VocalSeparator`   | Vocal / instrumental separation                     |
+| `VoiceConverter`   | Voice conversion (RVC)                              |
+| `LyricsAligner`    | Timing alignment                                    |
+| `VideoGenerator`   | Video generation (KTV, Lip-Synced)                  | 
 
 ### 3. Pipeline (WIP)
 
