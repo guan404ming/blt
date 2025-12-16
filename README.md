@@ -102,9 +102,19 @@ source .venv/bin/activate
 uv sync
 ```
 
+### Model Files
+
+Download and place these model files in `assets/`:
+
+- **Wav2Lip model** (for lip-sync): `assets/wav2lip_gan.pth`
+  - Download: https://huggingface.co/spaces/r3gm/rvc_zero
+
+- **RVC model** (for voice conversion): `assets/model.pth` and `assets/model.index`
+  - Download: https://huggingface.co/spaces/r3gm/rvc_zero or train your own
+
 ## Acknowledgments
 
-Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Qwen3](https://github.com/QwenLM/Qwen3)
+Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip), [Whisper](https://github.com/openai/whisper), [Qwen3](https://github.com/QwenLM/Qwen3)
 
 ## License
 

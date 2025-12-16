@@ -12,7 +12,7 @@ Usage:
     uv run examples/generate_ktv_video.py
 """
 
-from blt.synthesizer import KTVVideoGenerator, WhisperLyricsAligner
+from blt.synthesizer import KTVVideoGenerator, LyricsAligner
 
 
 def main():
@@ -56,7 +56,7 @@ wo hen kuai jiu li kai
     try:
         # Step 1: Align lyrics with audio
         print("Step 1: Aligning lyrics with audio...")
-        aligner = WhisperLyricsAligner(model_size="medium")
+        aligner = LyricsAligner(model_size="medium")
         alignment_result = aligner.align(
             audio_path=audio_file,
             lyrics=main_lyrics,

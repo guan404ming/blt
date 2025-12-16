@@ -16,7 +16,7 @@ from blt.synthesizer import (
     VocalSeparator,
     RetrievalBasedVoiceConverter,
     AudioMixer,
-    WhisperLyricsAligner,
+    LyricsAligner,
     LipSyncedVideoGenerator,
     KTVVideoGenerator,
 )
@@ -67,7 +67,7 @@ class RVCKTVPipeline:
 
         self.audio_mixer = AudioMixer(normalize=True)
 
-        self.lyrics_aligner = WhisperLyricsAligner(
+        self.lyrics_aligner = LyricsAligner(
             model_size=whisper_model,
             device=device,
         )

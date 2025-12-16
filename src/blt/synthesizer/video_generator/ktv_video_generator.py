@@ -53,7 +53,7 @@ class KTVVideoGenerator:
             video_path: Path to input video (e.g., lip-synced video)
             audio_path: Path to audio file
             main_lyrics: Main lyrics text (newline-separated)
-            alignment_result: Alignment result from WhisperLyricsAligner (List[WordTiming])
+            alignment_result: Alignment result from LyricsAligner (List[WordTiming])
                             or stable-whisper result object
             output_path: Path to save the output KTV video
             sub_lyrics: Optional sub-lyrics text (e.g., phonetic translation)
@@ -133,7 +133,7 @@ class KTVVideoGenerator:
         # Handle both stable-whisper result object and List[WordTiming]
         all_words = []
         if isinstance(alignment_result, list):
-            # List[WordTiming] format from WhisperLyricsAligner
+            # List[WordTiming] format from LyricsAligner
             all_words = alignment_result
         elif hasattr(alignment_result, "segments"):
             # stable-whisper result object
@@ -203,7 +203,7 @@ class KTVVideoGenerator:
         # Handle both stable-whisper result object and List[WordTiming]
         all_words = []
         if isinstance(alignment_result, list):
-            # List[WordTiming] format from WhisperLyricsAligner
+            # List[WordTiming] format from LyricsAligner
             all_words = alignment_result
         elif hasattr(alignment_result, "segments"):
             # stable-whisper result object

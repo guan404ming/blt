@@ -8,7 +8,7 @@ This module provides components for:
 """
 
 from .vocal_separator import VocalSeparator
-from .lyrics_aligner import LyricsAligner, WhisperLyricsAligner
+from .lyrics_aligner import LyricsAligner
 from .voice_converter import RetrievalBasedVoiceConverter
 from .audio_mixer import AudioMixer
 from .video_generator import LipSyncedVideoGenerator, KTVVideoGenerator
@@ -16,8 +16,6 @@ from .video_generator import LipSyncedVideoGenerator, KTVVideoGenerator
 __all__ = [
     "VocalSeparator",
     "LyricsAligner",
-    "WhisperLyricsAligner",
-    "VoiceSynthesizer",
     "RetrievalBasedVoiceConverter",
     "AudioMixer",
     "LipSyncedVideoGenerator",
