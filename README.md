@@ -82,9 +82,9 @@ flowchart TD
 
 ### 3. Pipeline (WIP)
 
-| Pipeline            | Description                   |
-| ------------------- | ----------------------------- |
-| `CoverSongPipeline` | End-to-end translated covers  |
+| Pipeline            | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| `RVCKTVPipeline`    | RVC voice conversion + KTV video with subtitles  |
 
 ## Requirements
 
