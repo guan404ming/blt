@@ -107,7 +107,7 @@ uv sync
 
 ## Acknowledgments
 
-Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [ctc-forced-aligner](https://github.com/MahmoudAshraf97/ctc-forced-aligner), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip), [Qwen3](https://github.com/QwenLM/Qwen3)
+Built with: [LangGraph](https://langchain-ai.github.io/langgraph/), [LangChain](https://www.langchain.com/), [Ollama](https://ollama.com/), [PyTorch](https://pytorch.org/), [Pydantic AI](https://ai.pydantic.dev/), [Demucs](https://github.com/facebookresearch/demucs), [XTTS](https://github.com/coqui-ai/TTS), [HanLP](https://github.com/hankcs/HanLP), [Phonemizer](https://github.com/bootphon/phonemizer), [Panphon](https://github.com/dmort27/panphon), [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI), [Wav2Lip](https://github.com/Rudrabha/Wav2Lip), [Whisper](https://github.com/openai/whisper), [Qwen3](https://github.com/QwenLM/Qwen3)
 
 ## License
 

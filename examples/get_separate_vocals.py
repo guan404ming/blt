@@ -40,7 +40,7 @@ def main():
     print("✓ Separation complete!")
     print()
     print("You can now use these files for:")
-    print("  - Lyrics alignment with WhisperLyricsAligner")
+    print("  - Lyrics alignment with LyricsAligner")
     print("  - Voice synthesis or conversion")
     print("  - Creating karaoke tracks")
 
