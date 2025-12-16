@@ -54,6 +54,7 @@ class LipSyncedVideoGenerator:
         """Check if CUDA is available."""
         try:
             import torch
+
             return torch.cuda.is_available()
         except Exception:
             return False
@@ -159,7 +160,9 @@ class LipSyncedVideoGenerator:
             ]
 
             print("🎬 Running Wav2Lip inference...")
-            print(f"   Command: python inference.py --checkpoint_path {self.checkpoint_path}")
+            print(
+                f"   Command: python inference.py --checkpoint_path {self.checkpoint_path}"
+            )
             print(f"            --face {face_path}")
             print(f"            --audio {audio_path}")
             print(f"            --outfile {output_path}")

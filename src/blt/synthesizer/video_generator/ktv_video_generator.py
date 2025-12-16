@@ -135,7 +135,7 @@ class KTVVideoGenerator:
         if isinstance(alignment_result, list):
             # List[WordTiming] format from WhisperLyricsAligner
             all_words = alignment_result
-        elif hasattr(alignment_result, 'segments'):
+        elif hasattr(alignment_result, "segments"):
             # stable-whisper result object
             for seg in alignment_result.segments:
                 all_words.extend(seg.words)
@@ -205,7 +205,7 @@ class KTVVideoGenerator:
         if isinstance(alignment_result, list):
             # List[WordTiming] format from WhisperLyricsAligner
             all_words = alignment_result
-        elif hasattr(alignment_result, 'segments'):
+        elif hasattr(alignment_result, "segments"):
             # stable-whisper result object
             for seg in alignment_result.segments:
                 all_words.extend(seg.words)
