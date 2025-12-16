@@ -28,7 +28,7 @@ def main():
         "-f",
         "--lyrics-file",
         type=str,
-        default="examples/lyrics-let-it-go.txt",
+        default="assets/lyrics-let-it-go.txt",
         help="Path to the lyrics file",
     )
     parser.add_argument(
