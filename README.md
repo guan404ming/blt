@@ -76,7 +76,7 @@ flowchart TD
 
 </details>
 
-### 2. Synthesizer (WIP)
+### 2. Synthesizer
 
 | Tool               | Description                                         |
 | ------------------ | --------------------------------------------------- |
@@ -86,7 +86,7 @@ flowchart TD
 | `AudioMixer`       | Audio mixing with automatic resampling              |
 | `VideoGenerator`   | Video generation (KTV, Lip-Synced)                  | 
 
-### 3. Pipeline (WIP)
+### 3. Pipeline
 
 | Pipeline            | Description                                      |
 | ------------------- | ------------------------------------------------ |
