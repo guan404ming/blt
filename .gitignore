@@ -57,7 +57,7 @@ results/
 grid_search_results/
 lyrics_translation_output/
 # *.wav
-*.mp3
+# *.mp3
 *.flac
 *.pt
 *.pth

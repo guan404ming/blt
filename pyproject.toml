@@ -36,6 +36,8 @@ dependencies = [
     "langchain-ollama>=1.0.1",
     "langchain-core>=1.2.0",
     "python-dotenv>=1.2.1",
+    "stable-ts>=1.14.7",
+    "openai-whisper>=20250101",
 ]
 
 [project.urls]
