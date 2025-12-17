@@ -52,6 +52,7 @@ class TranslationEvaluator:
         """
         if analyzer is None:
             from blt.translators import LyricsAnalyzer as Analyzer
+
             self.analyzer = Analyzer()
         else:
             self.analyzer = analyzer
@@ -77,17 +78,20 @@ class TranslationEvaluator:
         """
         # Extract source constraints
         source_syllables = [
-            self.analyzer.count_syllables(line, source_lang)
-            for line in source_lines
+            self.analyzer.count_syllables(line, source_lang) for line in source_lines
         ]
-        source_rhyme_scheme = self.analyzer.detect_rhyme_scheme(source_lines, source_lang)
+        source_rhyme_scheme = self.analyzer.detect_rhyme_scheme(
+            source_lines, source_lang
+        )
 
         # Analyze translation
         target_syllables = [
             self.analyzer.count_syllables(line, target_lang)
             for line in translated_lines
         ]
-        target_rhyme_scheme = self.analyzer.detect_rhyme_scheme(translated_lines, target_lang)
+        target_rhyme_scheme = self.analyzer.detect_rhyme_scheme(
+            translated_lines, target_lang
+        )
 
         # Calculate metrics
         return self._calculate_metrics(
@@ -258,4 +262,3 @@ class TranslationEvaluator:
             labels.append(label_map[char])
 
         return labels
-

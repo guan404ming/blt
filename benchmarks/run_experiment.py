@@ -152,7 +152,9 @@ def main():
     all_results = []
     failed_pairs = []
 
-    for source_lang, target_lang in tqdm(language_pairs, desc="Language Pairs", unit="pair"):
+    for source_lang, target_lang in tqdm(
+        language_pairs, desc="Language Pairs", unit="pair"
+    ):
         pair_key = f"{source_lang}→{target_lang}"
         print(f"\n{'=' * 60}")
         print(f"Language Pair: {pair_key}")
@@ -237,7 +239,9 @@ def main():
                 print(f"⚠️  Could not generate report: {e}")
 
             # Check if we have valid metrics
-            has_metrics = bool(results.agent_avg_metrics or results.baseline_avg_metrics)
+            has_metrics = bool(
+                results.agent_avg_metrics or results.baseline_avg_metrics
+            )
 
         except Exception as e:
             error_msg = f"{type(e).__name__}: {str(e)[:80]}"

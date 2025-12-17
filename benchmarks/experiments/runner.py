@@ -277,7 +277,9 @@ class ExperimentRunner:
                 print("  ⏭️  Continuing with next test...")
 
         # Print failed tests summary
-        result_count = len(results) // (1 if mode else 2)  # Divide by 2 only if running both
+        result_count = len(results) // (
+            1 if mode else 2
+        )  # Divide by 2 only if running both
         if failed_tests:
             print(f"\n{'=' * 60}")
             print(f"⚠️  {len(failed_tests)} test(s) failed:")
@@ -390,7 +392,9 @@ class ExperimentRunner:
 
         averages = {}
         for key in metrics_keys:
-            values = [r.metrics.get(key) for r in results if r.metrics.get(key) is not None]
+            values = [
+                r.metrics.get(key) for r in results if r.metrics.get(key) is not None
+            ]
             if values:
                 averages[key] = sum(values) / len(values)
 

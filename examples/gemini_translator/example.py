@@ -53,7 +53,9 @@ def main():
         translator = GeminiTranslator(config)
     except ImportError as e:
         print(f"❌ Error: {e}")
-        print("   Install langchain-google-genai with: pip install langchain-google-genai")
+        print(
+            "   Install langchain-google-genai with: pip install langchain-google-genai"
+        )
         return
 
     print("📋 Source Lyrics (English):")
@@ -116,7 +118,11 @@ def main():
     if result.reasoning:
         print()
         print("【Reasoning】")
-        print(result.reasoning[:500] + "..." if len(result.reasoning) > 500 else result.reasoning)
+        print(
+            result.reasoning[:500] + "..."
+            if len(result.reasoning) > 500
+            else result.reasoning
+        )
 
     print()
     print("=" * 60)

@@ -94,7 +94,9 @@ class KKBOXScraper:
             for i, song_url in enumerate(song_urls, 1):
                 # Check if already exists in output file
                 if self._song_url_exists(song_url) and self.skip_existing:
-                    print(f"   [{i}/{len(song_urls)}] ⏭️  Skipped (already in file): {song_url}")
+                    print(
+                        f"   [{i}/{len(song_urls)}] ⏭️  Skipped (already in file): {song_url}"
+                    )
                     skipped_count += 1
                     continue
 
@@ -112,9 +114,13 @@ class KKBOXScraper:
                     await asyncio.sleep(self.rate_limit_delay)
 
             if skipped_count > 0:
-                print(f"✅ Successfully scraped {len(songs)}/{len(song_urls)} new songs ({skipped_count} skipped)")
+                print(
+                    f"✅ Successfully scraped {len(songs)}/{len(song_urls)} new songs ({skipped_count} skipped)"
+                )
             else:
-                print(f"✅ Successfully scraped {len(songs)}/{len(song_urls)} new songs")
+                print(
+                    f"✅ Successfully scraped {len(songs)}/{len(song_urls)} new songs"
+                )
 
             # Save all songs to file
             self.save_all_songs()
@@ -393,7 +399,9 @@ class KKBOXScraper:
                 with open(self.output_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if isinstance(data, list):
-                        print(f"📂 Loaded {len(data)} existing songs from {self.output_path}")
+                        print(
+                            f"📂 Loaded {len(data)} existing songs from {self.output_path}"
+                        )
                         return data
             except json.JSONDecodeError:
                 print(f"⚠️  Could not parse {self.output_path}, starting fresh")

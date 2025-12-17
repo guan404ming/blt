@@ -97,7 +97,9 @@ def build_graph(llm, validator: Validator = None):
 
     def generate_node(state: GeminiTranslationState) -> dict:
         """Generate translation using Gemini LLM with tools"""
-        print(f"   📝 Attempt {state['attempt']}/{state['max_attempts']}: Generating translation...")
+        print(
+            f"   📝 Attempt {state['attempt']}/{state['max_attempts']}: Generating translation..."
+        )
         logger.info(
             f"   📝 Attempt {state['attempt']}/{state['max_attempts']}: Generating translation..."
         )
@@ -165,7 +167,9 @@ IMPORTANT:
         # Run agentic loop with tools
         print(f"   💬 Invoking LLM with tools...")
         messages = [
-            SystemMessage(content="You are a lyrics translator. Use available tools to verify constraints."),
+            SystemMessage(
+                content="You are a lyrics translator. Use available tools to verify constraints."
+            ),
             HumanMessage(content=prompt),
         ]
 
@@ -178,11 +182,15 @@ IMPORTANT:
         iteration = 0
         while response.tool_calls and iteration < max_iterations:
             iteration += 1
-            print(f"   🔄 Tool call iteration {iteration}/{max_iterations}: {len(response.tool_calls)} tool(s) to execute")
+            print(
+                f"   🔄 Tool call iteration {iteration}/{max_iterations}: {len(response.tool_calls)} tool(s) to execute"
+            )
 
             # Add assistant response with tool calls
             messages.append(
-                AIMessage(content=response.content or "", tool_calls=response.tool_calls)
+                AIMessage(
+                    content=response.content or "", tool_calls=response.tool_calls
+                )
             )
 
             # Execute tools
@@ -217,11 +225,15 @@ IMPORTANT:
         print(f"   📥 Parsing translations from response...")
         print(f"   📄 Raw LLM response:\n{response.content[:500]}")
         translated_lines = _extract_translations(response.content, len(source_lines))
-        print(f"   ✓ Extracted {len(translated_lines)}/{len(source_lines)} translations")
+        print(
+            f"   ✓ Extracted {len(translated_lines)}/{len(source_lines)} translations"
+        )
         if translated_lines:
             print(f"      Translations: {translated_lines[:3]}...")
         else:
-            print(f"      ⚠️  NO TRANSLATIONS EXTRACTED - Response may be in wrong format")
+            print(
+                f"      ⚠️  NO TRANSLATIONS EXTRACTED - Response may be in wrong format"
+            )
 
         logger.info(f"   ✓ Generated {len(translated_lines)} translations")
 
@@ -281,8 +293,12 @@ IMPORTANT:
             logger.warning(f"   ⚠ Max attempts ({state['max_attempts']}) reached")
             return "end"
 
-        print(f"   ↻ Retrying... (attempt {state['attempt'] + 1}/{state['max_attempts']})")
-        logger.info(f"   ⏳ Retrying... (attempt {state['attempt'] + 1}/{state['max_attempts']})")
+        print(
+            f"   ↻ Retrying... (attempt {state['attempt'] + 1}/{state['max_attempts']})"
+        )
+        logger.info(
+            f"   ⏳ Retrying... (attempt {state['attempt'] + 1}/{state['max_attempts']})"
+        )
         return "retry"
 
     def wait_node(state: GeminiTranslationState) -> dict:
@@ -360,7 +376,9 @@ def _extract_translations(response_text: str, expected_count: int) -> list[str]:
                     match = re.match(r"^\d+\.\s*(.+)$", line)
                     if match:
                         lines.append(match.group(1).strip())
-                        print(f"      Alternative extract line {len(lines)}: {lines[-1][:50]}...")
+                        print(
+                            f"      Alternative extract line {len(lines)}: {lines[-1][:50]}..."
+                        )
                         if len(lines) == expected_count:
                             break
 

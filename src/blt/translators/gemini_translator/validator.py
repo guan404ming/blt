@@ -61,10 +61,12 @@ class Validator:
         if target_syllables:
             actual_syllables = []
             for line in lines:
-                count = count_syllables.invoke({
-                    "text": line,
-                    "language": language,
-                })
+                count = count_syllables.invoke(
+                    {
+                        "text": line,
+                        "language": language,
+                    }
+                )
                 actual_syllables.append(count)
 
             syllables_match = actual_syllables == target_syllables
@@ -80,16 +82,20 @@ class Validator:
         if rhyme_scheme:
             rhyme_endings = []
             for line in lines:
-                ending = extract_rhyme_ending.invoke({
-                    "text": line,
-                    "language": language,
-                })
+                ending = extract_rhyme_ending.invoke(
+                    {
+                        "text": line,
+                        "language": language,
+                    }
+                )
                 rhyme_endings.append(ending)
 
-            actual_scheme = detect_rhyme_scheme.invoke({
-                "lines": lines,
-                "language": language,
-            })
+            actual_scheme = detect_rhyme_scheme.invoke(
+                {
+                    "lines": lines,
+                    "language": language,
+                }
+            )
 
             scheme_match = actual_scheme == rhyme_scheme
             results["rhyme"] = {
@@ -99,14 +105,18 @@ class Validator:
                 "endings": rhyme_endings,
             }
             scores.append(1.0 if scheme_match else 0.0)
-            logger.info(f"Rhyme scheme check: {scheme_match} (target={rhyme_scheme}, actual={actual_scheme})")
+            logger.info(
+                f"Rhyme scheme check: {scheme_match} (target={rhyme_scheme}, actual={actual_scheme})"
+            )
 
         # Check syllable patterns
         if target_patterns:
-            actual_patterns = get_syllable_patterns.invoke({
-                "lines": lines,
-                "language": language,
-            })
+            actual_patterns = get_syllable_patterns.invoke(
+                {
+                    "lines": lines,
+                    "language": language,
+                }
+            )
 
             patterns_match = actual_patterns == target_patterns
             results["patterns"] = {

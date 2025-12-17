@@ -42,24 +42,11 @@ class GeminiTranslationState(TypedDict):
 class GeminiTranslation(BaseModel):
     """Gemini translation output model"""
 
-    translated_lines: list[str] = Field(
-        description="Translated lyrics line by line"
-    )
-    syllable_counts: list[int] = Field(
-        description="Syllable count per line"
-    )
-    rhyme_scheme: str = Field(
-        default="",
-        description="Rhyme scheme (e.g., ABCDAECDD)"
-    )
-    validation: dict = Field(
-        default_factory=dict,
-        description="Validation results"
-    )
-    reasoning: str = Field(
-        default="",
-        description="Translation reasoning"
-    )
+    translated_lines: list[str] = Field(description="Translated lyrics line by line")
+    syllable_counts: list[int] = Field(description="Syllable count per line")
+    rhyme_scheme: str = Field(default="", description="Rhyme scheme (e.g., ABCDAECDD)")
+    validation: dict = Field(default_factory=dict, description="Validation results")
+    reasoning: str = Field(default="", description="Translation reasoning")
 
     def save(self, output_path: str | Path, format: str = "json") -> None:
         """Save translation result to file
