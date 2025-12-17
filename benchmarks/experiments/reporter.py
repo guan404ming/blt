@@ -6,7 +6,7 @@ Generates clean reports comparing agent vs baseline translation quality.
 
 from __future__ import annotations
 from pathlib import Path
-from .runner import ExperimentResults, TranslationResult
+from .runner import ExperimentResults
 
 
 class ComparisonReporter:
@@ -37,44 +37,44 @@ class ComparisonReporter:
         lines = []
 
         # Header
-        lines.append(f"# Translation Quality Comparison Report")
-        lines.append(f"")
+        lines.append("# Translation Quality Comparison Report")
+        lines.append("")
         lines.append(f"**Experiment ID**: `{results.experiment_id}`")
         lines.append(f"**Date**: {results.timestamp}")
         lines.append(f"**Model**: {results.model}")
         lines.append(f"**Language Pair**: {results.language_pair}")
         lines.append(f"**Test Cases**: {results.total_tests}")
-        lines.append(f"")
+        lines.append("")
 
         # Executive Summary
-        lines.append(f"## Executive Summary")
-        lines.append(f"")
+        lines.append("## Executive Summary")
+        lines.append("")
         lines.append(self._format_summary_table(results))
-        lines.append(f"")
+        lines.append("")
 
         # Detailed Metrics Comparison
-        lines.append(f"## Detailed Metrics")
-        lines.append(f"")
+        lines.append("## Detailed Metrics")
+        lines.append("")
         lines.append(self._format_detailed_metrics(results))
-        lines.append(f"")
+        lines.append("")
 
         # Individual Test Results
-        lines.append(f"## Individual Test Results")
-        lines.append(f"")
+        lines.append("## Individual Test Results")
+        lines.append("")
         lines.append(self._format_individual_results(results))
-        lines.append(f"")
+        lines.append("")
 
         # Sample Translations
-        lines.append(f"## Sample Translations")
-        lines.append(f"")
+        lines.append("## Sample Translations")
+        lines.append("")
         lines.append(self._format_sample_translations(results))
-        lines.append(f"")
+        lines.append("")
 
         # Analysis & Insights
-        lines.append(f"## Analysis")
-        lines.append(f"")
+        lines.append("## Analysis")
+        lines.append("")
         lines.append(self._generate_analysis(results))
-        lines.append(f"")
+        lines.append("")
 
         report = "\n".join(lines)
 
@@ -94,7 +94,7 @@ class ComparisonReporter:
         baseline = results.baseline_avg_metrics
 
         def delta_percentage(metric):
-            """Calculate delta as percentage (lower better for SER/SCRE)"""
+            """Calculate delta as percentage (lower better for SER/SCRE, higher for ARI)"""
             diff = agent[metric] - baseline[metric]
             if metric in ("ser", "scre"):
                 # For SER and SCRE, lower is better, so negative delta is good
@@ -104,9 +104,18 @@ class ComparisonReporter:
                     indicator = "🔴"
                 else:
                     indicator = "⚪"
-                return f"{indicator} {diff:+.2f}" if metric == "ser" else f"{indicator} {diff:+.2%}"
+                return f"{indicator} {diff:+.2%}"
+            elif metric == "ari":
+                # For ARI, higher is better
+                if diff > 0.1:
+                    indicator = "🟢"
+                elif diff < -0.1:
+                    indicator = "🔴"
+                else:
+                    indicator = "⚪"
+                return f"{indicator} {diff:+.2f}"
             else:
-                # For RPR, higher is better
+                # Default: higher is better
                 if diff > 0.05:
                     indicator = "🟢"
                 elif diff < -0.05:
@@ -118,9 +127,9 @@ class ComparisonReporter:
         lines = [
             "| Metric | Agent | Baseline | Delta |",
             "|--------|-------|----------|-------|",
-            f"| **SER (Syllable Error Rate)** ↓ | {agent['ser']:.2f} | {baseline['ser']:.2f} | {delta_percentage('ser')} |",
+            f"| **SER (Syllable Error Rate)** ↓ | {agent['ser']:.2%} | {baseline['ser']:.2%} | {delta_percentage('ser')} |",
             f"| **SCRE (Syllable Count Rel. Error)** ↓ | {agent['scre']:.2%} | {baseline['scre']:.2%} | {delta_percentage('scre')} |",
-            f"| **RPR (Rhyme Preservation Rate)** ↑ | {agent['rpr']:.2%} | {baseline['rpr']:.2%} | {delta_percentage('rpr')} |",
+            f"| **ARI (Adjusted Rand Index)** ↑ | {agent['ari']:.2f} | {baseline['ari']:.2f} | {delta_percentage('ari')} |",
             f"| **Avg Time (s)** | {agent['avg_time_seconds']:.1f} | {baseline['avg_time_seconds']:.1f} | {agent['avg_time_seconds'] - baseline['avg_time_seconds']:+.1f} |",
         ]
 
@@ -133,34 +142,44 @@ class ComparisonReporter:
         # SER (Syllable Error Rate)
         lines.append("### SER: Syllable Error Rate ↓")
         lines.append("")
-        lines.append("*Lower is better. Measures edit distance between syllable sequences.*")
+        lines.append(
+            "*Lower is better. Measures edit distance between syllable sequences.*"
+        )
         lines.append("")
-        lines.append(f"- **Agent SER**: {results.agent_avg_metrics['ser']:.3f}")
-        lines.append(f"- **Baseline SER**: {results.baseline_avg_metrics['ser']:.3f}")
-        ser_improvement = results.baseline_avg_metrics['ser'] - results.agent_avg_metrics['ser']
-        lines.append(f"- **Improvement**: {ser_improvement:+.3f} (lower is better)")
+        lines.append(f"- **Agent SER**: {results.agent_avg_metrics['ser']:.2%}")
+        lines.append(f"- **Baseline SER**: {results.baseline_avg_metrics['ser']:.2%}")
+        ser_improvement = (
+            results.baseline_avg_metrics["ser"] - results.agent_avg_metrics["ser"]
+        )
+        lines.append(f"- **Improvement**: {ser_improvement:+.2%} (lower is better)")
         lines.append("")
 
         # SCRE (Syllable Count Relative Error)
         lines.append("### SCRE: Syllable Count Relative Error ↓")
         lines.append("")
-        lines.append("*Lower is better. Average relative error in syllable counts per line.*")
+        lines.append(
+            "*Lower is better. Average relative error in syllable counts per line.*"
+        )
         lines.append("")
         lines.append(f"- **Agent SCRE**: {results.agent_avg_metrics['scre']:.2%}")
         lines.append(f"- **Baseline SCRE**: {results.baseline_avg_metrics['scre']:.2%}")
-        scre_improvement = results.baseline_avg_metrics['scre'] - results.agent_avg_metrics['scre']
+        scre_improvement = (
+            results.baseline_avg_metrics["scre"] - results.agent_avg_metrics["scre"]
+        )
         lines.append(f"- **Improvement**: {scre_improvement:+.2%} (lower is better)")
         lines.append("")
 
-        # RPR (Rhyme Preservation Rate)
-        lines.append("### RPR: Rhyme Preservation Rate ↑")
+        # ARI (Adjusted Rand Index)
+        lines.append("### ARI: Adjusted Rand Index ↑")
         lines.append("")
-        lines.append("*Higher is better [0-1]. Fraction of target end-of-line rhymes preserved.*")
+        lines.append("*Higher is better [-1, 1]. Measures rhyme clustering agreement.*")
         lines.append("")
-        lines.append(f"- **Agent RPR**: {results.agent_avg_metrics['rpr']:.2%}")
-        lines.append(f"- **Baseline RPR**: {results.baseline_avg_metrics['rpr']:.2%}")
-        rpr_improvement = results.agent_avg_metrics['rpr'] - results.baseline_avg_metrics['rpr']
-        lines.append(f"- **Improvement**: {rpr_improvement:+.2%}")
+        lines.append(f"- **Agent ARI**: {results.agent_avg_metrics['ari']:.3f}")
+        lines.append(f"- **Baseline ARI**: {results.baseline_avg_metrics['ari']:.3f}")
+        ari_improvement = (
+            results.agent_avg_metrics["ari"] - results.baseline_avg_metrics["ari"]
+        )
+        lines.append(f"- **Improvement**: {ari_improvement:+.3f}")
         lines.append("")
 
         return "\n".join(lines)
@@ -168,7 +187,7 @@ class ComparisonReporter:
     def _format_individual_results(self, results: ExperimentResults) -> str:
         """Format individual test results table for three core metrics"""
         lines = [
-            "| Test ID | Method | SER ↓ | SCRE ↓ | RPR ↑ | Time (s) |",
+            "| Test ID | Method | SER ↓ | SCRE ↓ | ARI ↑ | Time (s) |",
             "|---------|--------|-------|--------|-------|----------|",
         ]
 
@@ -182,9 +201,9 @@ class ComparisonReporter:
                 method_icon = "🤖" if result.method == "agent" else "📝"
                 lines.append(
                     f"| {test_id} | {method_icon} {result.method.title()} | "
-                    f"{result.metrics['ser']:.2f} | "
+                    f"{result.metrics['ser']:.2%} | "
                     f"{result.metrics['scre']:.2%} | "
-                    f"{result.metrics['rpr']:.2%} | "
+                    f"{result.metrics['ari']:.2f} | "
                     f"{result.time_seconds:.1f} |"
                 )
 
@@ -202,7 +221,9 @@ class ComparisonReporter:
             if not test_results:
                 continue
 
-            baseline_result = next((r for r in test_results if r.method == "baseline"), None)
+            baseline_result = next(
+                (r for r in test_results if r.method == "baseline"), None
+            )
             agent_result = next((r for r in test_results if r.method == "agent"), None)
 
             if not (baseline_result and agent_result):
@@ -225,9 +246,11 @@ class ComparisonReporter:
             for line in baseline_result.translated_lines:
                 lines.append(line)
             lines.append("```")
-            lines.append(f"*Metrics*: SER={baseline_result.metrics['ser']:.2f}, "
-                        f"SCRE={baseline_result.metrics['scre']:.2%}, "
-                        f"RPR={baseline_result.metrics['rpr']:.2%}")
+            lines.append(
+                f"*Metrics*: SER={baseline_result.metrics['ser']:.2%}, "
+                f"SCRE={baseline_result.metrics['scre']:.2%}, "
+                f"ARI={baseline_result.metrics['ari']:.2f}"
+            )
             lines.append("")
 
             # Agent
@@ -236,9 +259,11 @@ class ComparisonReporter:
             for line in agent_result.translated_lines:
                 lines.append(line)
             lines.append("```")
-            lines.append(f"*Metrics*: SER={agent_result.metrics['ser']:.2f}, "
-                        f"SCRE={agent_result.metrics['scre']:.2%}, "
-                        f"RPR={agent_result.metrics['rpr']:.2%}")
+            lines.append(
+                f"*Metrics*: SER={agent_result.metrics['ser']:.2%}, "
+                f"SCRE={agent_result.metrics['scre']:.2%}, "
+                f"ARI={agent_result.metrics['ari']:.2f}"
+            )
             lines.append("")
 
         return "\n".join(lines)
@@ -255,38 +280,60 @@ class ComparisonReporter:
         lines.append("")
 
         # SER (Syllable Error Rate) - lower is better
-        ser_improvement = baseline['ser'] - agent['ser']
+        ser_improvement = baseline["ser"] - agent["ser"]
         if ser_improvement > 0.1:
-            lines.append(f"- ✅ **Strong syllable edit distance**: Agent reduces SER by {ser_improvement:.3f}")
+            lines.append(
+                f"- ✅ **Strong syllable edit distance**: Agent reduces SER by {ser_improvement:.2%}"
+            )
         elif ser_improvement > 0.02:
-            lines.append(f"- ✓ **Improved syllable accuracy**: Agent reduces SER by {ser_improvement:.3f}")
+            lines.append(
+                f"- ✓ **Improved syllable accuracy**: Agent reduces SER by {ser_improvement:.2%}"
+            )
         else:
-            lines.append(f"- ⚠️ **Limited syllable improvement**: Only {ser_improvement:.3f} difference in SER")
+            lines.append(
+                f"- ⚠️ **Limited syllable improvement**: Only {ser_improvement:.2%} difference in SER"
+            )
 
         # SCRE (Syllable Count Relative Error) - lower is better
-        scre_improvement = baseline['scre'] - agent['scre']
+        scre_improvement = baseline["scre"] - agent["scre"]
         if scre_improvement > 0.1:
-            lines.append(f"- ✅ **Strong relative error reduction**: Agent reduces SCRE by {scre_improvement:.2%}")
+            lines.append(
+                f"- ✅ **Strong relative error reduction**: Agent reduces SCRE by {scre_improvement:.2%}"
+            )
         elif scre_improvement > 0.05:
-            lines.append(f"- ✓ **Improved relative accuracy**: Agent reduces SCRE by {scre_improvement:.2%}")
+            lines.append(
+                f"- ✓ **Improved relative accuracy**: Agent reduces SCRE by {scre_improvement:.2%}"
+            )
         else:
-            lines.append(f"- ⚠️ **Limited relative improvement**: Only {scre_improvement:.2%} difference in SCRE")
+            lines.append(
+                f"- ⚠️ **Limited relative improvement**: Only {scre_improvement:.2%} difference in SCRE"
+            )
 
-        # RPR (Rhyme Preservation Rate) - higher is better
-        rpr_improvement = agent['rpr'] - baseline['rpr']
-        if rpr_improvement > 0.1:
-            lines.append(f"- ✅ **Strong rhyme preservation**: Agent improves RPR by {rpr_improvement:.2%}")
-        elif rpr_improvement > 0.05:
-            lines.append(f"- ✓ **Improved rhyme matching**: Agent improves RPR by {rpr_improvement:.2%}")
+        # ARI (Adjusted Rand Index) - higher is better, range [-1, 1]
+        ari_improvement = agent["ari"] - baseline["ari"]
+        if ari_improvement > 0.1:
+            lines.append(
+                f"- ✅ **Strong rhyme clustering**: Agent improves ARI by {ari_improvement:+.3f}"
+            )
+        elif ari_improvement > 0.05:
+            lines.append(
+                f"- ✓ **Improved rhyme matching**: Agent improves ARI by {ari_improvement:+.3f}"
+            )
         else:
-            lines.append(f"- ⚠️ **Limited rhyme improvement**: Only {rpr_improvement:.2%} difference in RPR")
+            lines.append(
+                f"- ⚠️ **Limited rhyme improvement**: Only {ari_improvement:+.3f} difference in ARI"
+            )
 
         # Time trade-off
-        time_overhead = agent['avg_time_seconds'] - baseline['avg_time_seconds']
+        time_overhead = agent["avg_time_seconds"] - baseline["avg_time_seconds"]
         if time_overhead > 0:
-            lines.append(f"- ⏱️ **Time overhead**: Agent takes {time_overhead:.1f}s longer per translation ({time_overhead / baseline['avg_time_seconds']:.1%} increase)")
+            lines.append(
+                f"- ⏱️ **Time overhead**: Agent takes {time_overhead:.1f}s longer per translation ({time_overhead / baseline['avg_time_seconds']:.1%} increase)"
+            )
         else:
-            lines.append(f"- ⚡ **Time advantage**: Agent is {-time_overhead:.1f}s faster per translation ({-time_overhead / baseline['avg_time_seconds']:.1%} faster)")
+            lines.append(
+                f"- ⚡ **Time advantage**: Agent is {-time_overhead:.1f}s faster per translation ({-time_overhead / baseline['avg_time_seconds']:.1%} faster)"
+            )
 
         lines.append("")
 
@@ -295,17 +342,25 @@ class ComparisonReporter:
         lines.append("")
 
         # Overall score: count improvements
-        improvements = sum([
-            ser_improvement > 0.02,
-            scre_improvement > 0.05,
-            rpr_improvement > 0.05,
-        ])
+        improvements = sum(
+            [
+                ser_improvement > 0.02,
+                scre_improvement > 0.05,
+                ari_improvement > 0.05,
+            ]
+        )
 
         if improvements >= 3:
-            lines.append(f"- **Use agent for production**: Agent improves all three metrics")
+            lines.append(
+                "- **Use agent for production**: Agent improves all three metrics"
+            )
         elif improvements >= 2:
-            lines.append(f"- **Agent shows promise**: Consider using for quality-critical translations ({improvements}/3 metrics improved)")
+            lines.append(
+                f"- **Agent shows promise**: Consider using for quality-critical translations ({improvements}/3 metrics improved)"
+            )
         else:
-            lines.append(f"- **Further optimization needed**: Agent improves only {improvements}/3 metrics")
+            lines.append(
+                f"- **Further optimization needed**: Agent improves only {improvements}/3 metrics"
+            )
 
         return "\n".join(lines)

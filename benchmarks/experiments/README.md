@@ -39,24 +39,36 @@ Measures the average relative error in syllable counts per line. Each line's err
 
 ---
 
-## 3. Rhyme Preservation Rate (RPR) ↑ (higher is better)
+## 3. Adjusted Rand Index (ARI) ↑ (higher is better)
 
 **Definition:**
 ```
-RPR = (# matched end-of-line rhymes) / (total number of target lines)
+ARI = (RI - E[RI]) / (max(RI) - E[RI])
 ```
 
-**Description:**
-Measures the fraction of target end-of-line rhymes that are preserved in the predicted sequence, allowing matches at different positions.
+Where RI is the Rand Index comparing rhyme clustering.
 
-**Range:** [0, 1]
+**Description:**
+Measures how well the rhyme **clustering** (which lines rhyme together) is preserved, independent of label names. Unlike position-by-position comparison, ARI compares the structure of rhyming relationships.
+
+**Range:** [-1, 1]
+- `+1.0` = Perfect rhyme clustering agreement
+- `0.0` = Random/chance clustering
+- `-1.0` = Complete disagreement
 
 **Example:**
 
-Target rhyme scheme: ABACCA
-Actual rhyme scheme: AAABBC
+Target clusters: {1,3,6} rhyme, {4,5} rhyme, {2} alone
+Actual clusters: {1,2,3} rhyme, {4,5} rhyme, {6} alone
 
-Matched indices: 1, 3, 4, 5
-RPR = 4 / 6 ≈ 0.667
+What matters: Lines 4,5 still rhyme together ✓ (0.5 clustering preserved)
 
-**Use case:** Ensures the translated lyrics maintain the rhyme scheme of the original.
+ARI ≈ 0.10 (partial agreement, not all clusters match)
+
+**Why ARI over position matching:**
+- Doesn't care about label names (A→B→C renaming doesn't matter)
+- Focuses on *which lines rhyme together*, not exact positions
+- Mathematically rigorous clustering metric
+- Better reflects actual rhyme scheme preservation
+
+**Use case:** Ensures the translated lyrics maintain the rhyme structure of the original.

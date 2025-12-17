@@ -20,7 +20,7 @@ class EvaluationMetrics(TypedDict):
     Three core metrics:
     - SER: Syllable Error Rate (edit distance normalized)
     - SCRE: Syllable Count Relative Error (average relative error per line)
-    - RPR: Rhyme Preservation Rate (0-1 fraction of rhymes preserved)
+    - ARI: Adjusted Rand Index (rhyme clustering agreement)
     """
 
     # Syllable Error Rate (SER) - edit distance between syllable sequences
@@ -29,8 +29,8 @@ class EvaluationMetrics(TypedDict):
     # Syllable Count Relative Error (SCRE) - average relative error in syllable counts
     scre: float  # Average |target - actual| / target per line
 
-    # Rhyme Preservation Rate (RPR) - fraction of rhyming pairs preserved
-    rpr: float  # [0, 1] fraction of target end-of-line rhymes preserved
+    # Adjusted Rand Index (ARI) - rhyme clustering agreement
+    ari: float  # [-1, 1] measures agreement of rhyme clustering (1=perfect, 0=random, -1=opposite)
 
 
 class TranslationEvaluator:
@@ -80,7 +80,6 @@ class TranslationEvaluator:
             self.analyzer.count_syllables(line, source_lang)
             for line in source_lines
         ]
-        source_patterns = self.analyzer.get_syllable_patterns(source_lines, source_lang)
         source_rhyme_scheme = self.analyzer.detect_rhyme_scheme(source_lines, source_lang)
 
         # Analyze translation
@@ -88,15 +87,12 @@ class TranslationEvaluator:
             self.analyzer.count_syllables(line, target_lang)
             for line in translated_lines
         ]
-        target_patterns = self.analyzer.get_syllable_patterns(translated_lines, target_lang)
         target_rhyme_scheme = self.analyzer.detect_rhyme_scheme(translated_lines, target_lang)
 
         # Calculate metrics
         return self._calculate_metrics(
             source_syllables=source_syllables,
             target_syllables=target_syllables,
-            source_patterns=source_patterns,
-            target_patterns=target_patterns,
             source_rhyme_scheme=source_rhyme_scheme,
             target_rhyme_scheme=target_rhyme_scheme,
         )
@@ -105,8 +101,6 @@ class TranslationEvaluator:
         self,
         source_syllables: list[int],
         target_syllables: list[int],
-        source_patterns: list[list[int]],
-        target_patterns: list[list[int]],
         source_rhyme_scheme: str,
         target_rhyme_scheme: str,
     ) -> EvaluationMetrics:
@@ -118,13 +112,13 @@ class TranslationEvaluator:
         # 2. SCRE (Syllable Count Relative Error) - Average relative error in syllable counts
         scre = self._calculate_scre(source_syllables, target_syllables)
 
-        # 3. RPR (Rhyme Preservation Rate) - Fraction of rhymes preserved
-        rpr = self._calculate_rhyme_preservation(source_rhyme_scheme, target_rhyme_scheme)
+        # 3. ARI (Adjusted Rand Index) - Rhyme clustering agreement
+        ari = self._calculate_ari(source_rhyme_scheme, target_rhyme_scheme)
 
         return EvaluationMetrics(
             ser=ser,
             scre=scre,
-            rpr=rpr,
+            ari=ari,
         )
 
     def _calculate_ser(
@@ -202,40 +196,66 @@ class TranslationEvaluator:
 
         return sum(relative_errors) / len(relative_errors) if relative_errors else 0.0
 
-    def _calculate_rhyme_preservation(
+    def _calculate_ari(
         self,
         source_scheme: str,
         target_scheme: str,
     ) -> float:
         """
-        Calculate Rhyme Preservation Rate (RPR)
+        Calculate Adjusted Rand Index (ARI) for rhyme clustering agreement
 
-        Measures the fraction of target end-of-line rhymes that are preserved
-        in the predicted sequence, allowing matches at different positions.
+        Measures how well the rhyme clustering (which lines rhyme together)
+        is preserved between source and target, independent of label names.
 
         Args:
             source_scheme: Target rhyme scheme (e.g., "AABB")
             target_scheme: Actual/predicted rhyme scheme
 
         Returns:
-            RPR = (# matched end-of-line rhymes) / (total target lines)
-            Range: [0, 1]
+            ARI = [-1, 1] where:
+              1.0 = Perfect clustering agreement
+              0.0 = Random clustering
+             -1.0 = Complete disagreement
         """
-        if not source_scheme:
+        if not source_scheme or not target_scheme:
             return 0.0
 
-        # Count how many target rhyme positions are preserved in actual
-        matched_count = 0
-        total_lines = len(source_scheme)
+        from sklearn.metrics import adjusted_rand_score
 
-        # For each rhyme group in target, check if it exists in actual
-        for i, target_rhyme in enumerate(source_scheme):
-            # Check if this rhyme label appears at the same or different position in actual
-            if i < len(target_scheme) and target_scheme[i] == target_rhyme:
-                # Exact position match
-                matched_count += 1
-            elif target_rhyme in target_scheme:
-                # Rhyme exists elsewhere in actual (matched at different position)
-                matched_count += 1
+        # Convert rhyme schemes to integer labels
+        # e.g., "AABB" -> [0, 1, 0, 1]
+        source_labels = self._scheme_to_labels(source_scheme)
+        target_labels = self._scheme_to_labels(target_scheme)
 
-        return matched_count / total_lines if total_lines > 0 else 0.0
+        # Handle length mismatch: pad shorter one or truncate longer one
+        if len(source_labels) != len(target_labels):
+            max_len = max(len(source_labels), len(target_labels))
+            next_label = max(max(source_labels), max(target_labels)) + 1
+
+            # Pad shorter scheme with unique labels (represents unmatched lines)
+            if len(source_labels) < max_len:
+                source_labels = source_labels + list(
+                    range(next_label, next_label + (max_len - len(source_labels)))
+                )
+            if len(target_labels) < max_len:
+                target_labels = target_labels + list(
+                    range(next_label, next_label + (max_len - len(target_labels)))
+                )
+
+        # Calculate ARI using sklearn
+        return adjusted_rand_score(source_labels, target_labels)
+
+    def _scheme_to_labels(self, scheme: str) -> list[int]:
+        """Convert rhyme scheme (e.g., 'AABB') to integer labels (e.g., [0, 1, 0, 1])"""
+        label_map = {}
+        labels = []
+        next_label = 0
+
+        for char in scheme:
+            if char not in label_map:
+                label_map[char] = next_label
+                next_label += 1
+            labels.append(label_map[char])
+
+        return labels
+

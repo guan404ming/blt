@@ -40,19 +40,19 @@ class LyricsAnalyzer:
     def _normalize_language_code(self, lang: str) -> str:
         """Normalize language code to standard format"""
         lang = lang.lower().strip()
-        
-        # Map Chinese variants to cmn
-        if lang in ["zh", "zh-cn", "zh-tw", "chinese"]:
+
+        # Map Chinese variants to cmn (Mandarin Chinese - supported by espeak)
+        if lang in ["zh", "zh-cn", "zh-tw", "zh-hant", "chinese"]:
             return "cmn"
-            
-        # Map English variants to en-us
-        if lang in ["en", "english"]:
-            return "en-us"
-            
+
+        # Map English variants to en-gb (espeak supported variant)
+        if lang in ["en", "en-us", "english"]:
+            return "en-gb"
+
         # Map Japanese variants
         if lang in ["jp", "japanese"]:
             return "ja"
-            
+
         return lang
 
     # ==================== CORE ANALYSIS METHODS ====================
@@ -69,7 +69,7 @@ class LyricsAnalyzer:
             IPA transcription of the text
         """
         language = self._normalize_language_code(language)
-        
+
         # Remove punctuation for cleaner IPA
         punctuation_pattern = r"[,;.!?，。；！？、]+"
         cleaned_text = re.sub(punctuation_pattern, " ", text).strip()
@@ -546,10 +546,29 @@ class LyricsAnalyzer:
         return pinyin_text
 
     def _text_to_ipa(self, text: str, lang: str) -> str:
-        """Convert text to IPA using phonemizer"""
-        from phonemizer import phonemize
+        """Convert text to IPA using phonemizer with fallback support"""
+        import logging
 
-        return phonemize(text, language=lang, backend="espeak", strip=True)
+        try:
+            from phonemizer import phonemize
+
+            return phonemize(text, language=lang, backend="espeak", strip=True)
+        except Exception as e:
+            # Try fallback: use base language code (e.g., "en" from "en-gb")
+            if "-" in lang:
+                base_lang = lang.split("-")[0]
+                try:
+                    from phonemizer import phonemize
+
+                    return phonemize(
+                        text, language=base_lang, backend="espeak", strip=True
+                    )
+                except Exception:
+                    pass
+
+            # Final fallback: return original text
+            logging.debug(f"Could not phonemize text for language {lang}: {e}")
+            return text
 
     def _segment_words(self, lines: list[str], language: str) -> list[list[str]]:
         """

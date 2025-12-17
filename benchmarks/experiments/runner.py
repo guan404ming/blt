@@ -7,12 +7,17 @@ Orchestrates translation experiments comparing agent vs baseline.
 from __future__ import annotations
 import json
 import time
+import os
 from pathlib import Path
 from typing import TypedDict, Literal
 from dataclasses import dataclass, asdict
 
 from .baseline import BaselineTranslator
 from .evaluator import TranslationEvaluator, EvaluationMetrics
+
+# Disable LangChain tracing to prevent memory allocation errors
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_CALLBACKS_BACKGROUND"] = "false"
 
 
 class TestCase(TypedDict):
@@ -92,6 +97,10 @@ class ExperimentRunner:
         self.model = model
         self.base_url = base_url
 
+        # Ensure LangChain tracing is disabled
+        os.environ["LANGCHAIN_TRACING_V2"] = "false"
+        os.environ["LANGCHAIN_CALLBACKS_BACKGROUND"] = "false"
+
         # Initialize components (lazy imports to avoid circular dependencies)
         from blt.translators import (
             LyricsAnalyzer,
@@ -143,6 +152,7 @@ class ExperimentRunner:
 
         # Run all test cases
         results: list[TranslationResult] = []
+        failed_tests: list[tuple[str, str]] = []
 
         for i, test_case in enumerate(test_cases, 1):
             print(f"\n[{i}/{len(test_cases)}] Running test: {test_case['id']}")
@@ -150,35 +160,55 @@ class ExperimentRunner:
                 f"  Language pair: {test_case['source_lang']} → {test_case['target_lang']}"
             )
 
-            # Run baseline translation
-            print("  - Baseline translation...")
-            baseline_result = self._run_baseline(test_case)
-            results.append(baseline_result)
+            try:
+                # Run baseline translation
+                print("  - Baseline translation...")
+                baseline_result = self._run_baseline(test_case)
+                results.append(baseline_result)
 
-            # Run agent translation
-            print("  - Agent translation...")
-            agent_result = self._run_agent(test_case)
-            results.append(agent_result)
+                # Run agent translation
+                print("  - Agent translation...")
+                agent_result = self._run_agent(test_case)
+                results.append(agent_result)
 
-            print("\n  Results:")
-            print(f"  Source Line 1 - 2: {test_case['source_lines'][0:2]}")
-            print(
-                f"  Baseline Line 1 - 2: {baseline_result.translated_lines[0:2] if baseline_result.translated_lines else 'N/A'}"
-            )
-            print(
-                f"  Agent Line 1 - 2:    {agent_result.translated_lines[0:2] if agent_result.translated_lines else 'N/A'}"
-            )
-            print()
-            print(
-                f"    Baseline - SER: {baseline_result.metrics['ser']:.2f}, "
-                f"SCRE: {baseline_result.metrics['scre']:.2%}, "
-                f"RPR: {baseline_result.metrics['rpr']:.2%}"
-            )
-            print(
-                f"    Agent    - SER: {agent_result.metrics['ser']:.2f}, "
-                f"SCRE: {agent_result.metrics['scre']:.2%}, "
-                f"RPR: {agent_result.metrics['rpr']:.2%}"
-            )
+                print("\n  Results:")
+                print(f"  Source Line 1 - 2: {test_case['source_lines'][0:2]}")
+                print(
+                    f"  Baseline Line 1 - 2: {baseline_result.translated_lines[0:2] if baseline_result.translated_lines else 'N/A'}"
+                )
+                print(
+                    f"  Agent Line 1 - 2:    {agent_result.translated_lines[0:2] if agent_result.translated_lines else 'N/A'}"
+                )
+                print()
+                print(
+                    f"    Baseline - SER: {baseline_result.metrics['ser']:.2%}, "
+                    f"SCRE: {baseline_result.metrics['scre']:.2%}, "
+                    f"ARI: {baseline_result.metrics['ari']:.2f}"
+                )
+                print(
+                    f"    Agent    - SER: {agent_result.metrics['ser']:.2%}, "
+                    f"SCRE: {agent_result.metrics['scre']:.2%}, "
+                    f"ARI: {agent_result.metrics['ari']:.2f}"
+                )
+
+            except Exception as e:
+                error_msg = f"{type(e).__name__}: {str(e)[:100]}"
+                print(f"  ❌ Error: {error_msg}")
+                failed_tests.append((test_case["id"], error_msg))
+                print("  ⏭️  Continuing with next test...")
+
+        # Print failed tests summary
+        if failed_tests:
+            print(f"\n{'=' * 60}")
+            print(f"⚠️  {len(failed_tests)} test(s) failed:")
+            print(f"{'=' * 60}")
+            for test_id, error in failed_tests:
+                print(f"  ❌ {test_id}: {error}")
+            print(f"✅ {len(results) // 2} test(s) completed successfully")
+        else:
+            print(f"\n{'=' * 60}")
+            print(f"✅ All {len(test_cases)} test(s) completed successfully!")
+            print(f"{'=' * 60}")
 
         # Calculate summary statistics
         lang_pair = f"{test_cases[0]['source_lang']}→{test_cases[0]['target_lang']}"
@@ -201,7 +231,7 @@ class ExperimentRunner:
         )
 
     def _run_baseline(self, test_case: TestCase) -> TranslationResult:
-        """Run baseline translation and evaluate"""
+        """Run baseline translation"""
         start_time = time.time()
 
         translation = self.baseline.translate(
@@ -233,7 +263,7 @@ class ExperimentRunner:
         )
 
     def _run_agent(self, test_case: TestCase) -> TranslationResult:
-        """Run agent translation and evaluate"""
+        """Run agent translation"""
         start_time = time.time()
 
         # Join lines for agent (it expects single string)
@@ -271,12 +301,12 @@ class ExperimentRunner:
         self,
         results: list[TranslationResult],
     ) -> dict:
-        """Calculate average metrics across results (SER, SCRE, RPR)"""
+        """Calculate average metrics across results (SER, SCRE, ARI)"""
         if not results:
             return {}
 
         # Three core metrics
-        metrics_keys = ["ser", "scre", "rpr"]
+        metrics_keys = ["ser", "scre", "ari"]
 
         averages = {}
         for key in metrics_keys:

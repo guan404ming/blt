@@ -89,8 +89,7 @@ def sample_test_cases(
 
     # Filter songs with enough lines
     valid_songs = [
-        song for song in source_lyrics
-        if song.get("line_count", 0) >= min_lines
+        song for song in source_lyrics if song.get("line_count", 0) >= min_lines
     ]
 
     if len(valid_songs) < num_samples:
@@ -105,13 +104,17 @@ def sample_test_cases(
         # Get lyrics lines
         lyrics = song["lyrics"]
         raw_lines = [line.strip() for line in lyrics.split("\n") if line.strip()]
-        
+
         # Filter lines by language
         lines = []
         for line in raw_lines:
             detected = _detect_language(line)
             # If detected as a specific language that isn't the source, skip it
-            if detected != "unknown" and detected != "mixed" and detected != source_lang:
+            if (
+                detected != "unknown"
+                and detected != "mixed"
+                and detected != source_lang
+            ):
                 continue
             lines.append(line)
 
@@ -186,7 +189,9 @@ def create_test_suite(
     test_suites = {}
     for source_lang, target_lang in language_pairs:
         if source_lang not in datasets:
-            print(f"Warning: No data for {source_lang}, skipping {source_lang}→{target_lang}")
+            print(
+                f"Warning: No data for {source_lang}, skipping {source_lang}→{target_lang}"
+            )
             continue
 
         pair_key = f"{source_lang}→{target_lang}"

@@ -15,8 +15,13 @@ Usage:
     python -m benchmarks.run_experiment --test-suite benchmarks/test_suites/cmn_en.json
 """
 
+import os
 import argparse
 from pathlib import Path
+
+# Disable LangChain tracing before any imports
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_CALLBACKS_BACKGROUND"] = "false"
 
 from benchmarks.experiments import (
     ExperimentRunner,
@@ -140,6 +145,7 @@ def main():
 
     # Run experiments for each pair
     all_results = []
+    failed_pairs = []
 
     for source_lang, target_lang in language_pairs:
         pair_key = f"{source_lang}→{target_lang}"
@@ -147,63 +153,71 @@ def main():
         print(f"Language Pair: {pair_key}")
         print(f"{'=' * 60}")
 
-        # Create test cases if not using pre-created suite
-        if args.test_suite:
-            # Filter test cases for this pair
-            pair_test_cases = [
-                tc
-                for tc in test_cases
-                if tc["source_lang"] == source_lang and tc["target_lang"] == target_lang
-            ]
-        else:
-            # Sample from scraped data
-            print(f"\n📊 Sampling {args.samples} test cases...")
+        try:
+            # Create test cases if not using pre-created suite
+            if args.test_suite:
+                # Filter test cases for this pair
+                pair_test_cases = [
+                    tc
+                    for tc in test_cases
+                    if tc["source_lang"] == source_lang
+                    and tc["target_lang"] == target_lang
+                ]
+            else:
+                # Sample from scraped data
+                print(f"\n📊 Sampling {args.samples} test cases...")
 
-            # Determine source file
-            source_file_map = {
-                "cmn": "cmn_lyrics.json",
-                "en-us": "en_lyrics.json",
-                "ja": "ja_lyrics.json",
-            }
+                # Determine source file
+                source_file_map = {
+                    "cmn": "cmn_lyrics.json",
+                    "en-us": "en_lyrics.json",
+                    "ja": "ja_lyrics.json",
+                }
 
-            source_file = Path(args.data_dir) / source_file_map.get(
-                source_lang, f"{source_lang}_lyrics.json"
-            )
+                source_file = Path(args.data_dir) / source_file_map.get(
+                    source_lang, f"{source_lang}_lyrics.json"
+                )
 
-            if not source_file.exists():
-                print(f"❌ Error: Source data file not found: {source_file}")
+                if not source_file.exists():
+                    print(f"❌ Error: Source data file not found: {source_file}")
+                    continue
+
+                source_lyrics = load_lyrics_from_json(source_file, source_lang)
+                pair_test_cases = sample_test_cases(
+                    source_lyrics=source_lyrics,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    num_samples=args.samples,
+                    max_lines=args.max_lines,
+                )
+
+            if not pair_test_cases:
+                print(f"⚠️  No test cases for {pair_key}, skipping")
                 continue
 
-            source_lyrics = load_lyrics_from_json(source_file, source_lang)
-            pair_test_cases = sample_test_cases(
-                source_lyrics=source_lyrics,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                num_samples=args.samples,
-                max_lines=args.max_lines,
+            print(f"   Test cases: {len(pair_test_cases)}")
+
+            # Run experiment
+            output_dir = Path(args.output_dir)
+            results = runner.run_experiment(
+                test_cases=pair_test_cases,
+                experiment_id=f"{pair_key}_{len(pair_test_cases)}samples",
             )
 
-        if not pair_test_cases:
-            print(f"⚠️  No test cases for {pair_key}, skipping")
+            all_results.append(results)
+
+            # Save final results
+            runner.save_results(results, output_dir)
+
+            # Generate and save report
+            report_path = output_dir / f"{results.experiment_id}.md"
+            reporter.generate_markdown_report(results, report_path)
+        except Exception as e:
+            error_msg = f"{type(e).__name__}: {str(e)[:80]}"
+            print(f"\n❌ Error processing {pair_key}: {error_msg}")
+            failed_pairs.append((pair_key, error_msg))
+            print("⏭️  Continuing with next language pair...")
             continue
-
-        print(f"   Test cases: {len(pair_test_cases)}")
-
-        # Run experiment
-        results = runner.run_experiment(
-            test_cases=pair_test_cases,
-            experiment_id=f"{pair_key}_{len(pair_test_cases)}samples",
-        )
-
-        all_results.append(results)
-
-        # Save results
-        output_dir = Path(args.output_dir)
-        runner.save_results(results, output_dir)
-
-        # Generate and save report
-        report_path = output_dir / f"{results.experiment_id}.md"
-        reporter.generate_markdown_report(results, report_path)
 
         # Print summary
         print(f"\n📊 Summary for {pair_key}:")
@@ -212,9 +226,9 @@ def main():
         ser_agent = results.agent_avg_metrics["ser"]
         ser_baseline = results.baseline_avg_metrics["ser"]
         print("   SER (Syllable Error Rate) ↓")
-        print(f"      Agent:      {ser_agent:.3f}")
-        print(f"      Baseline:   {ser_baseline:.3f}")
-        print(f"      Improvement: {ser_baseline - ser_agent:+.3f}")
+        print(f"      Agent:      {ser_agent:.2%}")
+        print(f"      Baseline:   {ser_baseline:.2%}")
+        print(f"      Improvement: {ser_baseline - ser_agent:+.2%}")
 
         # SCRE (lower is better)
         scre_agent = results.agent_avg_metrics["scre"]
@@ -224,19 +238,27 @@ def main():
         print(f"      Baseline:   {scre_baseline:.2%}")
         print(f"      Improvement: {scre_baseline - scre_agent:+.2%}")
 
-        # RPR (higher is better)
-        rpr_agent = results.agent_avg_metrics["rpr"]
-        rpr_baseline = results.baseline_avg_metrics["rpr"]
-        print("   RPR (Rhyme Preservation Rate) ↑")
-        print(f"      Agent:      {rpr_agent:.2%}")
-        print(f"      Baseline:   {rpr_baseline:.2%}")
-        print(f"      Improvement: {rpr_agent - rpr_baseline:+.2%}")
+        # ARI (higher is better, range [-1, 1])
+        ari_agent = results.agent_avg_metrics["ari"]
+        ari_baseline = results.baseline_avg_metrics["ari"]
+        print("   ARI (Adjusted Rand Index) ↑")
+        print(f"      Agent:      {ari_agent:.3f}")
+        print(f"      Baseline:   {ari_baseline:.3f}")
+        print(f"      Improvement: {ari_agent - ari_baseline:+.3f}")
 
     # Final summary
     print(f"\n{'=' * 60}")
-    print("✅ Experiments Complete!")
+    if failed_pairs:
+        print(f"⚠️  Experiments Complete (with {len(failed_pairs)} failures)")
+    else:
+        print("✅ Experiments Complete!")
     print(f"{'=' * 60}")
-    print(f"   Language pairs tested: {len(all_results)}")
+    print(f"   Language pairs completed: {len(all_results)}")
+    if failed_pairs:
+        print(f"   Language pairs failed: {len(failed_pairs)}")
+        print()
+        for pair_key, error in failed_pairs:
+            print(f"     ❌ {pair_key}: {error}")
     print(f"   Results saved to: {args.output_dir}")
     print()
 
