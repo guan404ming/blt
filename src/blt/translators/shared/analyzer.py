@@ -10,10 +10,7 @@ import hanlp
 import panphon.distance
 from pypinyin import lazy_pinyin
 from dotenv import load_dotenv
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..lyrics_translation.models import MusicConstraints
+from ..lyrics_translator.models import MusicConstraints
 
 # Load environment variables from .env file
 load_dotenv()
@@ -211,7 +208,6 @@ class LyricsAnalyzer:
         Returns:
             MusicConstraints object
         """
-        from ..lyrics_translation.models import MusicConstraints
 
         lines = [
             line.strip() for line in source_lyrics.strip().split("\n") if line.strip()
