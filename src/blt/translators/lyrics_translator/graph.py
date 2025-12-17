@@ -115,9 +115,11 @@ def build_graph(analyzer, validator, llm, config):
                 for i, pattern in enumerate(syllable_patterns[: len(source_lines)])
             )
 
-        prompt = f"""You are a professional lyrics translator. Translate ALL the following lyrics to {target_lang} while meeting ALL 3 musical constraints.
+        prompt = f"""You are a professional lyrics translator. Translate ALL {len(source_lines)} lines of the following lyrics to {target_lang} while meeting ALL 3 musical constraints.
 
-SOURCE LYRICS:
+CRITICAL: You MUST translate ALL {len(source_lines)} lines. Do not skip any lines.
+
+SOURCE LYRICS (with target syllable counts):
 {lines_with_targets}
 
 CONSTRAINT 1: SYLLABLE COUNTS (MUST MATCH EXACTLY)
@@ -140,9 +142,19 @@ Use the available tools to verify:
 3. Syllable patterns are maintained
 
 OUTPUT FORMAT:
-Return ONLY the translated lines, one per line, WITHOUT numbered prefixes.
-Do not include "1.", "2.", etc. - just the translation text.
-Do not include any explanations or notes."""
+You MUST output exactly {len(source_lines)} translated lines, one per line.
+Format each line as: [number]. [translation]
+Example:
+1. First line translation
+2. Second line translation
+...
+
+IMPORTANT REMINDERS:
+- Translate ALL {len(source_lines)} lines
+- Do not stop after one line
+- Each line must be numbered 1-{len(source_lines)}
+- One translation per line
+- No extra explanations or notes"""
 
         # Run agentic loop: invoke LLM, process tool calls, repeat until we get content
         messages = [

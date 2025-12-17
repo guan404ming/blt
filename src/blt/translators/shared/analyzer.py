@@ -10,10 +10,7 @@ import hanlp
 import panphon.distance
 from pypinyin import lazy_pinyin
 from dotenv import load_dotenv
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..lyrics_translation.models import MusicConstraints
+from .models import MusicConstraints
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,6 +37,24 @@ class LyricsAnalyzer:
         """Initialize analyzer with lazy-loaded components"""
         self._hanlp_tokenizer = None
 
+    def _normalize_language_code(self, lang: str) -> str:
+        """Normalize language code to standard format"""
+        lang = lang.lower().strip()
+
+        # Map Chinese variants to cmn (Mandarin Chinese - supported by espeak)
+        if lang in ["zh", "zh-cn", "zh-tw", "zh-hant", "chinese"]:
+            return "cmn"
+
+        # Map English variants to en-gb (espeak supported variant)
+        if lang in ["en", "en-us", "english"]:
+            return "en-gb"
+
+        # Map Japanese variants
+        if lang in ["jp", "japanese"]:
+            return "ja"
+
+        return lang
+
     # ==================== CORE ANALYSIS METHODS ====================
 
     def text_to_ipa(self, text: str, language: str) -> str:
@@ -53,6 +68,8 @@ class LyricsAnalyzer:
         Returns:
             IPA transcription of the text
         """
+        language = self._normalize_language_code(language)
+
         # Remove punctuation for cleaner IPA
         punctuation_pattern = r"[,;.!?，。；！？、]+"
         cleaned_text = re.sub(punctuation_pattern, " ", text).strip()
@@ -73,6 +90,8 @@ class LyricsAnalyzer:
         Returns:
             Number of syllables
         """
+        language = self._normalize_language_code(language)
+
         # Remove punctuation
         punctuation_pattern = r"[,;.!?，。；！？、\s]+"
         cleaned_text = re.sub(punctuation_pattern, "", text)
@@ -101,6 +120,7 @@ class LyricsAnalyzer:
         Returns:
             Rhyme ending string
         """
+        language = self._normalize_language_code(language)
         text = text.strip()
         if not text:
             return ""
@@ -137,6 +157,7 @@ class LyricsAnalyzer:
         Returns:
             True if texts rhyme
         """
+        language = self._normalize_language_code(language)
         rhyme1 = self.extract_rhyme_ending(text1, language)
         rhyme2 = self.extract_rhyme_ending(text2, language)
 
@@ -156,6 +177,7 @@ class LyricsAnalyzer:
         Returns:
             List of syllable patterns, e.g., [[1, 1, 3], [1, 2, 1]]
         """
+        language = self._normalize_language_code(language)
         # Segment words for all lines
         all_words = self._segment_words(lines, language)
 
@@ -178,6 +200,7 @@ class LyricsAnalyzer:
         Returns:
             Rhyme scheme string (e.g., "AABB")
         """
+        language = self._normalize_language_code(language)
         if len(lines) < 2:
             return "A"
 
@@ -211,7 +234,6 @@ class LyricsAnalyzer:
         Returns:
             MusicConstraints object
         """
-        from ..lyrics_translation.models import MusicConstraints
 
         lines = [
             line.strip() for line in source_lyrics.strip().split("\n") if line.strip()
@@ -524,10 +546,29 @@ class LyricsAnalyzer:
         return pinyin_text
 
     def _text_to_ipa(self, text: str, lang: str) -> str:
-        """Convert text to IPA using phonemizer"""
-        from phonemizer import phonemize
+        """Convert text to IPA using phonemizer with fallback support"""
+        import logging
 
-        return phonemize(text, language=lang, backend="espeak", strip=True)
+        try:
+            from phonemizer import phonemize
+
+            return phonemize(text, language=lang, backend="espeak", strip=True)
+        except Exception as e:
+            # Try fallback: use base language code (e.g., "en" from "en-gb")
+            if "-" in lang:
+                base_lang = lang.split("-")[0]
+                try:
+                    from phonemizer import phonemize
+
+                    return phonemize(
+                        text, language=base_lang, backend="espeak", strip=True
+                    )
+                except Exception:
+                    pass
+
+            # Final fallback: return original text
+            logging.debug(f"Could not phonemize text for language {lang}: {e}")
+            return text
 
     def _segment_words(self, lines: list[str], language: str) -> list[list[str]]:
         """
@@ -540,6 +581,7 @@ class LyricsAnalyzer:
         Returns:
             List of word lists for each line
         """
+        language = self._normalize_language_code(language)
         if not lines:
             return []
 

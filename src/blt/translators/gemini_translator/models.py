@@ -1,4 +1,4 @@
-"""Models for lyrics translation"""
+"""Models for Gemini lyrics translation"""
 
 import json
 from datetime import datetime
@@ -7,11 +7,9 @@ from typing import Optional, TypedDict, Annotated
 from operator import add
 from pydantic import BaseModel, Field
 
-from blt.translators.shared.models import MusicConstraints
 
-
-class LyricsTranslationState(TypedDict):
-    """State for constraint-based lyrics translation graph"""
+class GeminiTranslationState(TypedDict):
+    """State for Gemini lyrics translation graph"""
 
     # Input
     source_lyrics: str
@@ -19,7 +17,6 @@ class LyricsTranslationState(TypedDict):
     target_lang: str
 
     # Constraints
-    constraints: Optional[dict]  # MusicConstraints as dict
     syllable_counts: Optional[list[int]]
     rhyme_scheme: Optional[str]
     syllable_patterns: Optional[list[list[int]]]
@@ -30,43 +27,29 @@ class LyricsTranslationState(TypedDict):
 
     # Metrics
     translation_syllable_counts: Optional[list[int]]
-    translation_rhyme_endings: Optional[list[str]]
-    translation_syllable_patterns: Optional[list[list[int]]]
+    translation_rhyme_scheme: Optional[str]
 
     # Validation
     validation_passed: Optional[bool]
-    validation_score: Optional[float]
+    validation_details: Optional[dict]
 
     # Control
     attempt: int
     max_attempts: int
-    all_lines_done: Optional[bool]
-    current_refinement_idx: int
     messages: Annotated[list, add]
 
 
-class LyricTranslation(BaseModel):
-    """Standard lyrics translation output"""
+class GeminiTranslation(BaseModel):
+    """Gemini translation output model"""
 
     translated_lines: list[str] = Field(description="Translated lyrics line by line")
-    syllable_counts: list[int] = Field(
-        description="Syllable count per line (LLM outputs, we recalculate)"
-    )
-    rhyme_endings: list[str] = Field(
-        description="Rhyme ending per line (LLM outputs, we recalculate)"
-    )
-    syllable_patterns: Optional[list[list[int]]] = Field(
-        default=None,
-        description="Syllable patterns per line (LLM outputs, we recalculate)",
-    )
-    reasoning: str = Field(description="Translation reasoning and considerations")
-    tool_call_stats: Optional[dict[str, int]] = Field(
-        default=None, description="Tool call statistics: {tool_name: call_count}"
-    )
+    syllable_counts: list[int] = Field(description="Syllable count per line")
+    rhyme_scheme: str = Field(default="", description="Rhyme scheme (e.g., ABCDAECDD)")
+    validation: dict = Field(default_factory=dict, description="Validation results")
+    reasoning: str = Field(default="", description="Translation reasoning")
 
     def save(self, output_path: str | Path, format: str = "json") -> None:
-        """
-        Save translation result to file
+        """Save translation result to file
 
         Args:
             output_path: Output file path
@@ -97,27 +80,25 @@ class LyricTranslation(BaseModel):
         """Save as plain text format"""
         with open(output_path, "w", encoding="utf-8") as f:
             f.write("=" * 60 + "\n")
-            f.write("Translation Result\n")
+            f.write("Gemini Translation Result\n")
             f.write("=" * 60 + "\n\n")
 
             for i, line in enumerate(self.translated_lines, 1):
                 f.write(f"{i}. {line}\n")
 
             f.write(f"\nSyllable counts: {self.syllable_counts}\n")
-            f.write(f"Rhyme endings: {self.rhyme_endings}\n\n")
+            f.write(f"Rhyme scheme: {self.rhyme_scheme}\n\n")
 
-            if self.tool_call_stats:
-                f.write("Tool call statistics:\n")
-                for tool_name, count in self.tool_call_stats.items():
-                    f.write(f"  - {tool_name}: {count}\n")
-                f.write("\n")
+            f.write("Validation Results:\n")
+            for key, value in self.validation.items():
+                f.write(f"  - {key}: {value}\n")
 
-            f.write(f"Translation reasoning:\n{self.reasoning}\n")
+            f.write(f"\nReasoning:\n{self.reasoning}\n")
 
     def _save_markdown(self, output_path: Path) -> None:
         """Save as Markdown format"""
         with open(output_path, "w", encoding="utf-8") as f:
-            f.write("# Translation Result\n\n")
+            f.write("# Gemini Translation Result\n\n")
             f.write(f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n")
 
             f.write("## Translation\n\n")
@@ -126,12 +107,11 @@ class LyricTranslation(BaseModel):
 
             f.write("\n## Music Features\n\n")
             f.write(f"- **Syllable counts**: {self.syllable_counts}\n")
-            f.write(f"- **Rhyme endings**: {self.rhyme_endings}\n")
+            f.write(f"- **Rhyme scheme**: {self.rhyme_scheme}\n")
 
-            if self.tool_call_stats:
-                f.write("\n## Tool Call Statistics\n\n")
-                for tool_name, count in self.tool_call_stats.items():
-                    f.write(f"- **{tool_name}**: {count}\n")
+            f.write("\n## Validation\n\n")
+            for key, value in self.validation.items():
+                f.write(f"- **{key}**: {value}\n")
 
-            f.write("\n## Translation Reasoning\n\n")
+            f.write("\n## Reasoning\n\n")
             f.write(f"{self.reasoning}\n")

@@ -38,6 +38,7 @@ dependencies = [
     "openai-whisper>=20250101",
     "opencc-python-reimplemented>=0.1.7",
     "opencv-python>=4.11.0.86",
+    "langchain-google-genai>=4.0.0",
 ]
 
 [project.urls]
@@ -57,7 +58,10 @@ packages = ["src/blt"]
 
 [dependency-groups]
 dev = [
+    "beautifulsoup4>=4.14.3",
     "build>=1.3.0",
+    "httpx>=0.28.1",
+    "lxml>=6.0.2",
     "ruff>=0.14.6",
     "twine>=6.2.0",
 ]
