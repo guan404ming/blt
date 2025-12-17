@@ -2,14 +2,20 @@
 """
 Run Translation Quality Experiments
 
-CLI tool to benchmark translation quality comparing agent vs baseline.
+CLI tool to benchmark translation quality.
 
 Usage:
-    # Run experiment for a single language pair
+    # Run agent for single language pair (load all from JSON)
+    python -m benchmarks.run_experiment cmn en-us
+
+    # Run agent with specific sample count
     python -m benchmarks.run_experiment cmn en-us --samples 5
 
+    # Run baseline for single language pair
+    python -m benchmarks.run_experiment cmn en-us --mode base
+
     # Run all language pairs
-    python -m benchmarks.run_experiment --all --samples 10
+    python -m benchmarks.run_experiment --all
 
     # Use custom test suite
     python -m benchmarks.run_experiment --test-suite benchmarks/test_suites/cmn_en.json
@@ -18,6 +24,7 @@ Usage:
 import os
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 # Disable LangChain tracing before any imports
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -57,27 +64,28 @@ def main():
         help="Run all language pairs",
     )
     parser.add_argument(
+        "-m",
+        "--mode",
+        choices=["base", "agent"],
+        default="agent",
+        help="Run base (baseline) or agent (default: agent)",
+    )
+    parser.add_argument(
         "--samples",
         type=int,
-        default=10,
-        help="Number of test samples per language pair (default: 10)",
+        default=None,
+        help="Number of samples per pair (default: all from JSON)",
     )
     parser.add_argument(
         "--test-suite",
         type=str,
-        help="Path to pre-created test suite JSON",
+        help="Path to test suite JSON",
     )
     parser.add_argument(
         "--data-dir",
         type=str,
         default="benchmarks/data",
-        help="Directory with scraped lyrics data (default: benchmarks/data)",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="benchmarks/results",
-        help="Output directory for results (default: benchmarks/results)",
+        help="Lyrics data directory (default: benchmarks/data)",
     )
     parser.add_argument(
         "--model",
@@ -86,17 +94,10 @@ def main():
         help="Ollama model name",
     )
     parser.add_argument(
-        "--base-url",
-        type=str,
-        default="http://localhost:11434",
-        help="Ollama API base URL",
-    )
-
-    parser.add_argument(
         "--max-lines",
         type=int,
-        default=20,
-        help="Maximum lines per test case (default: 20)",
+        default=5,
+        help="Max lines per test case (default: 5)",
     )
 
     args = parser.parse_args()
@@ -109,12 +110,16 @@ def main():
     ):
         parser.error("Must specify language pair, --all, or --test-suite")
 
+    # Fixed values
+    base_url = "http://localhost:11434"
+    output_dir = Path("benchmarks/results")
+
     # Initialize runner and reporter
     print("\n🔬 Initializing experiment runner...")
+    print(f"   Mode: {args.mode}")
     print(f"   Model: {args.model}")
-    print(f"   Ollama URL: {args.base_url}")
 
-    runner = ExperimentRunner(model=args.model, base_url=args.base_url)
+    runner = ExperimentRunner(model=args.model, base_url=base_url)
     reporter = ComparisonReporter()
 
     # Determine language pairs to test
@@ -147,7 +152,7 @@ def main():
     all_results = []
     failed_pairs = []
 
-    for source_lang, target_lang in language_pairs:
+    for source_lang, target_lang in tqdm(language_pairs, desc="Language Pairs", unit="pair"):
         pair_key = f"{source_lang}→{target_lang}"
         print(f"\n{'=' * 60}")
         print(f"Language Pair: {pair_key}")
@@ -164,9 +169,6 @@ def main():
                     and tc["target_lang"] == target_lang
                 ]
             else:
-                # Sample from scraped data
-                print(f"\n📊 Sampling {args.samples} test cases...")
-
                 # Determine source file
                 source_file_map = {
                     "cmn": "cmn_lyrics.json",
@@ -183,13 +185,26 @@ def main():
                     continue
 
                 source_lyrics = load_lyrics_from_json(source_file, source_lang)
-                pair_test_cases = sample_test_cases(
-                    source_lyrics=source_lyrics,
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                    num_samples=args.samples,
-                    max_lines=args.max_lines,
-                )
+
+                # If samples not specified, load all from JSON
+                if args.samples is None:
+                    print(f"\n📊 Loading all test cases from {source_file.name}...")
+                    pair_test_cases = sample_test_cases(
+                        source_lyrics=source_lyrics,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        num_samples=None,  # None means all
+                        max_lines=args.max_lines,
+                    )
+                else:
+                    print(f"\n📊 Sampling {args.samples} test cases...")
+                    pair_test_cases = sample_test_cases(
+                        source_lyrics=source_lyrics,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        num_samples=args.samples,
+                        max_lines=args.max_lines,
+                    )
 
             if not pair_test_cases:
                 print(f"⚠️  No test cases for {pair_key}, skipping")
@@ -197,11 +212,16 @@ def main():
 
             print(f"   Test cases: {len(pair_test_cases)}")
 
+            # Set checkpoint path with mode
+            checkpoint_path = output_dir / f"{pair_key}_{args.mode}.json"
+
             # Run experiment
-            output_dir = Path(args.output_dir)
             results = runner.run_experiment(
                 test_cases=pair_test_cases,
-                experiment_id=f"{pair_key}_{len(pair_test_cases)}samples",
+                experiment_id=f"{pair_key}_{args.mode}",
+                mode=args.mode,
+                checkpoint_path=checkpoint_path,
+                checkpoint_interval=5,
             )
 
             all_results.append(results)
@@ -210,8 +230,15 @@ def main():
             runner.save_results(results, output_dir)
 
             # Generate and save report
-            report_path = output_dir / f"{results.experiment_id}.md"
-            reporter.generate_markdown_report(results, report_path)
+            try:
+                report_path = output_dir / f"{results.experiment_id}.md"
+                reporter.generate_markdown_report(results, report_path)
+            except Exception as e:
+                print(f"⚠️  Could not generate report: {e}")
+
+            # Check if we have valid metrics
+            has_metrics = bool(results.agent_avg_metrics or results.baseline_avg_metrics)
+
         except Exception as e:
             error_msg = f"{type(e).__name__}: {str(e)[:80]}"
             print(f"\n❌ Error processing {pair_key}: {error_msg}")
@@ -219,32 +246,61 @@ def main():
             print("⏭️  Continuing with next language pair...")
             continue
 
-        # Print summary
+        # Print summary only if we have metrics
+        if not has_metrics:
+            continue
+
         print(f"\n📊 Summary for {pair_key}:")
 
-        # SER (lower is better)
-        ser_agent = results.agent_avg_metrics["ser"]
-        ser_baseline = results.baseline_avg_metrics["ser"]
-        print("   SER (Syllable Error Rate) ↓")
-        print(f"      Agent:      {ser_agent:.2%}")
-        print(f"      Baseline:   {ser_baseline:.2%}")
-        print(f"      Improvement: {ser_baseline - ser_agent:+.2%}")
+        if args.mode is None:
+            # Show comparison (both methods)
+            if results.agent_avg_metrics and results.baseline_avg_metrics:
+                # SER (lower is better)
+                ser_agent = results.agent_avg_metrics.get("ser")
+                ser_baseline = results.baseline_avg_metrics.get("ser")
+                if ser_agent is not None and ser_baseline is not None:
+                    print("   SER (Syllable Error Rate) ↓")
+                    print(f"      Agent:      {ser_agent:.2%}")
+                    print(f"      Baseline:   {ser_baseline:.2%}")
+                    print(f"      Improvement: {ser_baseline - ser_agent:+.2%}")
 
-        # SCRE (lower is better)
-        scre_agent = results.agent_avg_metrics["scre"]
-        scre_baseline = results.baseline_avg_metrics["scre"]
-        print("   SCRE (Syllable Count Relative Error) ↓")
-        print(f"      Agent:      {scre_agent:.2%}")
-        print(f"      Baseline:   {scre_baseline:.2%}")
-        print(f"      Improvement: {scre_baseline - scre_agent:+.2%}")
+                # SCRE (lower is better)
+                scre_agent = results.agent_avg_metrics.get("scre")
+                scre_baseline = results.baseline_avg_metrics.get("scre")
+                if scre_agent is not None and scre_baseline is not None:
+                    print("   SCRE (Syllable Count Relative Error) ↓")
+                    print(f"      Agent:      {scre_agent:.2%}")
+                    print(f"      Baseline:   {scre_baseline:.2%}")
+                    print(f"      Improvement: {scre_baseline - scre_agent:+.2%}")
 
-        # ARI (higher is better, range [-1, 1])
-        ari_agent = results.agent_avg_metrics["ari"]
-        ari_baseline = results.baseline_avg_metrics["ari"]
-        print("   ARI (Adjusted Rand Index) ↑")
-        print(f"      Agent:      {ari_agent:.3f}")
-        print(f"      Baseline:   {ari_baseline:.3f}")
-        print(f"      Improvement: {ari_agent - ari_baseline:+.3f}")
+                # ARI (higher is better, range [-1, 1])
+                ari_agent = results.agent_avg_metrics.get("ari")
+                ari_baseline = results.baseline_avg_metrics.get("ari")
+                if ari_agent is not None and ari_baseline is not None:
+                    print("   ARI (Adjusted Rand Index) ↑")
+                    print(f"      Agent:      {ari_agent:.3f}")
+                    print(f"      Baseline:   {ari_baseline:.3f}")
+                    print(f"      Improvement: {ari_agent - ari_baseline:+.3f}")
+        elif args.mode == "agent":
+            # Show agent only
+            metrics = results.agent_avg_metrics
+            if metrics:
+                print("   SER (Syllable Error Rate) ↓")
+                print(f"      {metrics.get('ser', 'N/A')}")
+                print("   SCRE (Syllable Count Relative Error) ↓")
+                print(f"      {metrics.get('scre', 'N/A')}")
+                print("   ARI (Adjusted Rand Index) ↑")
+                print(f"      {metrics.get('ari', 'N/A')}")
+        else:  # args.mode == "base"
+            # Show baseline only
+            metrics = results.baseline_avg_metrics
+            if metrics:
+                print("   SER (Syllable Error Rate) ↓")
+                print(f"      {metrics.get('ser', 'N/A')}")
+                print("   SCRE (Syllable Count Relative Error) ↓")
+                print(f"      {metrics.get('scre', 'N/A')}")
+                print("   ARI (Adjusted Rand Index) ↑")
+                print(f"      {metrics.get('ari', 'N/A')}")
 
     # Final summary
     print(f"\n{'=' * 60}")
@@ -259,7 +315,7 @@ def main():
         print()
         for pair_key, error in failed_pairs:
             print(f"     ❌ {pair_key}: {error}")
-    print(f"   Results saved to: {args.output_dir}")
+    print(f"   Results saved to: {output_dir}")
     print()
 
 

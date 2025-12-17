@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import TypedDict, Literal
 from dataclasses import dataclass, asdict
+from tqdm import tqdm
 
 from .baseline import BaselineTranslator
 from .evaluator import TranslationEvaluator, EvaluationMetrics
@@ -126,19 +127,29 @@ class ExperimentRunner:
         self,
         test_cases: list[TestCase],
         experiment_id: str | None = None,
+        mode: Literal["base", "agent"] | None = None,
+        checkpoint_path: str | Path | None = None,
+        checkpoint_interval: int = 5,
     ) -> ExperimentResults:
         """
-        Run full experiment on test cases
+        Run full experiment on test cases with checkpoint support
 
         Args:
             test_cases: List of test cases to evaluate
             experiment_id: Optional experiment ID (auto-generated if None)
+            mode: Run only "base" (baseline) or "agent" (None = run both)
+            checkpoint_path: Path to save/resume checkpoints
+            checkpoint_interval: Save checkpoint every N test cases (default: 5)
 
         Returns:
             ExperimentResults with all results and comparisons
         """
         if not test_cases:
             raise ValueError("No test cases provided")
+
+        # Convert checkpoint_path to Path
+        if checkpoint_path:
+            checkpoint_path = Path(checkpoint_path)
 
         # Generate experiment ID
         if experiment_id is None:
@@ -150,46 +161,114 @@ class ExperimentRunner:
         else:
             timestamp = experiment_id
 
-        # Run all test cases
+        # Try to load existing checkpoint
+        start_index = 0
         results: list[TranslationResult] = []
         failed_tests: list[tuple[str, str]] = []
 
-        for i, test_case in enumerate(test_cases, 1):
-            print(f"\n[{i}/{len(test_cases)}] Running test: {test_case['id']}")
-            print(
-                f"  Language pair: {test_case['source_lang']} → {test_case['target_lang']}"
-            )
+        if checkpoint_path and checkpoint_path.exists():
+            print(f"📂 Loading checkpoint from: {checkpoint_path}")
+            try:
+                with open(checkpoint_path, "r", encoding="utf-8") as f:
+                    checkpoint_data = json.load(f)
+                    # Reconstruct results from checkpoint
+                    for result_dict in checkpoint_data.get("results", []):
+                        result_dict["metrics"] = result_dict.get("metrics", {})
+                        result = TranslationResult(
+                            test_id=result_dict["test_id"],
+                            source_lang=result_dict["source_lang"],
+                            target_lang=result_dict["target_lang"],
+                            method=result_dict["method"],
+                            source_lines=result_dict["source_lines"],
+                            translated_lines=result_dict["translated_lines"],
+                            metrics=result_dict["metrics"],
+                            time_seconds=result_dict["time_seconds"],
+                            metadata=result_dict.get("metadata", {}),
+                        )
+                        results.append(result)
+                    # Calculate how many tests have been completed
+                    completed_test_ids = set(r.test_id for r in results)
+                    for idx, tc in enumerate(test_cases):
+                        if tc["id"] not in completed_test_ids:
+                            start_index = idx
+                            break
+                    else:
+                        # All tests already completed
+                        start_index = len(test_cases)
+                    print(f"✅ Resumed from test {start_index + 1}/{len(test_cases)}")
+            except Exception as e:
+                print(f"⚠️  Could not load checkpoint: {e}")
+                results = []
+                start_index = 0
+
+        # Run test cases starting from start_index
+        test_iter = enumerate(test_cases[start_index:], start=start_index + 1)
+        test_iter = tqdm(
+            test_iter,
+            total=len(test_cases),
+            initial=start_index,
+            desc=f"Tests [{test_cases[0]['source_lang']}→{test_cases[0]['target_lang']}]",
+            unit="test",
+            leave=False,
+        )
+
+        for i, test_case in test_iter:
+            # print(f"\n[{i}/{len(test_cases)}] Running test: {test_case['id']}")
+            # print(
+            #     f"  Language pair: {test_case['source_lang']} → {test_case['target_lang']}"
+            # )
 
             try:
                 # Run baseline translation
-                print("  - Baseline translation...")
-                baseline_result = self._run_baseline(test_case)
-                results.append(baseline_result)
+                if mode is None or mode == "base":
+                    print("  - Baseline translation...")
+                    baseline_result = self._run_baseline(test_case)
+                    results.append(baseline_result)
+                else:
+                    baseline_result = None
 
                 # Run agent translation
-                print("  - Agent translation...")
-                agent_result = self._run_agent(test_case)
-                results.append(agent_result)
+                if mode is None or mode == "agent":
+                    print("  - Agent translation...")
+                    agent_result = self._run_agent(test_case)
+                    results.append(agent_result)
+                else:
+                    agent_result = None
 
                 print("\n  Results:")
                 print(f"  Source Line 1 - 2: {test_case['source_lines'][0:2]}")
-                print(
-                    f"  Baseline Line 1 - 2: {baseline_result.translated_lines[0:2] if baseline_result.translated_lines else 'N/A'}"
-                )
-                print(
-                    f"  Agent Line 1 - 2:    {agent_result.translated_lines[0:2] if agent_result.translated_lines else 'N/A'}"
-                )
+                if baseline_result:
+                    print(
+                        f"  Baseline Line 1 - 2: {baseline_result.translated_lines[0:2] if baseline_result.translated_lines else 'N/A'}"
+                    )
+                if agent_result:
+                    print(
+                        f"  Agent Line 1 - 2:    {agent_result.translated_lines[0:2] if agent_result.translated_lines else 'N/A'}"
+                    )
                 print()
-                print(
-                    f"    Baseline - SER: {baseline_result.metrics['ser']:.2%}, "
-                    f"SCRE: {baseline_result.metrics['scre']:.2%}, "
-                    f"ARI: {baseline_result.metrics['ari']:.2f}"
-                )
-                print(
-                    f"    Agent    - SER: {agent_result.metrics['ser']:.2%}, "
-                    f"SCRE: {agent_result.metrics['scre']:.2%}, "
-                    f"ARI: {agent_result.metrics['ari']:.2f}"
-                )
+                if baseline_result:
+                    print(
+                        f"    Baseline - SER: {baseline_result.metrics['ser']:.2%}, "
+                        f"SCRE: {baseline_result.metrics['scre']:.2%}, "
+                        f"ARI: {baseline_result.metrics['ari']:.2f}"
+                    )
+                if agent_result:
+                    print(
+                        f"    Agent    - SER: {agent_result.metrics['ser']:.2%}, "
+                        f"SCRE: {agent_result.metrics['scre']:.2%}, "
+                        f"ARI: {agent_result.metrics['ari']:.2f}"
+                    )
+
+                # Save checkpoint every N test cases
+                if checkpoint_path and i % checkpoint_interval == 0:
+                    self._save_checkpoint(
+                        checkpoint_path,
+                        results,
+                        experiment_id,
+                        test_cases[0]["source_lang"],
+                        test_cases[0]["target_lang"],
+                    )
+                    print(f"💾 Checkpoint saved ({i} tests completed)")
 
             except Exception as e:
                 error_msg = f"{type(e).__name__}: {str(e)[:100]}"
@@ -198,13 +277,14 @@ class ExperimentRunner:
                 print("  ⏭️  Continuing with next test...")
 
         # Print failed tests summary
+        result_count = len(results) // (1 if mode else 2)  # Divide by 2 only if running both
         if failed_tests:
             print(f"\n{'=' * 60}")
             print(f"⚠️  {len(failed_tests)} test(s) failed:")
             print(f"{'=' * 60}")
             for test_id, error in failed_tests:
                 print(f"  ❌ {test_id}: {error}")
-            print(f"✅ {len(results) // 2} test(s) completed successfully")
+            print(f"✅ {result_count} test(s) completed successfully")
         else:
             print(f"\n{'=' * 60}")
             print(f"✅ All {len(test_cases)} test(s) completed successfully!")
@@ -310,15 +390,39 @@ class ExperimentRunner:
 
         averages = {}
         for key in metrics_keys:
-            values = [r.metrics[key] for r in results]
-            averages[key] = sum(values) / len(values)
+            values = [r.metrics.get(key) for r in results if r.metrics.get(key) is not None]
+            if values:
+                averages[key] = sum(values) / len(values)
 
         # Average time
-        averages["avg_time_seconds"] = sum(r.time_seconds for r in results) / len(
-            results
-        )
+        if results:
+            averages["avg_time_seconds"] = sum(r.time_seconds for r in results) / len(
+                results
+            )
 
         return averages
+
+    def _save_checkpoint(
+        self,
+        checkpoint_path: Path,
+        results: list[TranslationResult],
+        experiment_id: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> None:
+        """Save intermediate checkpoint"""
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Convert results to dict
+        results_dict = {
+            "experiment_id": experiment_id,
+            "source_lang": source_lang,
+            "target_lang": target_lang,
+            "results": [asdict(r) for r in results],
+        }
+
+        with open(checkpoint_path, "w", encoding="utf-8") as f:
+            json.dump(results_dict, f, ensure_ascii=False, indent=2)
 
     def save_results(
         self,

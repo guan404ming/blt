@@ -111,10 +111,7 @@ class BaselineTranslator:
         source_name = lang_names.get(source_lang, source_lang)
         target_name = lang_names.get(target_lang, target_lang)
 
-        return f"""Translate these song lyrics from {source_name} to {target_name}.
-
-Preserve the meaning and keep the same number of lines.
-Output only the translated lyrics, nothing else.
+        return f"""Translate song lyrics from {source_name} to {target_name}.
 
 Source lyrics:
 {source_text}

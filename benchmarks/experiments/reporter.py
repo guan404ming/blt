@@ -90,48 +90,82 @@ class ComparisonReporter:
 
     def _format_summary_table(self, results: ExperimentResults) -> str:
         """Format executive summary table for three core metrics"""
-        agent = results.agent_avg_metrics
-        baseline = results.baseline_avg_metrics
+        agent = results.agent_avg_metrics or {}
+        baseline = results.baseline_avg_metrics or {}
 
-        def delta_percentage(metric):
-            """Calculate delta as percentage (lower better for SER/SCRE, higher for ARI)"""
-            diff = agent[metric] - baseline[metric]
-            if metric in ("ser", "scre"):
-                # For SER and SCRE, lower is better, so negative delta is good
-                if diff < -0.05:
-                    indicator = "🟢"
-                elif diff > 0.05:
-                    indicator = "🔴"
-                else:
-                    indicator = "⚪"
-                return f"{indicator} {diff:+.2%}"
-            elif metric == "ari":
-                # For ARI, higher is better
-                if diff > 0.1:
-                    indicator = "🟢"
-                elif diff < -0.1:
-                    indicator = "🔴"
-                else:
-                    indicator = "⚪"
-                return f"{indicator} {diff:+.2f}"
-            else:
-                # Default: higher is better
-                if diff > 0.05:
-                    indicator = "🟢"
-                elif diff < -0.05:
-                    indicator = "🔴"
-                else:
-                    indicator = "⚪"
-                return f"{indicator} {diff:+.2%}"
+        # Check if we have both methods or just one
+        has_agent = bool(agent)
+        has_baseline = bool(baseline)
 
-        lines = [
-            "| Metric | Agent | Baseline | Delta |",
-            "|--------|-------|----------|-------|",
-            f"| **SER (Syllable Error Rate)** ↓ | {agent['ser']:.2%} | {baseline['ser']:.2%} | {delta_percentage('ser')} |",
-            f"| **SCRE (Syllable Count Rel. Error)** ↓ | {agent['scre']:.2%} | {baseline['scre']:.2%} | {delta_percentage('scre')} |",
-            f"| **ARI (Adjusted Rand Index)** ↑ | {agent['ari']:.2f} | {baseline['ari']:.2f} | {delta_percentage('ari')} |",
-            f"| **Avg Time (s)** | {agent['avg_time_seconds']:.1f} | {baseline['avg_time_seconds']:.1f} | {agent['avg_time_seconds'] - baseline['avg_time_seconds']:+.1f} |",
-        ]
+        # If only one method, show single column
+        if has_agent and not has_baseline:
+            lines = [
+                "| Metric | Agent |",
+                "|--------|-------|",
+                f"| **SER (Syllable Error Rate)** ↓ | {agent.get('ser', 'N/A'):.2%} |" if agent.get('ser') else "| **SER (Syllable Error Rate)** ↓ | N/A |",
+                f"| **SCRE (Syllable Count Rel. Error)** ↓ | {agent.get('scre', 'N/A'):.2%} |" if agent.get('scre') else "| **SCRE (Syllable Count Rel. Error)** ↓ | N/A |",
+                f"| **ARI (Adjusted Rand Index)** ↑ | {agent.get('ari', 'N/A'):.2f} |" if agent.get('ari') else "| **ARI (Adjusted Rand Index)** ↑ | N/A |",
+                f"| **Avg Time (s)** | {agent.get('avg_time_seconds', 'N/A'):.1f} |" if agent.get('avg_time_seconds') else "| **Avg Time (s)** | N/A |",
+            ]
+        elif has_baseline and not has_agent:
+            lines = [
+                "| Metric | Baseline |",
+                "|--------|----------|",
+                f"| **SER (Syllable Error Rate)** ↓ | {baseline.get('ser', 'N/A'):.2%} |" if baseline.get('ser') else "| **SER (Syllable Error Rate)** ↓ | N/A |",
+                f"| **SCRE (Syllable Count Rel. Error)** ↓ | {baseline.get('scre', 'N/A'):.2%} |" if baseline.get('scre') else "| **SCRE (Syllable Count Rel. Error)** ↓ | N/A |",
+                f"| **ARI (Adjusted Rand Index)** ↑ | {baseline.get('ari', 'N/A'):.2f} |" if baseline.get('ari') else "| **ARI (Adjusted Rand Index)** ↑ | N/A |",
+                f"| **Avg Time (s)** | {baseline.get('avg_time_seconds', 'N/A'):.1f} |" if baseline.get('avg_time_seconds') else "| **Avg Time (s)** | N/A |",
+            ]
+        else:
+            # Both methods present - show comparison
+            def delta_percentage(metric):
+                """Calculate delta as percentage (lower better for SER/SCRE, higher for ARI)"""
+                agent_val = agent.get(metric)
+                baseline_val = baseline.get(metric)
+                if agent_val is None or baseline_val is None:
+                    return "N/A"
+
+                diff = agent_val - baseline_val
+                if metric in ("ser", "scre"):
+                    # For SER and SCRE, lower is better, so negative delta is good
+                    if diff < -0.05:
+                        indicator = "🟢"
+                    elif diff > 0.05:
+                        indicator = "🔴"
+                    else:
+                        indicator = "⚪"
+                    return f"{indicator} {diff:+.2%}"
+                elif metric == "ari":
+                    # For ARI, higher is better
+                    if diff > 0.1:
+                        indicator = "🟢"
+                    elif diff < -0.1:
+                        indicator = "🔴"
+                    else:
+                        indicator = "⚪"
+                    return f"{indicator} {diff:+.2f}"
+                else:
+                    # Default: higher is better
+                    if diff > 0.05:
+                        indicator = "🟢"
+                    elif diff < -0.05:
+                        indicator = "🔴"
+                    else:
+                        indicator = "⚪"
+                    return f"{indicator} {diff:+.2%}"
+
+            ser_val = f"{agent.get('ser', 'N/A'):.2%}" if agent.get('ser') else "N/A"
+            scre_val = f"{agent.get('scre', 'N/A'):.2%}" if agent.get('scre') else "N/A"
+            ari_val = f"{agent.get('ari', 'N/A'):.2f}" if agent.get('ari') else "N/A"
+
+            lines = [
+                "| Metric | Agent | Baseline | Delta |",
+                "|--------|-------|----------|-------|",
+                f"| **SER (Syllable Error Rate)** ↓ | {ser_val} | {baseline.get('ser', 'N/A'):.2%} | {delta_percentage('ser')} |" if baseline.get('ser') else f"| **SER (Syllable Error Rate)** ↓ | {ser_val} | N/A | N/A |",
+                f"| **SCRE (Syllable Count Rel. Error)** ↓ | {scre_val} | {baseline.get('scre', 'N/A'):.2%} | {delta_percentage('scre')} |" if baseline.get('scre') else f"| **SCRE (Syllable Count Rel. Error)** ↓ | {scre_val} | N/A | N/A |",
+                f"| **ARI (Adjusted Rand Index)** ↑ | {ari_val} | {baseline.get('ari', 'N/A'):.2f} | {delta_percentage('ari')} |" if baseline.get('ari') else f"| **ARI (Adjusted Rand Index)** ↑ | {ari_val} | N/A | N/A |",
+                f"| **Avg Time (s)** | {agent.get('avg_time_seconds', 'N/A'):.1f} | {baseline.get('avg_time_seconds', 'N/A'):.1f} | {agent.get('avg_time_seconds', 0) - baseline.get('avg_time_seconds', 0):+.1f} |" if (agent.get('avg_time_seconds') and baseline.get('avg_time_seconds')) else "| **Avg Time (s)** | N/A | N/A | N/A |",
+            ]
 
         return "\n".join(lines)
 
@@ -139,48 +173,57 @@ class ComparisonReporter:
         """Format detailed metrics breakdown for three core metrics"""
         lines = []
 
+        agent = results.agent_avg_metrics or {}
+        baseline = results.baseline_avg_metrics or {}
+
         # SER (Syllable Error Rate)
-        lines.append("### SER: Syllable Error Rate ↓")
-        lines.append("")
-        lines.append(
-            "*Lower is better. Measures edit distance between syllable sequences.*"
-        )
-        lines.append("")
-        lines.append(f"- **Agent SER**: {results.agent_avg_metrics['ser']:.2%}")
-        lines.append(f"- **Baseline SER**: {results.baseline_avg_metrics['ser']:.2%}")
-        ser_improvement = (
-            results.baseline_avg_metrics["ser"] - results.agent_avg_metrics["ser"]
-        )
-        lines.append(f"- **Improvement**: {ser_improvement:+.2%} (lower is better)")
-        lines.append("")
+        if agent.get('ser') or baseline.get('ser'):
+            lines.append("### SER: Syllable Error Rate ↓")
+            lines.append("")
+            lines.append(
+                "*Lower is better. Measures edit distance between syllable sequences.*"
+            )
+            lines.append("")
+            if agent.get('ser'):
+                lines.append(f"- **Agent SER**: {agent['ser']:.2%}")
+            if baseline.get('ser'):
+                lines.append(f"- **Baseline SER**: {baseline['ser']:.2%}")
+            if agent.get('ser') and baseline.get('ser'):
+                ser_improvement = baseline["ser"] - agent["ser"]
+                lines.append(f"- **Improvement**: {ser_improvement:+.2%} (lower is better)")
+            lines.append("")
 
         # SCRE (Syllable Count Relative Error)
-        lines.append("### SCRE: Syllable Count Relative Error ↓")
-        lines.append("")
-        lines.append(
-            "*Lower is better. Average relative error in syllable counts per line.*"
-        )
-        lines.append("")
-        lines.append(f"- **Agent SCRE**: {results.agent_avg_metrics['scre']:.2%}")
-        lines.append(f"- **Baseline SCRE**: {results.baseline_avg_metrics['scre']:.2%}")
-        scre_improvement = (
-            results.baseline_avg_metrics["scre"] - results.agent_avg_metrics["scre"]
-        )
-        lines.append(f"- **Improvement**: {scre_improvement:+.2%} (lower is better)")
-        lines.append("")
+        if agent.get('scre') or baseline.get('scre'):
+            lines.append("### SCRE: Syllable Count Relative Error ↓")
+            lines.append("")
+            lines.append(
+                "*Lower is better. Average relative error in syllable counts per line.*"
+            )
+            lines.append("")
+            if agent.get('scre'):
+                lines.append(f"- **Agent SCRE**: {agent['scre']:.2%}")
+            if baseline.get('scre'):
+                lines.append(f"- **Baseline SCRE**: {baseline['scre']:.2%}")
+            if agent.get('scre') and baseline.get('scre'):
+                scre_improvement = baseline["scre"] - agent["scre"]
+                lines.append(f"- **Improvement**: {scre_improvement:+.2%} (lower is better)")
+            lines.append("")
 
         # ARI (Adjusted Rand Index)
-        lines.append("### ARI: Adjusted Rand Index ↑")
-        lines.append("")
-        lines.append("*Higher is better [-1, 1]. Measures rhyme clustering agreement.*")
-        lines.append("")
-        lines.append(f"- **Agent ARI**: {results.agent_avg_metrics['ari']:.3f}")
-        lines.append(f"- **Baseline ARI**: {results.baseline_avg_metrics['ari']:.3f}")
-        ari_improvement = (
-            results.agent_avg_metrics["ari"] - results.baseline_avg_metrics["ari"]
-        )
-        lines.append(f"- **Improvement**: {ari_improvement:+.3f}")
-        lines.append("")
+        if agent.get('ari') is not None or baseline.get('ari') is not None:
+            lines.append("### ARI: Adjusted Rand Index ↑")
+            lines.append("")
+            lines.append("*Higher is better [-1, 1]. Measures rhyme clustering agreement.*")
+            lines.append("")
+            if agent.get('ari') is not None:
+                lines.append(f"- **Agent ARI**: {agent['ari']:.3f}")
+            if baseline.get('ari') is not None:
+                lines.append(f"- **Baseline ARI**: {baseline['ari']:.3f}")
+            if agent.get('ari') is not None and baseline.get('ari') is not None:
+                ari_improvement = agent["ari"] - baseline["ari"]
+                lines.append(f"- **Improvement**: {ari_improvement:+.3f}")
+            lines.append("")
 
         return "\n".join(lines)
 

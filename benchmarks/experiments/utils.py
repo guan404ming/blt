@@ -7,7 +7,6 @@ Helper functions for preparing test cases from scraped data.
 from __future__ import annotations
 import re
 import json
-import random
 from pathlib import Path
 from .runner import TestCase
 
@@ -65,39 +64,38 @@ def sample_test_cases(
     source_lyrics: list[dict],
     source_lang: str,
     target_lang: str,
-    num_samples: int = 10,
+    num_samples: int | None = 10,
     min_lines: int = 4,
     max_lines: int = 20,
-    seed: int = 42,
 ) -> list[TestCase]:
     """
-    Sample test cases from lyrics dataset
+    Create test cases from lyrics dataset (sequential, no randomization)
 
     Args:
         source_lyrics: List of song dictionaries
         source_lang: Source language code
         target_lang: Target language code
-        num_samples: Number of test cases to sample
+        num_samples: Number of test cases to create (None = all)
         min_lines: Minimum number of lines per sample
         max_lines: Maximum number of lines per sample
-        seed: Random seed for reproducibility
 
     Returns:
         List of TestCase objects
     """
-    random.seed(seed)
-
     # Filter songs with enough lines
     valid_songs = [
         song for song in source_lyrics if song.get("line_count", 0) >= min_lines
     ]
 
-    if len(valid_songs) < num_samples:
+    # If num_samples is None, use all valid songs
+    if num_samples is None:
+        num_samples = len(valid_songs)
+    elif len(valid_songs) < num_samples:
         print(f"Warning: Only {len(valid_songs)} valid songs, requested {num_samples}")
         num_samples = len(valid_songs)
 
-    # Sample songs
-    sampled_songs = random.sample(valid_songs, num_samples)
+    # Take first num_samples songs (sequential, no randomization)
+    sampled_songs = valid_songs[:num_samples]
 
     test_cases = []
     for i, song in enumerate(sampled_songs, 1):
