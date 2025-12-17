@@ -38,6 +38,7 @@ dependencies = [
     "openai-whisper>=20250101",
     "opencc-python-reimplemented>=0.1.7",
     "opencv-python>=4.11.0.86",
+    "langchain-google-genai>=4.0.0",
 ]
 
 [project.urls]
