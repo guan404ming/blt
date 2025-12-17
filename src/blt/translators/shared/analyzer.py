@@ -10,7 +10,7 @@ import hanlp
 import panphon.distance
 from pypinyin import lazy_pinyin
 from dotenv import load_dotenv
-from ..lyrics_translator.models import MusicConstraints
+from .models import MusicConstraints
 
 # Load environment variables from .env file
 load_dotenv()
@@ -37,6 +37,24 @@ class LyricsAnalyzer:
         """Initialize analyzer with lazy-loaded components"""
         self._hanlp_tokenizer = None
 
+    def _normalize_language_code(self, lang: str) -> str:
+        """Normalize language code to standard format"""
+        lang = lang.lower().strip()
+        
+        # Map Chinese variants to cmn
+        if lang in ["zh", "zh-cn", "zh-tw", "chinese"]:
+            return "cmn"
+            
+        # Map English variants to en-us
+        if lang in ["en", "english"]:
+            return "en-us"
+            
+        # Map Japanese variants
+        if lang in ["jp", "japanese"]:
+            return "ja"
+            
+        return lang
+
     # ==================== CORE ANALYSIS METHODS ====================
 
     def text_to_ipa(self, text: str, language: str) -> str:
@@ -50,6 +68,8 @@ class LyricsAnalyzer:
         Returns:
             IPA transcription of the text
         """
+        language = self._normalize_language_code(language)
+        
         # Remove punctuation for cleaner IPA
         punctuation_pattern = r"[,;.!?，。；！？、]+"
         cleaned_text = re.sub(punctuation_pattern, " ", text).strip()
@@ -70,6 +90,8 @@ class LyricsAnalyzer:
         Returns:
             Number of syllables
         """
+        language = self._normalize_language_code(language)
+
         # Remove punctuation
         punctuation_pattern = r"[,;.!?，。；！？、\s]+"
         cleaned_text = re.sub(punctuation_pattern, "", text)
@@ -98,6 +120,7 @@ class LyricsAnalyzer:
         Returns:
             Rhyme ending string
         """
+        language = self._normalize_language_code(language)
         text = text.strip()
         if not text:
             return ""
@@ -134,6 +157,7 @@ class LyricsAnalyzer:
         Returns:
             True if texts rhyme
         """
+        language = self._normalize_language_code(language)
         rhyme1 = self.extract_rhyme_ending(text1, language)
         rhyme2 = self.extract_rhyme_ending(text2, language)
 
@@ -153,6 +177,7 @@ class LyricsAnalyzer:
         Returns:
             List of syllable patterns, e.g., [[1, 1, 3], [1, 2, 1]]
         """
+        language = self._normalize_language_code(language)
         # Segment words for all lines
         all_words = self._segment_words(lines, language)
 
@@ -175,6 +200,7 @@ class LyricsAnalyzer:
         Returns:
             Rhyme scheme string (e.g., "AABB")
         """
+        language = self._normalize_language_code(language)
         if len(lines) < 2:
             return "A"
 
@@ -536,6 +562,7 @@ class LyricsAnalyzer:
         Returns:
             List of word lists for each line
         """
+        language = self._normalize_language_code(language)
         if not lines:
             return []
 
