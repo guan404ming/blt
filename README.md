@@ -113,7 +113,7 @@ uv sync
 Download and place these model files in `assets/`:
 
 - **Wav2Lip model** (for lip-sync): `assets/wav2lip_gan.pth`
-  - Download: https://huggingface.co/spaces/r3gm/rvc_zero
+  - Download: https://huggingface.co/Nekochu/Wav2Lip/blob/main/wav2lip_gan.pth
 
 - **RVC model** (for voice conversion): `assets/model.pth` and `assets/model.index`
   - Download: https://huggingface.co/spaces/r3gm/rvc_zero or train your own
