@@ -1,28 +1,182 @@
-\begin{thebibliography}{4}
+\begin{thebibliography}{24}
 \providecommand{\natexlab}[1]{#1}
 
-\bibitem[{Ando and Zhang(2005)}]{Ando2005}
-Rie~Kubota Ando and Tong Zhang. 2005.
-\newblock A framework for learning predictive structures from multiple tasks
-  and unlabeled data.
-\newblock \emph{Journal of Machine Learning Research}, 6:1817--1853.
+\bibitem[{Bernard and Titeux(2021)}]{bernard-titeux-2021-phonemizer}
+Mathieu Bernard and Hadrien Titeux. 2021.
+\newblock \href {https://doi.org/10.21105/joss.03958} {Phonemizer: Text to
+  phones transcription for multiple languages in {P}ython}.
+\newblock \emph{Journal of Open Source Software}, 6(68):3958.
 
-\bibitem[{Andrew and Gao(2007)}]{andrew2007scalable}
-Galen Andrew and Jianfeng Gao. 2007.
-\newblock Scalable training of {L1}-regularized log-linear models.
-\newblock In \emph{Proceedings of the 24th International Conference on Machine
-  Learning}, pages 33--40.
+\bibitem[{Cho et~al.(2025)Cho, Kim, Lee, and Yu}]{cho-etal-2025-mavl}
+Woohyun Cho, Youngmin Kim, Sunghyun Lee, and Youngjae Yu. 2025.
+\newblock {MAVL}: A multilingual audio-video lyrics dataset for animated song
+  translation.
+\newblock In \emph{Proceedings of the 2025 Conference on Empirical Methods in
+  Natural Language Processing}.
 
-\bibitem[{Gusfield(1997)}]{Gusfield:97}
-Dan Gusfield. 1997.
-\newblock \emph{Algorithms on Strings, Trees and Sequences}.
-\newblock Cambridge University Press, Cambridge, UK.
+\bibitem[{Franzon(2008)}]{franzon-2008-choices}
+Johan Franzon. 2008.
+\newblock \href {https://doi.org/10.1080/13556509.2008.10799244} {Choices in
+  song translation: Singability in print, subtitles and sung performance}.
+\newblock \emph{The Translator}, 14(2):373--399.
 
-\bibitem[{Rasooli and Tetreault(2015)}]{rasooli-tetrault-2015}
-Mohammad~Sadegh Rasooli and Joel~R. Tetreault. 2015.
-\newblock \href {http://arxiv.org/abs/1503.06733} {Yara parser: {A} fast and
-  accurate dependency parser}.
-\newblock \emph{Computing Research Repository}, arXiv:1503.06733.
-\newblock Version 2.
+\bibitem[{Gao et~al.(2023)Gao, Madaan, Zhou, Alon, Liu, Yang, Callan, and
+  Neubig}]{gao-etal-2023-pal}
+Luyu Gao, Aman Madaan, Shuyan Zhou, Uri Alon, Pengfei Liu, Yiming Yang, Jamie
+  Callan, and Graham Neubig. 2023.
+\newblock \href {https://proceedings.mlr.press/v202/gao23f.html} {{PAL}:
+  Program-aided language models}.
+\newblock In \emph{Proceedings of the 40th International Conference on Machine
+  Learning}, pages 10764--10799.
+
+\bibitem[{Ghazvininejad et~al.(2018)Ghazvininejad, Choi, and
+  Knight}]{ghazvininejad-etal-2018-neural}
+Marjan Ghazvininejad, Yejin Choi, and Kevin Knight. 2018.
+\newblock Neural poetry translation.
+\newblock In \emph{Proceedings of the 2018 Conference of the North {A}merican
+  Chapter of the Association for Computational Linguistics: Human Language
+  Technologies, Volume 2 (Short Papers)}.
+
+\bibitem[{Ghazvininejad et~al.(2016)Ghazvininejad, Shi, Choi, and
+  Knight}]{ghazvininejad-etal-2016-generating}
+Marjan Ghazvininejad, Xing Shi, Yejin Choi, and Kevin Knight. 2016.
+\newblock \href {https://doi.org/10.18653/v1/D16-1126} {Generating topical
+  poetry}.
+\newblock In \emph{Proceedings of the 2016 Conference on Empirical Methods in
+  Natural Language Processing}, pages 1183--1191.
+
+\bibitem[{Guo et~al.(2022)Guo, Zhang, Zhang, He, Zhang, Xie, and
+  Boyd-Graber}]{guo-etal-2022-automatic}
+Fenfei Guo, Chen Zhang, Zhirui Zhang, Qixin He, Kecheng Zhang, Jun Xie, and
+  Jordan Boyd-Graber. 2022.
+\newblock Automatic song translation for tonal languages.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  ACL 2022}.
+
+\bibitem[{Hokamp and Liu(2017)}]{hokamp-liu-2017-lexically}
+Chris Hokamp and Qun Liu. 2017.
+\newblock \href {https://doi.org/10.18653/v1/P17-1141} {Lexically constrained
+  decoding for sequence generation using grid beam search}.
+\newblock In \emph{Proceedings of the 55th Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}, pages 1535--1546.
+
+\bibitem[{Hopkins and Kiela(2017)}]{hopkins-kiela-2017-automatically}
+Jack Hopkins and Douwe Kiela. 2017.
+\newblock \href {https://doi.org/10.18653/v1/P17-1016} {Automatically
+  generating rhythmic verse with neural networks}.
+\newblock In \emph{Proceedings of the 55th Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}, pages 168--178.
+
+\bibitem[{Hubert and Arabie(1985)}]{hubert-arabie-1985}
+Lawrence Hubert and Phipps Arabie. 1985.
+\newblock \href {https://doi.org/10.1007/BF01908075} {Comparing partitions}.
+\newblock \emph{Journal of Classification}, 2(1):193--218.
+
+\bibitem[{Jiao et~al.(2023)Jiao, Wang, Huang, Wang, Shi, and
+  Tu}]{jiao-etal-2023-chatgpt}
+Wenxiang Jiao, Wenxuan Wang, Jen-tse Huang, Xing Wang, Shuming Shi, and
+  Zhaopeng Tu. 2023.
+\newblock Is {C}hat{GPT} a good translator? {Y}es with {GPT}-4 as the engine.
+\newblock \emph{arXiv preprint arXiv:2301.08745}.
+
+\bibitem[{Lau et~al.(2018)Lau, Cohn, Baldwin, Brooke, and
+  Hammond}]{lau-etal-2018-deep}
+Jey~Han Lau, Trevor Cohn, Timothy Baldwin, Julian Brooke, and Adam Hammond.
+  2018.
+\newblock \href {https://doi.org/10.18653/v1/P18-1181} {Deep-speare: A joint
+  neural model of poetic language, meter and rhyme}.
+\newblock In \emph{Proceedings of the 56th Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}, pages 1948--1958.
+
+\bibitem[{Levenshtein(1966)}]{levenshtein-1966}
+Vladimir~I. Levenshtein. 1966.
+\newblock Binary codes capable of correcting deletions, insertions, and
+  reversals.
+\newblock \emph{Soviet Physics Doklady}, 10(8):707--710.
+
+\bibitem[{Low(2005)}]{low-2005-pentathlon}
+Peter Low. 2005.
+\newblock The pentathlon approach to translating songs.
+\newblock In Dinda~L. Gorl{\'e}e, editor, \emph{Song and Significance: Virtues
+  and Vices of Vocal Translation}, pages 185--212. Rodopi, Amsterdam.
+
+\bibitem[{Low(2022)}]{low-2022-translating}
+Peter Low. 2022.
+\newblock \href {https://doi.org/10.1017/9781108616119.026} {Translating the
+  texts of songs and other vocal music}.
+\newblock In Kirsten Malmkj{\ae}r, editor, \emph{The Cambridge Handbook of
+  Translation}. Cambridge University Press.
+
+\bibitem[{Mortensen et~al.(2016)Mortensen, Littell, Bharadwaj, Goyal, Dyer, and
+  Levin}]{mortensen-etal-2016-panphon}
+David~R. Mortensen, Patrick Littell, Akash Bharadwaj, Kartik Goyal, Chris Dyer,
+  and Lori Levin. 2016.
+\newblock {P}an{P}hon: A resource for mapping {IPA} segments to articulatory
+  feature vectors.
+\newblock In \emph{Proceedings of COLING 2016, the 26th International
+  Conference on Computational Linguistics: Technical Papers}, pages 3475--3484.
+
+\bibitem[{Ou et~al.(2023)Ou, Ma, Kan, and Wang}]{ou-etal-2023-songs}
+Longshen Ou, Xichu Ma, Min-Yen Kan, and Ye~Wang. 2023.
+\newblock \href {https://doi.org/10.18653/v1/2023.acl-long.27} {Songs across
+  borders: Singable and controllable neural lyric translation}.
+\newblock In \emph{Proceedings of the 61st Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}, pages 447--467.
+
+\bibitem[{Post and Vilar(2018)}]{post-vilar-2018-fast}
+Matt Post and David Vilar. 2018.
+\newblock \href {https://doi.org/10.18653/v1/N18-1119} {Fast lexically
+  constrained decoding with dynamic beam allocation for neural machine
+  translation}.
+\newblock In \emph{Proceedings of the 2018 Conference of the North {A}merican
+  Chapter of the Association for Computational Linguistics: Human Language
+  Technologies, Volume 1 (Long Papers)}, pages 1314--1324.
+
+\bibitem[{Ren et~al.(2025)Ren, Zeng, Wu, and Liang}]{ren-etal-2025-lyricar}
+Le~Ren, Xiangjian Zeng, Qingqiang Wu, and Ruoxuan Liang. 2025.
+\newblock {L}yri{CAR}: A difficulty-aware curriculum reinforcement learning
+  framework for controllable lyric translation.
+\newblock In \emph{arXiv preprint arXiv:2510.19967}.
+
+\bibitem[{Schick et~al.(2023)Schick, Dwivedi-Yu, Dess{\`i}, Raileanu, Lomeli,
+  Hambro, Zettlemoyer, Cancedda, and Scialom}]{schick-etal-2023-toolformer}
+Timo Schick, Jane Dwivedi-Yu, Roberto Dess{\`i}, Roberta Raileanu, Maria
+  Lomeli, Eric Hambro, Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom.
+  2023.
+\newblock Toolformer: Language models can teach themselves to use tools.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~36.
+
+\bibitem[{Wei et~al.(2022)Wei, Wang, Schuurmans, Bosma, Ichter, Xia, Chi, Le,
+  and Zhou}]{wei-etal-2022-chain}
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia,
+  Ed~Chi, Quoc~V. Le, and Denny Zhou. 2022.
+\newblock Chain-of-thought prompting elicits reasoning in large language
+  models.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~35.
+
+\bibitem[{Yao et~al.(2023)Yao, Zhao, Yu, Du, Shafran, Narasimhan, and
+  Cao}]{yao-etal-2023-react}
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan,
+  and Yuan Cao. 2023.
+\newblock \href {https://openreview.net/forum?id=WE_vluYUL-X} {{R}e{A}ct:
+  Synergizing reasoning and acting in language models}.
+\newblock In \emph{Proceedings of the Eleventh International Conference on
+  Learning Representations}.
+
+\bibitem[{Ye et~al.(2024)Ye, Li, and Xu}]{ye-etal-2024-sing}
+Zhuorui Ye, Jinhan Li, and Rongwu Xu. 2024.
+\newblock \href {https://aclanthology.org/2024.findings-emnlp.315/} {Sing it,
+  narrate it: Quality musical lyrics translation}.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  EMNLP 2024}.
+
+\bibitem[{Zhao et~al.(2025)Zhao, Li, Tian, and Peng}]{zhao-etal-2025-reffly}
+Songyan Zhao, Bingxuan Li, Yufei Tian, and Nanyun Peng. 2025.
+\newblock {REFFLY}: Melody-constrained lyrics editing model.
+\newblock In \emph{Proceedings of the 2025 Conference of the Nations of the
+  Americas Chapter of the Association for Computational Linguistics: Human
+  Language Technologies (Volume 1: Long Papers)}, pages 11295--11315.
 
 \end{thebibliography}
