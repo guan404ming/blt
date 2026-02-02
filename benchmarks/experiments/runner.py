@@ -87,6 +87,7 @@ class ExperimentRunner:
         self,
         model: str = "qwen3:30b-a3b-instruct-2507-q4_K_M",
         base_url: str = "http://localhost:11434",
+        phases: int = 3,
     ):
         """
         Initialize experiment runner
@@ -94,9 +95,11 @@ class ExperimentRunner:
         Args:
             model: Ollama model name
             base_url: Ollama API base URL
+            phases: Number of pipeline phases (1, 2, or 3) for ablation
         """
         self.model = model
         self.base_url = base_url
+        self.phases = phases
 
         # Ensure LangChain tracing is disabled
         os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -113,10 +116,12 @@ class ExperimentRunner:
         self.evaluator = TranslationEvaluator(self.analyzer)
         self.baseline = BaselineTranslator(model=model, base_url=base_url)
 
-        # Configure agent
+        # Configure agent with phase ablation (disable tracing to prevent OOM)
         config = LyricsTranslationAgentConfig(
             model=model,
             ollama_base_url=base_url,
+            phases=phases,
+            langsmith_tracing=False,
         )
         self.agent = LyricsTranslationAgent(
             config=config,

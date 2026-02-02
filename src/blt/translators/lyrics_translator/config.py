@@ -38,6 +38,9 @@ class LyricsTranslationAgentConfig:
     max_retries: int = 10
     enable_logging: bool = True
 
+    # Phase ablation: 1 = Phase 1 only, 2 = Phase 1+2, 3 = Full pipeline (Phase 1+2+3)
+    phases: int = 3
+
     # LangSmith settings
     langsmith_tracing: bool = True  # Enable LangSmith tracing
     langsmith_project: str = "blt"  # LangSmith project name

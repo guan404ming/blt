@@ -99,6 +99,13 @@ def main():
         default=5,
         help="Max lines per test case (default: 5)",
     )
+    parser.add_argument(
+        "--phases",
+        type=int,
+        choices=[1, 2, 3],
+        default=3,
+        help="Phase ablation: 1=Phase1 only, 2=Phase1+2, 3=Full pipeline (default: 3)",
+    )
 
     args = parser.parse_args()
 
@@ -118,8 +125,9 @@ def main():
     print("\n🔬 Initializing experiment runner...")
     print(f"   Mode: {args.mode}")
     print(f"   Model: {args.model}")
+    print(f"   Phases: {args.phases}")
 
-    runner = ExperimentRunner(model=args.model, base_url=base_url)
+    runner = ExperimentRunner(model=args.model, base_url=base_url, phases=args.phases)
     reporter = ComparisonReporter()
 
     # Determine language pairs to test
@@ -214,13 +222,14 @@ def main():
 
             print(f"   Test cases: {len(pair_test_cases)}")
 
-            # Set checkpoint path with mode
-            checkpoint_path = output_dir / f"{pair_key}_{args.mode}.json"
+            # Set checkpoint path with mode and phases
+            phase_suffix = f"_p{args.phases}" if args.phases != 3 else ""
+            checkpoint_path = output_dir / f"{pair_key}_{args.mode}{phase_suffix}.json"
 
             # Run experiment
             results = runner.run_experiment(
                 test_cases=pair_test_cases,
-                experiment_id=f"{pair_key}_{args.mode}",
+                experiment_id=f"{pair_key}_{args.mode}{phase_suffix}",
                 mode=args.mode,
                 checkpoint_path=checkpoint_path,
                 checkpoint_interval=5,

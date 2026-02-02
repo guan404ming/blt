@@ -620,28 +620,50 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
             return "calculate"
         return "refine"
 
-    # Build workflow
+    # Build workflow based on phase configuration
+    phases = getattr(config, "phases", 3)
+    logger.info(f"   Building graph with phases={phases}")
+
     workflow = StateGraph(LyricsTranslationState)
 
-    # Add nodes for three-phase approach
+    # Phase 1 is always included
     workflow.add_node("initial_translation", initial_translation_node)
-    workflow.add_node("refine_line", refine_line_node)
-    workflow.add_node("check_refinement", check_refinement_progress_node)
-    workflow.add_node("refine_pattern", refine_pattern_node)
     workflow.add_node("calculate_metrics", calculate_metrics_node)
 
-    # Set entry point
     workflow.set_entry_point("initial_translation")
 
-    # Define edges for three-phase flow
-    workflow.add_edge("initial_translation", "refine_line")
-    workflow.add_edge("refine_line", "check_refinement")
-    workflow.add_conditional_edges(
-        "check_refinement",
-        should_continue_refinement,
-        {"refine": "refine_line", "calculate": "refine_pattern"},
-    )
-    workflow.add_edge("refine_pattern", "calculate_metrics")
+    if phases == 1:
+        # Phase 1 only: initial translation → calculate_metrics → END
+        workflow.add_edge("initial_translation", "calculate_metrics")
+
+    elif phases == 2:
+        # Phase 1 + 2: initial translation → syllable refinement → calculate_metrics
+        workflow.add_node("refine_line", refine_line_node)
+        workflow.add_node("check_refinement", check_refinement_progress_node)
+
+        workflow.add_edge("initial_translation", "refine_line")
+        workflow.add_edge("refine_line", "check_refinement")
+        workflow.add_conditional_edges(
+            "check_refinement",
+            should_continue_refinement,
+            {"refine": "refine_line", "calculate": "calculate_metrics"},
+        )
+
+    else:
+        # Full pipeline (phases == 3): all three phases
+        workflow.add_node("refine_line", refine_line_node)
+        workflow.add_node("check_refinement", check_refinement_progress_node)
+        workflow.add_node("refine_pattern", refine_pattern_node)
+
+        workflow.add_edge("initial_translation", "refine_line")
+        workflow.add_edge("refine_line", "check_refinement")
+        workflow.add_conditional_edges(
+            "check_refinement",
+            should_continue_refinement,
+            {"refine": "refine_line", "calculate": "refine_pattern"},
+        )
+        workflow.add_edge("refine_pattern", "calculate_metrics")
+
     workflow.add_edge("calculate_metrics", END)
 
     compiled = workflow.compile()
