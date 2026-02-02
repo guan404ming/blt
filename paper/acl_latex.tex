@@ -13,8 +13,9 @@
 \usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{tipa}
+\usepackage{CJKutf8}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
 
 \title{Singable Lyrics Translation with IPA-Augmented LLM Agents}
 
@@ -60,8 +61,9 @@ On the computational side, \citet{ou-etal-2023-songs} formalized singable lyric 
 \citet{guo-etal-2022-automatic} addressed automatic song translation for tonal languages, introducing tonal constraints beyond syllable matching, and \citet{ghazvininejad-etal-2018-neural} tackled neural poetry translation with rhythm and rhyme constraints using constrained decoding.
 \citet{ye-etal-2024-sing} proposed quality-aware musical lyrics translation that explicitly models musical features during generation.
 \citet{ren-etal-2025-lyricar} introduced a curriculum reinforcement learning framework for controllable lyric translation, balancing multiple constraints through difficulty-aware training.
-\citet{zhao-etal-2025-reffly} addressed melody-constrained lyrics editing, directly aligning word-level edits with melodic structure.
-\citet{cho-etal-2025-mavl} introduced MAVL, a multilingual audio-video lyrics dataset for animated song translation, providing a benchmark that could facilitate future evaluation of singable translation systems.
+\citet{zhao-etal-2025-reffly} addressed melody-constrained lyrics editing, and \citet{ou-etal-2023-loaf} enforced structural wording and formatting constraints in melody-to-lyric generation.
+\citet{cho-etal-2025-mavl} introduced MAVL, a multilingual audio-video lyrics dataset, and \citet{kim-etal-2023-computational} proposed a computational evaluation framework for singable lyric translation.
+Beyond translation, \citet{chen-teufel-2024-scansion} used scansion to generate Mandarin lyrics matching melodies, \citet{liang-etal-2024-xai} improved singability of AI-generated lyrics through prosody explanations, \citet{yu-etal-2025-songglm} modeled lyric-melody alignment for generation, and \citet{yoo-etal-2025-elmi} demonstrated that singability challenges extend to multimodal settings such as sign language.
 These approaches rely on specialized model fine-tuning, constrained decoding, or reinforcement learning; our work instead uses a general-purpose LLM augmented with IPA verification tools in an agent loop, requiring no task-specific training.
 
 \subsection{Constrained Text Generation}
@@ -104,7 +106,7 @@ For other languages, we convert text to IPA via Phonemizer \citep{bernard-titeux
     \text{syll}(l_i, \lambda_s) = \big|\text{nuclei}\big(\text{IPA}(l_i, \lambda_s)\big)\big|
     \label{eq:syllcount}
 \end{equation}
-where $\text{nuclei}(\cdot)$ applies a regular expression matching IPA vowels (\textipa{i, I, e, E, \ae, a, A, O, o, U, u, @, 2}, etc.) and diphthong sequences (\textipa{aI, eI, OI, aU, oU}, etc.), with adjacent vowels forming diphthongs counted as single nuclei.
+where $\text{nuclei}(\cdot)$ matches a predefined set of IPA vowel symbols and diphthongs (e.g., \textipa{a, i, u, @, aI, eI, oU}), with adjacent vowels forming diphthongs counted as single nuclei.
 For example, ``\emph{Let it go}'' yields IPA /\textipa{lEt It g@U}/ with three vowel nuclei [\textipa{E}, \textipa{I}, \textipa{@U}], giving a count of 3.
 The resulting sequence $\mathbf{s} = (s_1, \ldots, s_n)$ serves as the hard constraint for translation.
 
@@ -161,37 +163,44 @@ Figure~\ref{fig:framework} provides an overview of the complete pipeline.
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    node distance=0.55cm and 1.8cm,
+    node distance=0.6cm and 1.0cm,
     every node/.style={font=\small},
-    box/.style={rectangle, draw, text width=2.6cm, minimum height=0.55cm, align=center},
-    phase/.style={box, rounded corners, fill=gray!10},
-    toolbox/.style={rectangle, draw, dashed, text width=2.1cm, inner sep=4pt, align=left, font=\scriptsize},
-    >={Stealth[length=5pt]},
+    box/.style={rectangle, draw, text width=2.4cm, minimum height=0.5cm, align=center},
+    phase/.style={rectangle, draw, rounded corners, fill=gray!10, text width=2.4cm, minimum height=0.5cm, align=center},
+    tool/.style={rectangle, draw, dashed, fill=white, text width=2.0cm, minimum height=0.5cm, align=center, font=\scriptsize},
+    check/.style={diamond, draw, aspect=2.5, inner sep=1pt, font=\scriptsize, align=center},
+    >={Stealth[length=4pt]},
 ]
-\node[box] (src) {Source Lyrics ($L_s$, $\lambda_s$)};
-\node[box, below=of src] (ext) {Constraint Extraction};
+% Main flow
+\node[box] (src) {Source Lyrics};
+\node[box, below=of src] (ext) {Constraint\\Extraction};
 \node[phase, below=of ext] (p1) {Phase 1: Initial\\Translation};
-\node[phase, below=of p1] (p2) {Phase 2: Syllable\\Refinement};
-\node[phase, below=of p2] (p3) {Phase 3: Pattern\\Refinement};
-\node[box, below=of p3] (out) {Translated Lyrics ($L_t$, $\lambda_t$)};
+\node[tool, right=1.2cm of p1] (t1) {IPA Tools};
+\node[phase, below=1.0cm of p1] (p2) {Phase 2: Refine\\Line $i$};
+\node[tool, right=1.2cm of p2] (t2) {CountSyllables};
+\node[check, below=0.8cm of p2] (c2) {all lines\\done?};
+\node[phase, below=0.8cm of c2] (p3) {Phase 3: Pattern\\Refinement};
+\node[tool, right=1.2cm of p3] (t3) {AnalyzePattern};
+\node[box, below=of p3] (out) {Translated Lyrics};
 
-\node[toolbox, right=1.5cm of p2, minimum height=2.0cm] (tools) {%
-\textbf{IPA Tool Suite}\\[2pt]%
-\textsc{CountSyllables}\\%
-\textsc{TextToIPA}\\%
-\textsc{DetectRhyme}\\%
-\textsc{AnalyzePattern}};
-
+% Vertical flow
 \draw[->] (src) -- (ext);
 \draw[->] (ext) -- (p1);
 \draw[->] (p1) -- (p2);
-\draw[->] (p2) -- (p3);
+\draw[->] (p2) -- (c2);
+\draw[->] (c2) -- node[right, font=\scriptsize] {yes} (p3);
 \draw[->] (p3) -- (out);
-\draw[<->, dashed] (p1.east) -- (tools.west |- p1.east);
-\draw[<->, dashed] (p2.east) -- (tools.west);
-\draw[<->, dashed] (p3.east) -- (tools.west |- p3.east);
+
+% Tool interactions: bidirectional ReAct for Phases 1--2, one-way analysis for Phase 3
+\draw[<->] (p1) -- node[above, font=\scriptsize] {ReAct} (t1);
+\draw[<->] (p2) -- (t2);
+\draw[<-] (p3) -- (t3);
+
+% Phase 2 graph-level loop (per-line iteration)
+\draw[->, densely dotted] (c2.west) -- ++(-0.8,0) node[above, font=\scriptsize] {no} |- (p2.west);
+
 \end{tikzpicture}
-\caption{Overview of the IPA-augmented agent framework. Source lyrics undergo constraint extraction, then pass through three refinement phases. Each phase interacts with the IPA tool suite (dashed) via function calls in a ReAct loop.}
+\caption{Agent framework overview. Phase~1 translates all lines using an internal ReAct loop with all IPA tools. Phase~2 refines each line sequentially (up to 10 attempts per line); the dotted arrow shows the graph-level loop that iterates through lines. Phase~3 is a single pass that uses \textsc{AnalyzePattern} output to guide pattern refinement without a retry loop.}
 \label{fig:framework}
 \end{figure}
 
@@ -280,8 +289,8 @@ This phase is critical because even a single syllable mismatch can make a line u
 \paragraph{Phase 3: Syllable Pattern Refinement.}
 After syllable counts are matched, the agent refines word-level syllable distributions.
 For each line, \textsc{AnalyzePattern} compares the current pattern against the target and returns structured feedback including the similarity score, per-word differences, and suggestions (e.g., ``split the first word into shorter components'').
-The agent generates up to three alternative translations per line and selects the one with the highest pattern similarity, subject to maintaining the correct total syllable count.
-Lines already achieving similarity $\geq 0.8$ are left unchanged.
+For each mismatched line, the agent generates a revised translation; the revision is accepted only if it improves pattern similarity while maintaining the correct total syllable count, and is otherwise reverted.
+Lines whose patterns already match the target are left unchanged.
 
 \paragraph{Priority and termination.}
 The three-phase design addresses constraints in order of importance: syllable counts first (hardest constraint), then syllable patterns.
@@ -300,7 +309,7 @@ This illustrates a fundamental challenge---Chinese word boundaries are determine
 \label{sec:eval}
 
 Standard MT metrics such as BLEU measure n-gram overlap and do not capture whether a translation preserves musical structure.
-We propose three complementary metrics, each targeting one of the three musical constraints.
+\citet{kim-etal-2023-computational} proposed a computational evaluation framework for singable lyric translation; building on this direction, we propose three complementary metrics, each targeting one of the three musical constraints.
 
 \subsection{Syllable Error Rate (SER)}
 
@@ -353,8 +362,9 @@ We conduct preliminary experiments to evaluate the effectiveness of IPA-augmente
 \subsection{Setup}
 
 We evaluate on English--Chinese song translation in both directions: English-to-Chinese ($\text{en} \rightarrow \text{cmn}$) and Chinese-to-English ($\text{cmn} \rightarrow \text{en}$).
-Our test set consists of 500 popular songs covering both English and Chinese tracks across pop, ballad, and rock genres.
-Each test case uses 4--20 lines from a song, with lines filtered to contain only the source language.
+Our test set consists of 500 popular songs scraped from a commercial music platform, spanning pop, ballad, and rock genres from the 2000s to 2020s, with roughly equal coverage of English and Chinese tracks.
+Each test case uses 4--20 lines from a song, with lines filtered to contain only the source language via automatic language detection.
+Due to copyright restrictions, we do not distribute the lyrics themselves; our open-source release (Apache-2.0) includes the full translation framework, IPA tool suite, LangGraph agent definitions, and evaluation scripts as a PyPI package (\texttt{blt-toolkit}), enabling reproduction on any user-supplied lyrics.
 
 \paragraph{Implementation.}
 The agent framework is implemented using LangGraph, which provides a graph-based orchestration layer for defining the multi-phase agent loop described in \S\ref{sec:loop}.
@@ -369,7 +379,9 @@ We compare two conditions using the same underlying model:
     \item \textbf{BLT Agent}: Our full framework with IPA tool suite and multi-phase refinement loop (Phases 1--3 as described in \S\ref{sec:loop}), orchestrated by LangGraph.
 \end{itemize}
 Both conditions use the same model, isolating the effect of tool-augmented iterative refinement.
-We report SER and SCRE as defined in \S\ref{sec:eval}; ARI evaluation requires longer passages with richer rhyme structure and is reserved for future work.
+We report SER and SCRE as defined in \S\ref{sec:eval}.
+We do not report ARI because our 4--20-line excerpts frequently contain only one or two rhyme classes, making the clustering comparison degenerate: when most lines fall into a single class, ARI is dominated by chance agreement and becomes unstable.
+A meaningful ARI evaluation requires excerpts with at least two rhyme classes of two or more lines each; we estimate fewer than 30\% of our test cases meet this criterion, insufficient for reliable aggregate statistics.
 
 \subsection{Overall Results}
 
@@ -427,6 +439,44 @@ While the Agent still improves SER substantially (0.577 vs.\ 0.811, a 28.9\% red
 This asymmetry likely reflects the greater difficulty of English syllable counting: IPA-based vowel nucleus detection, while generally accurate, can miscount in cases involving schwa reduction, syllabic consonants, or diphthong ambiguities.
 Furthermore, English morphology affords less flexibility in adjusting syllable counts---adding or removing a syllable often requires restructuring the entire phrase, whereas Chinese can often swap individual characters.
 
+\subsection{Qualitative Analysis}
+
+Table~\ref{tab:qualitative} illustrates the pipeline on the \emph{Let It Go} excerpt from Table~\ref{tab:constraints-example}, translated from English to Chinese.
+The Base LLM produces natural but unconstrained translations: line counts range from 7 to 9 characters, overshooting every target.
+The BLT Agent, guided by \textsc{CountSyllables} verification in Phase~2, matches three of four targets exactly.
+Line~4 (target 8) remains one syllable short at 7---Phase~2 exhausted its 10 refinement attempts without finding an 8-character alternative that preserved meaning, retaining the closest attempt.
+Phase~3 pattern refinement has limited effect here because Chinese character-level tokenization produces uniform $[1, 1, \ldots]$ patterns regardless of word grouping.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}clcc@{}}
+\toprule
+\textbf{Line} & \textbf{Text} & \textbf{Syll.} & \textbf{Tgt} \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Source (English):}} \\
+1 & The snow glows white & 4 & --- \\
+2 & On the mountain tonight & 6 & --- \\
+3 & Not a footprint to be seen & 7 & --- \\
+4 & A kingdom of isolation & 8 & --- \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Base LLM (Chinese, no tools):}} \\
+1 & \begin{CJK}{UTF8}{bsmi}白雪在夜裡閃耀\end{CJK} & 7 & 4\,$\times$ \\
+2 & \begin{CJK}{UTF8}{bsmi}今夜在那座山上\end{CJK} & 7 & 6\,$\times$ \\
+3 & \begin{CJK}{UTF8}{bsmi}看不見任何一個腳印\end{CJK} & 9 & 7\,$\times$ \\
+4 & \begin{CJK}{UTF8}{bsmi}一個與世隔絕的王國\end{CJK} & 9 & 8\,$\times$ \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{BLT Agent (Chinese, with IPA tools):}} \\
+1 & \begin{CJK}{UTF8}{bsmi}皚皚白雪\end{CJK} & 4 & 4\,$\checkmark$ \\
+2 & \begin{CJK}{UTF8}{bsmi}籠罩今夜山巔\end{CJK} & 6 & 6\,$\checkmark$ \\
+3 & \begin{CJK}{UTF8}{bsmi}看不到一絲足跡\end{CJK} & 7 & 7\,$\checkmark$ \\
+4 & \begin{CJK}{UTF8}{bsmi}這是孤獨的國度\end{CJK} & 7 & 8\,$\times$ \\
+\bottomrule
+\end{tabular}
+\caption{Qualitative example: English-to-Chinese translation of the opening lines of \emph{Let It Go}. ``Syll.''\ is the actual character count; ``Tgt''\ is the source syllable count that the translation should match. The BLT Agent matches 3/4 targets; the Base LLM matches 0/4.}
+\label{tab:qualitative}
+\end{table}
+
 \subsection{Discussion and Future Directions}
 
 These results demonstrate that tool-augmented agents provide substantial benefits for constraint-preserving lyrics translation, particularly when the target language has simple, deterministic syllable structure.
@@ -445,8 +495,9 @@ An intrinsic evaluation of tool accuracy---measuring syllable-counting precision
 
 \paragraph{Rhyme preservation.}
 Our framework monitors rhyme via \textsc{DetectRhyme} but lacks a dedicated refinement phase for it.
-We introduced ARI as a rhyme preservation metric but did not report it in our experiments because the short excerpts in our test set (4--20 lines) often lack rich rhyme structure, making ARI unstable.
-Evaluating on full songs with clear rhyme patterns and adding a rhyme-specific refinement phase are natural next steps.
+ARI is theoretically well-suited for rhyme evaluation but is unstable on our short excerpts: with only 4--20 lines, most excerpts have sparse rhyme structure (often a single dominant class), and ARI degenerates.
+Future work should either (1) evaluate on full songs with richer rhyme patterns, restricting ARI reporting to excerpts with at least two rhyme classes of two or more lines each, or (2) adopt a lighter-weight proxy such as pairwise rhyme precision/recall on line pairs that share a rhyme label in the source.
+Adding a dedicated rhyme refinement phase is also a natural next step.
 
 \paragraph{Broader language coverage and model variation.}
 Our evaluation is limited to English--Chinese with a single LLM (Qwen3-30B).
@@ -467,7 +518,7 @@ Preliminary experiments on English--Chinese translation demonstrate that tool-au
 The tool-augmented agent approach has a key advantage over constrained decoding methods \citep{hokamp-liu-2017-lexically,post-vilar-2018-fast}: it is model-agnostic and does not require modifying the decoding algorithm.
 Any LLM with function-calling capabilities can serve as the agent, and the IPA tools can be extended to support additional constraints (e.g., stress patterns, tonal matching) without changing the agent architecture.
 
-Future work will focus on evaluation across diverse language pairs and LLM architectures, human judgments of singability, and integration with audio synthesis for end-to-end singable translation.
+Future work will focus on evaluation across diverse language pairs and LLM architectures, human judgments of singability, and integration with singing voice synthesis systems \citep{ren-etal-2020-deepsinger} for end-to-end singable translation.
 
 \section*{Limitations}
 
