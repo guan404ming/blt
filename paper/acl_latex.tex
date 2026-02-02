@@ -361,83 +361,62 @@ We conduct preliminary experiments to evaluate the effectiveness of IPA-augmente
 
 \subsection{Setup}
 
-We evaluate on English--Chinese song translation in both directions: English-to-Chinese ($\text{en} \rightarrow \text{cmn}$) and Chinese-to-English ($\text{cmn} \rightarrow \text{en}$).
-Our test set consists of 500 popular songs scraped from a commercial music platform, spanning pop, ballad, and rock genres from the 2000s to 2020s, with roughly equal coverage of English and Chinese tracks.
-Each test case uses 4--20 lines from a song, with lines filtered to contain only the source language via automatic language detection.
-Due to copyright restrictions, we do not distribute the lyrics themselves; our open-source release (Apache-2.0) includes the full translation framework, IPA tool suite, LangGraph agent definitions, and evaluation scripts as a PyPI package (\texttt{blt-toolkit}), enabling reproduction on any user-supplied lyrics.
+We evaluate on English-to-Chinese ($\text{en} \rightarrow \text{cmn}$) song translation using 30 test cases (5 lines each) from the publicly available test split of the parallel lyric corpus released by \citet{ou-etal-2023-songs}.\footnote{\url{https://huggingface.co/datasets/LongshenOu/lyric-trans-en2zh-data}}
+The dataset covers pop, ballad, rock, and musical-theatre genres.
+Our open-source release (Apache-2.0) includes the full translation framework, IPA tool suite, LangGraph agent definitions, and evaluation scripts as a PyPI package (\texttt{blt-toolkit}), enabling reproduction on any user-supplied lyrics in any language pair supported by eSpeak-NG.
 
 \paragraph{Implementation.}
-The agent framework is implemented using LangGraph, which provides a graph-based orchestration layer for defining the multi-phase agent loop described in \S\ref{sec:loop}.
-Each phase is represented as a node in a directed graph with conditional edges encoding the control flow between constraint extraction, initial translation, syllable refinement, and pattern refinement.
-For LLM inference, we use Qwen3-30B (4-bit quantized) served locally via Ollama, which provides an OpenAI-compatible API for function calling.
-The IPA tools (\S\ref{sec:tools}) are registered as callable functions through LangGraph's tool-binding interface, enabling the ReAct-style reasoning-and-acting loop.
+The agent framework is implemented using LangGraph with conditional edges encoding the control flow between constraint extraction, initial translation, syllable refinement, and pattern refinement.
+For LLM inference, we use Qwen3-30B (4-bit quantized) served locally via Ollama.
+The IPA tools (\S\ref{sec:tools}) are registered as callable functions through LangGraph's tool-binding interface.
 
 \paragraph{Conditions.}
-We compare two conditions using the same underlying model:
+We conduct a phase ablation study alongside a supervised baseline:
 \begin{itemize}
-    \item \textbf{Base LLM}: Direct translation via Qwen3-30B with a prompt requesting syllable-count preservation, but \emph{without} access to IPA tools or iterative refinement.
-    \item \textbf{BLT Agent}: Our full framework with IPA tool suite and multi-phase refinement loop (Phases 1--3 as described in \S\ref{sec:loop}), orchestrated by LangGraph.
+    \item \textbf{Phase~1 only}: Initial translation with IPA tool access but no iterative refinement.
+    \item \textbf{Phase~1+2}: Adds line-by-line syllable count refinement (up to 10 iterations per line).
+    \item \textbf{Phase~1+2+3} (full BLT Agent): Adds syllable pattern refinement after syllable counts are matched.
+    \item \textbf{CLT} \citep{ou-etal-2023-songs}: A supervised mBART model fine-tuned with explicit length, rhyme, and word-boundary constraint tokens. This represents a task-specific training approach and serves as an upper bound for constraint satisfaction.
 \end{itemize}
-Both conditions use the same model, isolating the effect of tool-augmented iterative refinement.
-We report SER and SCRE as defined in \S\ref{sec:eval}.
-We do not report ARI because our 4--20-line excerpts frequently contain only one or two rhyme classes, making the clustering comparison degenerate: when most lines fall into a single class, ARI is dominated by chance agreement and becomes unstable.
-A meaningful ARI evaluation requires excerpts with at least two rhyme classes of two or more lines each; we estimate fewer than 30\% of our test cases meet this criterion, insufficient for reliable aggregate statistics.
+All BLT conditions use the same Qwen3-30B model; CLT uses its own fine-tuned checkpoint.
+We report SER, SCRE, and ARI as defined in \S\ref{sec:eval}.
 
-\subsection{Overall Results}
+\subsection{Results and Phase Ablation}
 
-Table~\ref{tab:overall} presents the aggregate results across both translation directions.
+Table~\ref{tab:ablation} presents the results of the phase ablation study.
 
 \begin{table}[t]
 \centering
-\begin{tabular}{@{}lcc@{}}
+\small
+\begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Method} & \textbf{SER} $\downarrow$ & \textbf{SCRE} $\downarrow$ \\
+\textbf{Method} & \textbf{SER} $\downarrow$ & \textbf{SCRE} $\downarrow$ & \textbf{ARI} $\uparrow$ \\
 \midrule
-Base LLM   & 0.8729 & 1.2756 \\
-BLT Agent  & \textbf{0.5970} & \textbf{0.4499} \\
+Phase 1 only         & 0.7926 & 0.1949 & \textbf{0.4128} \\
+Phase 1+2            & \underline{0.2000} & \underline{0.0242} & 0.2723 \\
+Phase 1+2+3 (full)   & 0.2267 & 0.0313 & \underline{0.3290} \\
+\midrule
+CLT \citep{ou-etal-2023-songs} & \textbf{0.0467} & \textbf{0.0042} & 0.0012 \\
 \bottomrule
 \end{tabular}
-\caption{Overall results aggregated across both translation directions. Lower is better for both metrics. Bold indicates the best result.}
-\label{tab:overall}
+\caption{Phase ablation and baseline comparison ($\text{en} \rightarrow \text{cmn}$, $n{=}30$). Bold = best overall; underline = best among BLT variants.}
+\label{tab:ablation}
 \end{table}
 
-The BLT Agent substantially outperforms the Base LLM on both metrics.
-SER decreases from 0.8729 to 0.5970 (31.6\% relative reduction), indicating that the tool-augmented agent produces syllable count sequences much closer to the source.
-The improvement on SCRE is even more pronounced: a reduction from 1.2756 to 0.4499 (64.7\% relative reduction).
-A Base LLM SCRE of 1.2756 means that, on average, each line deviates from the target syllable count by more than 100\% relative to the target---effectively, the baseline pays little attention to syllable constraints.
-The BLT Agent reduces this to 0.4499, still imperfect but representing a meaningful step toward singable translation.
+\paragraph{Phase~2 is the critical stage.}
+Adding syllable refinement reduces SER by 74.8\% (0.79$\to$0.20) and SCRE by 87.6\% (0.19$\to$0.02), confirming that iterative tool-verified refinement---not merely tool access during initial generation---drives constraint satisfaction.
+The cost is a 4.4$\times$ increase in inference time (6.7\,s $\to$ 29.3\,s per test case).
 
-\subsection{Per-Language-Pair Results}
+\paragraph{Phase~3 trades syllable accuracy for rhyme.}
+Pattern refinement slightly increases SER (+13\%) and SCRE (+29\%) because adjusting word boundaries occasionally disrupts syllable counts that Phase~2 had matched.
+However, ARI improves by 20.8\% (0.27$\to$0.33), indicating that pattern-level adjustments help restore rhyme structure.
+This suggests Phase~3 is most valuable when rhyme preservation is a priority.
 
-Table~\ref{tab:perpair} breaks down performance by translation direction, revealing an asymmetry between the two directions.
-
-\begin{table}[t]
-\centering
-\begin{tabular}{@{}lcccc@{}}
-\toprule
- & \multicolumn{2}{c}{\textbf{SER} $\downarrow$} & \multicolumn{2}{c}{\textbf{SCRE} $\downarrow$} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5}
-\textbf{Pair} & Agent & Base & Agent & Base \\
-\midrule
-$\text{en} \rightarrow \text{cmn}$ & \textbf{0.238} & 0.810 & \textbf{0.085} & 0.250 \\
-$\text{cmn} \rightarrow \text{en}$ & \textbf{0.577} & 0.811 & 0.258 & \textbf{0.246} \\
-\bottomrule
-\end{tabular}
-\caption{Per-language-pair results. Bold indicates the best result for each metric and direction.}
-\label{tab:perpair}
-\end{table}
-
-\paragraph{English-to-Chinese.}
-The $\text{en} \rightarrow \text{cmn}$ direction shows the strongest improvements.
-SER drops from 0.810 to 0.238 (70.6\% relative improvement) and SCRE from 0.250 to 0.085 (66.0\%).
-An SCRE of 0.085 means the average line deviates by only 8.5\% from the target syllable count---close to singable quality.
-We attribute this strong performance to the fact that Chinese syllable counting is perfectly deterministic (one character = one syllable), making the \textsc{CountSyllables} tool maximally reliable for verification in this direction.
-
-\paragraph{Chinese-to-English.}
-The $\text{cmn} \rightarrow \text{en}$ direction proves more challenging.
-While the Agent still improves SER substantially (0.577 vs.\ 0.811, a 28.9\% reduction), SCRE is slightly worse than the baseline (0.258 vs.\ 0.246).
-This asymmetry likely reflects the greater difficulty of English syllable counting: IPA-based vowel nucleus detection, while generally accurate, can miscount in cases involving schwa reduction, syllabic consonants, or diphthong ambiguities.
-Furthermore, English morphology affords less flexibility in adjusting syllable counts---adding or removing a syllable often requires restructuring the entire phrase, whereas Chinese can often swap individual characters.
+\paragraph{Comparison with CLT.}
+The supervised CLT baseline achieves near-perfect syllable accuracy (SCRE 0.004) through explicit constraint tokens and task-specific fine-tuning.
+However, its ARI is near zero (0.001), indicating that its constraint mechanism does not preserve rhyme structure.
+The full BLT Agent achieves substantially higher ARI (0.33 vs.\ 0.001) while requiring no task-specific training---only IPA tools and a general-purpose LLM.
+CLT is also limited to the single language pair it was trained on, whereas BLT operates on any language pair supported by Phonemizer's eSpeak-NG backend, covering over 100 languages without retraining.
 
 \subsection{Qualitative Analysis}
 
@@ -479,33 +458,19 @@ Phase~3 pattern refinement has limited effect here because Chinese character-lev
 
 \subsection{Discussion and Future Directions}
 
-These results demonstrate that tool-augmented agents provide substantial benefits for constraint-preserving lyrics translation, particularly when the target language has simple, deterministic syllable structure.
-However, several important directions remain.
+\paragraph{Training-free versus supervised.}
+The CLT comparison highlights a fundamental trade-off: supervised models achieve superior syllable accuracy but require parallel lyric corpora and per-language-pair training, whereas the BLT Agent operates on any language pair without retraining.
+Since Phonemizer supports over 100 languages via eSpeak-NG, and the agent loop is language-agnostic, BLT can translate between any source--target pair (e.g., Japanese--French, Korean--Spanish) by simply specifying the language codes.
+This makes the framework immediately applicable to low-resource language pairs where no parallel lyric data exists.
 
-\paragraph{Comparison with prior systems.}
-Our evaluation compares only against a base LLM without tool access.
-Prior constrained translation systems---including the fine-tuned models of \citet{ou-etal-2023-songs} and \citet{guo-etal-2022-automatic}, and the RL-based approach of \citet{ren-etal-2025-lyricar}---represent stronger baselines.
-We did not reproduce these systems because they require task-specific training pipelines and parallel lyric corpora that are not publicly available.
-Future work should evaluate our metrics on outputs from these systems to enable direct comparison; the MAVL benchmark \citep{cho-etal-2025-mavl} may facilitate this.
+\paragraph{Phase~3 and the accuracy--rhyme trade-off.}
+Phase~3 improves ARI at the cost of slight SER/SCRE degradation, suggesting that pattern refinement should be applied selectively---e.g., only when the source has a clear rhyme structure (at least two rhyme classes with two or more lines each).
+Adding a dedicated rhyme refinement phase that directly optimizes ARI is a natural next step.
 
-\paragraph{SCRE degradation in cmn$\rightarrow$en.}
-The agent's SCRE is slightly worse than the baseline for Chinese-to-English (0.258 vs.\ 0.246), even though SER improves.
-We attribute this to two factors: (1) the iterative refinement sometimes overshoots, producing lines that are further from the target than the baseline's initial attempt, and (2) English syllable counting via IPA vowel nucleus detection introduces noise from schwa reduction and diphthong ambiguity, causing the agent to optimize toward an incorrect target.
-An intrinsic evaluation of tool accuracy---measuring syllable-counting precision against human annotations---would help quantify this effect and is a priority for future work.
-
-\paragraph{Rhyme preservation.}
-Our framework monitors rhyme via \textsc{DetectRhyme} but lacks a dedicated refinement phase for it.
-ARI is theoretically well-suited for rhyme evaluation but is unstable on our short excerpts: with only 4--20 lines, most excerpts have sparse rhyme structure (often a single dominant class), and ARI degenerates.
-Future work should either (1) evaluate on full songs with richer rhyme patterns, restricting ARI reporting to excerpts with at least two rhyme classes of two or more lines each, or (2) adopt a lighter-weight proxy such as pairwise rhyme precision/recall on line pairs that share a rhyme label in the source.
-Adding a dedicated rhyme refinement phase is also a natural next step.
-
-\paragraph{Broader language coverage and model variation.}
-Our evaluation is limited to English--Chinese with a single LLM (Qwen3-30B).
-Extending to typologically diverse language pairs and multiple model sizes would strengthen generalizability claims.
-
-\paragraph{Human evaluation.}
-Our automatic metrics measure structural constraint preservation but not semantic fidelity, naturalness, or subjective singability.
-A comprehensive evaluation should include human judgments from bilingual speakers and singers, which we leave to future work.
+\paragraph{Broader evaluation.}
+Our evaluation uses a single language pair and LLM (Qwen3-30B).
+Extending to typologically diverse pairs, multiple model sizes, and human judgments of singability and semantic fidelity would strengthen generalizability claims.
+The MAVL benchmark \citep{cho-etal-2025-mavl} may facilitate multilingual evaluation.
 
 \section{Conclusion}
 
@@ -514,24 +479,21 @@ We formalized three musical constraints---syllable counts, rhyme schemes, and sy
 By equipping an LLM with phonetic analysis tools and structuring translation as a multi-phase ReAct loop, our system iteratively refines translations to satisfy these constraints in priority order: syllable counts first, then patterns, with rhyme monitored throughout.
 The proposed metrics---SER, SCRE, and ARI---provide automatic measurement of constraint preservation that complements standard translation quality evaluation.
 
-Preliminary experiments on English--Chinese translation demonstrate that tool-augmented agents substantially reduce syllable error rates compared to direct LLM translation, with particularly strong results in the English-to-Chinese direction where syllable counting is deterministic.
-The tool-augmented agent approach has a key advantage over constrained decoding methods \citep{hokamp-liu-2017-lexically,post-vilar-2018-fast}: it is model-agnostic and does not require modifying the decoding algorithm.
-Any LLM with function-calling capabilities can serve as the agent, and the IPA tools can be extended to support additional constraints (e.g., stress patterns, tonal matching) without changing the agent architecture.
+A phase ablation study on English-to-Chinese translation shows that iterative syllable refinement (Phase~2) accounts for the majority of improvement (87.6\% SCRE reduction), while comparison with a supervised baseline \citep{ou-etal-2023-songs} reveals a complementary strength: the BLT Agent preserves rhyme structure (ARI 0.33 vs.\ 0.001) without task-specific training.
+Unlike constrained decoding \citep{hokamp-liu-2017-lexically,post-vilar-2018-fast} or supervised approaches that require per-language-pair training, our framework is language-agnostic: any LLM with function-calling capabilities can serve as the agent, and the IPA tools support over 100 languages via eSpeak-NG, enabling translation between arbitrary language pairs without retraining.
 
-Future work will focus on evaluation across diverse language pairs and LLM architectures, human judgments of singability, and integration with singing voice synthesis systems \citep{ren-etal-2020-deepsinger} for end-to-end singable translation.
+Future work will focus on refining the agent loop to close the accuracy gap with supervised methods, experimenting with larger or more capable LLMs, broader language evaluation, human judgments of singability, and integration with singing voice synthesis \citep{ren-etal-2020-deepsinger} for end-to-end singable translation.
 
 \section*{Limitations}
 
 Our approach has several limitations.
-First, the framework's correctness depends on the accuracy of the underlying phonetic tools.
-Phonemizer relies on eSpeak~NG for IPA transcription, which has uneven quality across languages; we do not provide an intrinsic evaluation of syllable-counting or rhyme-detection accuracy even for English and Chinese.
-Errors in tool outputs can cause the agent to refine toward incorrect targets, as likely occurs in the cmn$\rightarrow$en SCRE degradation.
-Second, rhyme preservation is monitored but not actively refined: the agent lacks a dedicated rhyme refinement phase, and we do not report quantitative rhyme results (ARI) due to the short excerpt lengths in our test set.
-Third, the syllable pattern constraint is inherently harder to enforce for language pairs with very different morphological structures---Chinese words are typically 1--2 syllables while English words are longer, making exact pattern matching often impossible.
-Fourth, our evaluation compares only against a base LLM; we do not reproduce prior constrained translation systems \citep{ou-etal-2023-songs,guo-etal-2022-automatic,ren-etal-2025-lyricar} as baselines, limiting our ability to claim progress over the state of the art.
-Fifth, the multi-phase refinement loop introduces latency: each phase involves multiple LLM inference calls with tool interactions, and translating a single verse may require dozens of tool calls, though we do not measure runtime or cost.
+First, the framework's correctness depends on Phonemizer / eSpeak-NG for IPA transcription, which has uneven quality across languages; we do not provide an intrinsic evaluation of syllable-counting or rhyme-detection accuracy.
+Second, Phase~3 (pattern refinement) can degrade syllable accuracy that Phase~2 achieved, and the framework lacks a dedicated rhyme refinement phase.
+Third, our evaluation covers only English-to-Chinese ($n{=}30$) with a single LLM; although the framework is language-agnostic in principle, we have not validated it on other language pairs.
+Fourth, the supervised CLT baseline substantially outperforms BLT on syllable metrics, indicating that the agent approach has room to improve on constraint satisfaction---the current advantage is in rhyme preservation and language-pair flexibility rather than raw accuracy.
+Fifth, the multi-phase refinement loop introduces latency (29--30\,s vs.\ 0.4\,s for CLT per test case), which may limit practical deployment.
 Sixth, our metrics measure structural constraint preservation but not semantic fidelity or naturalness; a complete evaluation requires human judgments.
-Finally, while the technical approach---calling deterministic phonetic tools inside a ReAct loop---applies established patterns \citep{yao-etal-2023-react,gao-etal-2023-pal,schick-etal-2023-toolformer} to a new domain, the primary contribution is the formalization of musical constraints and the IPA-based tool suite rather than a novel agent architecture.
+Finally, the technical approach---calling deterministic phonetic tools inside a ReAct loop---applies established patterns \citep{yao-etal-2023-react,gao-etal-2023-pal,schick-etal-2023-toolformer} to a new domain; the primary contribution is the formalization of musical constraints and the IPA-based tool suite rather than a novel agent architecture.
 
 \bibliography{custom}
 
