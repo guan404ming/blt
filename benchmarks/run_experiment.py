@@ -178,6 +178,8 @@ def main():
                     if tc["source_lang"] == source_lang
                     and tc["target_lang"] == target_lang
                 ]
+                if args.samples is not None:
+                    pair_test_cases = pair_test_cases[: args.samples]
             else:
                 # Determine source file
                 source_file_map = {

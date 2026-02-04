@@ -68,3 +68,8 @@ dev = [
     "seaborn>=0.13.2",
     "twine>=6.2.0",
 ]
+
+[tool.ruff]
+exclude = [
+    "ControllableLyricTranslation"
+]

@@ -260,6 +260,7 @@ IMPORTANT REMINDERS:
             }
 
         # Iterative refinement - focus only on syllable count
+        is_chinese = target_lang in ("cmn", "zh", "zh-cn", "zh-tw")
         max_attempts = 10
         best_translation = current_translation
         best_diff = abs(actual - target_count)
@@ -284,7 +285,7 @@ Action: {feedback}
 
 STRATEGIES:
 - If too long: remove adjectives, use shorter words, merge concepts
-- If too short: add descriptive words, use longer characters, expand descriptions
+- If too short: add descriptive words, use longer alternatives, expand descriptions
 
 Keep the core meaning as close as possible to the current translation.
 Output ONLY the adjusted translation (no quotes, no explanations)."""
@@ -362,6 +363,10 @@ Output ONLY the adjusted translation (no quotes, no explanations)."""
 
             # Remove numbered prefix (e.g., "1. text" -> "text")
             translation = re.sub(r"^\d+\.\s*", "", translation).strip()
+
+            # For Chinese: strip punctuation/spaces so character count aligns with analyzer
+            if is_chinese:
+                translation = re.sub(r"[,;.!?，。；！？、\s]+", "", translation)
 
             # Check syllable count
             actual = analyzer.count_syllables(translation, target_lang)

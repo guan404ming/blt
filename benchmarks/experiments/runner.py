@@ -264,6 +264,11 @@ class ExperimentRunner:
                         f"ARI: {agent_result.metrics['ari']:.2f}"
                     )
 
+                # Free memory between tests
+                import gc
+
+                gc.collect()
+
                 # Save checkpoint every N test cases
                 if checkpoint_path and i % checkpoint_interval == 0:
                     self._save_checkpoint(
@@ -388,9 +393,11 @@ class ExperimentRunner:
         self,
         results: list[TranslationResult],
     ) -> dict:
-        """Calculate average metrics across results (SER, SCRE, ARI)"""
+        """Calculate average metrics with std and 95% CI across results (SER, SCRE, ARI)"""
         if not results:
             return {}
+
+        import math
 
         # Three core metrics
         metrics_keys = ["ser", "scre", "ari"]
@@ -401,7 +408,18 @@ class ExperimentRunner:
                 r.metrics.get(key) for r in results if r.metrics.get(key) is not None
             ]
             if values:
-                averages[key] = sum(values) / len(values)
+                n = len(values)
+                mean = sum(values) / n
+                averages[key] = mean
+                averages[f"{key}_n"] = n
+
+                if n >= 2:
+                    variance = sum((v - mean) ** 2 for v in values) / (n - 1)
+                    std = math.sqrt(variance)
+                    se = std / math.sqrt(n)
+                    ci95 = 1.96 * se
+                    averages[f"{key}_std"] = std
+                    averages[f"{key}_ci95"] = ci95
 
         # Average time
         if results:

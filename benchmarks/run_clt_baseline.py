@@ -36,6 +36,7 @@ from models.MBarts import MBartForConditionalGenerationCharLevel, MBart50Tokeniz
 # BLT-compatible metric calculation (self-contained, no BLT imports needed)
 # ---------------------------------------------------------------------------
 
+
 def _levenshtein(seq1: list, seq2: list) -> int:
     m, n = len(seq1), len(seq2)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
@@ -86,6 +87,7 @@ def calc_ari(source_scheme: str, target_scheme: str) -> float:
     if not source_scheme or not target_scheme:
         return 0.0
     from sklearn.metrics import adjusted_rand_score
+
     sl = _scheme_to_labels(source_scheme)
     tl = _scheme_to_labels(target_scheme)
     if len(sl) != len(tl):
@@ -102,16 +104,21 @@ def calc_ari(source_scheme: str, target_scheme: str) -> float:
 # Syllable counting (BLT-compatible)
 # ---------------------------------------------------------------------------
 
+
 def count_syllables_en(text: str) -> int:
     """Count English syllables via espeak IPA (same as BLT analyzer)."""
     import subprocess
+
     cleaned = re.sub(r"[,;.!?，。；！？、\s]+", "", text)
     if not cleaned:
         return 0
     try:
         result = subprocess.run(
             ["espeak-ng", "--ipa=3", "-q", "--stdin", "-v", "en-gb"],
-            input=cleaned, capture_output=True, text=True, timeout=5,
+            input=cleaned,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         ipa = result.stdout.strip()
     except Exception:
@@ -131,6 +138,7 @@ def count_syllables_zh(text: str) -> int:
 # ---------------------------------------------------------------------------
 # Rhyme scheme detection (BLT-compatible)
 # ---------------------------------------------------------------------------
+
 
 def detect_rhyme_scheme_zh(lines: list[str]) -> str:
     """Detect rhyme scheme for Chinese lines using pypinyin finals."""
@@ -164,12 +172,15 @@ def detect_rhyme_scheme_en(lines: list[str]) -> str:
         try:
             result = subprocess.run(
                 ["espeak-ng", "--ipa=3", "-q", "--stdin", "-v", "en-gb"],
-                input=line, capture_output=True, text=True, timeout=5,
+                input=line,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             ipa = result.stdout.strip()
             matches = list(re.finditer(ipa_pat, ipa))
             if matches:
-                endings.append(ipa[matches[-1].start():])
+                endings.append(ipa[matches[-1].start() :])
             else:
                 endings.append("")
         except Exception:
@@ -204,7 +215,10 @@ def _endings_to_scheme(endings: list[str]) -> str:
 # Dataset loading (matches BLT experiment data)
 # ---------------------------------------------------------------------------
 
-def load_local_dataset(data_dir: str, num_samples: int = 5, max_lines: int = 5) -> list[dict]:
+
+def load_local_dataset(
+    data_dir: str, num_samples: int = 5, max_lines: int = 5
+) -> list[dict]:
     """Load test cases from local en_lyrics.json (same as BLT Experiment 1)."""
     filepath = Path(data_dir) / "en_lyrics.json"
     with open(filepath, "r", encoding="utf-8") as f:
@@ -219,29 +233,35 @@ def load_local_dataset(data_dir: str, num_samples: int = 5, max_lines: int = 5) 
         lines = []
         for l in raw:
             en_chars = len(re.findall(r"[a-zA-Z]", l))
-            total = en_chars + len(re.findall(r"[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]", l))
+            total = en_chars + len(
+                re.findall(r"[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]", l)
+            )
             if total == 0 or en_chars / max(total, 1) > 0.5 or total == 0:
                 lines.append(l)
         if len(lines) < 4:
             continue
         lines = lines[:max_lines]
-        test_cases.append({
-            "id": f"en-us→cmn_{i+1:03d}",
-            "source_lines": lines,
-            "source_lang": "en-us",
-            "target_lang": "cmn",
-            "metadata": {
-                "song_title": song.get("song_title", "Unknown"),
-                "artist_name": song.get("artist_name", "Unknown"),
-                "line_count": len(lines),
-            },
-        })
+        test_cases.append(
+            {
+                "id": f"en-us→cmn_{i + 1:03d}",
+                "source_lines": lines,
+                "source_lang": "en-us",
+                "target_lang": "cmn",
+                "metadata": {
+                    "song_title": song.get("song_title", "Unknown"),
+                    "artist_name": song.get("artist_name", "Unknown"),
+                    "line_count": len(lines),
+                },
+            }
+        )
         if len(test_cases) >= num_samples:
             break
     return test_cases
 
 
-def load_hf_dataset(data_dir: str, num_samples: int = 30, max_lines: int = 5) -> list[dict]:
+def load_hf_dataset(
+    data_dir: str, num_samples: int = 30, max_lines: int = 5
+) -> list[dict]:
     """Load test cases from HF parallel data (same as BLT Experiment 2)."""
     source_file = Path(data_dir) / "data_parallel" / "test.source"
     with open(source_file, "r", encoding="utf-8") as f:
@@ -249,20 +269,22 @@ def load_hf_dataset(data_dir: str, num_samples: int = 30, max_lines: int = 5) ->
 
     test_cases = []
     for i in range(0, len(all_lines), max_lines):
-        chunk = all_lines[i:i + max_lines]
+        chunk = all_lines[i : i + max_lines]
         if len(chunk) < 2:
             continue
-        test_cases.append({
-            "id": f"en-us→cmn_hf_{i // max_lines + 1:03d}",
-            "source_lines": chunk,
-            "source_lang": "en-us",
-            "target_lang": "cmn",
-            "metadata": {
-                "song_title": f"HF chunk {i // max_lines + 1}",
-                "artist_name": "lyric-trans-en2zh-data",
-                "line_count": len(chunk),
-            },
-        })
+        test_cases.append(
+            {
+                "id": f"en-us→cmn_hf_{i // max_lines + 1:03d}",
+                "source_lines": chunk,
+                "source_lang": "en-us",
+                "target_lang": "cmn",
+                "metadata": {
+                    "song_title": f"HF chunk {i // max_lines + 1}",
+                    "artist_name": "lyric-trans-en2zh-data",
+                    "line_count": len(chunk),
+                },
+            }
+        )
     return test_cases[:num_samples]
 
 
@@ -270,9 +292,13 @@ def load_hf_dataset(data_dir: str, num_samples: int = 30, max_lines: int = 5) ->
 # Model inference
 # ---------------------------------------------------------------------------
 
+
 def translate_lines(
-    model, tokenizer, device: str,
-    lines: list[str], target_lengths: list[int],
+    model,
+    tokenizer,
+    device: str,
+    lines: list[str],
+    target_lengths: list[int],
 ) -> list[str]:
     """
     Translate English lines to Chinese using ControllableLyricTranslation model.
@@ -290,21 +316,35 @@ def translate_lines(
 
     # Length constraint tokens
     tgt_lens = [f"len_{l}" for l in target_lengths]
-    t1 = tokenizer(tgt_lens, add_special_tokens=False, return_tensors="pt",
-                    max_length=1, padding=False, truncation=True)
+    t1 = tokenizer(
+        tgt_lens,
+        add_special_tokens=False,
+        return_tensors="pt",
+        max_length=1,
+        padding=False,
+        truncation=True,
+    )
     tgt_lens_ids = t1["input_ids"].to(device)
     attn_len = t1["attention_mask"].to(device)
 
     # Rhyme constraint (type 0 = neutral)
     tgt_rhymes = [f"rhy_0" for _ in range(batch_size)]
-    t2 = tokenizer(tgt_rhymes, add_special_tokens=False, return_tensors="pt",
-                    max_length=1, padding=False, truncation=True)
+    t2 = tokenizer(
+        tgt_rhymes,
+        add_special_tokens=False,
+        return_tensors="pt",
+        max_length=1,
+        padding=False,
+        truncation=True,
+    )
     tgt_rhymes_ids = t2["input_ids"].to(device)
 
     # Boundary constraint (all zeros, length matching target)
     boundaries = [[0] * l for l in target_lengths]
     tgt_stress = ["".join([f"str_{i}" for i in b[::-1]]) for b in boundaries]
-    t3 = tokenizer(tgt_stress, return_tensors="pt", add_special_tokens=False, padding=True)
+    t3 = tokenizer(
+        tgt_stress, return_tensors="pt", add_special_tokens=False, padding=True
+    )
     tgt_stress_ids = t3["input_ids"].to(device)
     attn_str = t3["attention_mask"].to(device)
     pad_bit = 20 - tgt_stress_ids.shape[1]
@@ -345,6 +385,7 @@ def translate_lines(
 # Main evaluation loop
 # ---------------------------------------------------------------------------
 
+
 def run_evaluation(test_cases: list[dict], model, tokenizer, device: str) -> dict:
     """Run model on all test cases and compute BLT metrics."""
     all_results = []
@@ -362,7 +403,9 @@ def run_evaluation(test_cases: list[dict], model, tokenizer, device: str) -> dic
         # Translate
         t0 = time.time()
         try:
-            translated = translate_lines(model, tokenizer, device, source_lines, target_lengths)
+            translated = translate_lines(
+                model, tokenizer, device, source_lines, target_lengths
+            )
         except Exception as e:
             print(f"  Error on {tc['id']}: {e}")
             translated = ["" for _ in source_lines]
@@ -398,7 +441,9 @@ def run_evaluation(test_cases: list[dict], model, tokenizer, device: str) -> dic
             "metadata": tc.get("metadata", {}),
         }
         all_results.append(result)
-        print(f"  {tc['id']}: SER={ser:.4f}  SCRE={scre:.4f}  ARI={ari:.4f}  time={elapsed:.1f}s")
+        print(
+            f"  {tc['id']}: SER={ser:.4f}  SCRE={scre:.4f}  ARI={ari:.4f}  time={elapsed:.1f}s"
+        )
 
     n = len(all_results)
     avg_metrics = {
@@ -412,15 +457,32 @@ def run_evaluation(test_cases: list[dict], model, tokenizer, device: str) -> dic
 
 def main():
     parser = argparse.ArgumentParser(description="Run CLT baseline with BLT metrics")
-    parser.add_argument("--dataset", choices=["local", "hf", "both"], default="both",
-                        help="Dataset to evaluate on")
-    parser.add_argument("--samples", type=int, default=None,
-                        help="Number of samples (default: 5 for local, 30 for hf)")
-    parser.add_argument("--max-lines", type=int, default=5,
-                        help="Max lines per test case")
+    parser.add_argument(
+        "--dataset",
+        choices=["local", "hf", "both"],
+        default="both",
+        help="Dataset to evaluate on",
+    )
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=None,
+        help="Number of samples (default: 5 for local, 30 for hf)",
+    )
+    parser.add_argument(
+        "--max-lines", type=int, default=5, help="Max lines per test case"
+    )
     parser.add_argument("--device", default="cuda", help="Device (cuda or cpu)")
-    parser.add_argument("--model-path", default=None,
-                        help="Path to model (default: auto-detect from model_cache)")
+    parser.add_argument(
+        "--model-path",
+        default=None,
+        help="Path to model (default: auto-detect from model_cache)",
+    )
+    parser.add_argument(
+        "--test-suite",
+        default=None,
+        help="Path to pre-generated test suite JSON (overrides --dataset/--samples)",
+    )
     args = parser.parse_args()
 
     # Find model
@@ -446,6 +508,38 @@ def main():
 
     project_root = Path(__file__).resolve().parent.parent
 
+    # If --test-suite is provided, run on that directly
+    if args.test_suite:
+        suite_path = Path(args.test_suite)
+        if not suite_path.exists():
+            print(f"Error: test suite not found: {suite_path}")
+            sys.exit(1)
+        with open(suite_path, "r", encoding="utf-8") as f:
+            test_cases = json.load(f)
+        if args.samples is not None:
+            test_cases = test_cases[: args.samples]
+
+        ds_name = f"suite_{suite_path.stem}"
+        print(f"\n{'=' * 60}")
+        print(f"Test suite: {suite_path} (n={len(test_cases)})")
+        print(f"{'=' * 60}")
+
+        output = run_evaluation(test_cases, model, tokenizer, args.device)
+        m = output["avg_metrics"]
+        print(f"\n--- Average (n={output['total_tests']}) ---")
+        print(f"  SER:  {m['ser']:.4f}")
+        print(f"  SCRE: {m['scre']:.4f}")
+        print(f"  ARI:  {m['ari']:.4f}")
+        print(f"  Time: {m['avg_time_seconds']:.1f}s")
+
+        results_dir = project_root / "benchmarks" / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        outfile = results_dir / f"clt_baseline_{ds_name}.json"
+        with open(outfile, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+        print(f"Saved: {outfile}")
+        return
+
     datasets_to_run = []
     if args.dataset in ("local", "both"):
         n = args.samples if args.samples is not None else 5
@@ -463,12 +557,14 @@ def main():
         if ds_name == "local":
             test_cases = load_local_dataset(
                 str(project_root / "benchmarks" / "data"),
-                num_samples=n_samples, max_lines=args.max_lines,
+                num_samples=n_samples,
+                max_lines=args.max_lines,
             )
         else:
             test_cases = load_hf_dataset(
                 str(project_root / "benchmarks" / "data" / "hf_en2zh" / "datasets"),
-                num_samples=n_samples, max_lines=args.max_lines,
+                num_samples=n_samples,
+                max_lines=args.max_lines,
             )
 
         print(f"Test cases: {len(test_cases)}")
@@ -495,11 +591,15 @@ def main():
     print(f"\n{'=' * 75}")
     print("CLT BASELINE SUMMARY")
     print(f"{'=' * 75}")
-    print(f"{'Dataset':<20} {'Tests':>6} {'SER ↓':>10} {'SCRE ↓':>10} {'ARI ↑':>10} {'Avg Time':>10}")
+    print(
+        f"{'Dataset':<20} {'Tests':>6} {'SER ↓':>10} {'SCRE ↓':>10} {'ARI ↑':>10} {'Avg Time':>10}"
+    )
     print(f"{'─' * 75}")
     for ds_name, output in all_outputs.items():
         m = output["avg_metrics"]
-        print(f"{ds_name:<20} {output['total_tests']:>6} {m['ser']:>10.4f} {m['scre']:>10.4f} {m['ari']:>10.4f} {m['avg_time_seconds']:>9.1f}s")
+        print(
+            f"{ds_name:<20} {output['total_tests']:>6} {m['ser']:>10.4f} {m['scre']:>10.4f} {m['ari']:>10.4f} {m['avg_time_seconds']:>9.1f}s"
+        )
 
 
 if __name__ == "__main__":
