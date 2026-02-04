@@ -1,10 +1,15 @@
-\begin{thebibliography}{31}
+\begin{thebibliography}{33}
 \providecommand{\natexlab}[1]{#1}
 
 \bibitem[{Bernard and Titeux(2021)}]{bernard-titeux-2021-phonemizer}
 Mathieu Bernard and Hadrien Titeux. 2021.
 \newblock \href {https://doi.org/10.21105/joss.03958} {Phonemizer: Text to phones transcription for multiple languages in {P}ython}.
 \newblock \emph{Journal of Open Source Software}, 6(68):3958.
+
+\bibitem[{Chen et~al.(2025)Chen, Dong, Yang, Xie, and Hao}]{chen-etal-2025-ipa-translation}
+Jiale Chen, Xuelian Dong, Qihao Yang, Wenxiu Xie, and Tianyong Hao. 2025.
+\newblock \href {https://aclanthology.org/2025.emnlp-main.1195/} {Can large language models translate spoken-only languages through international phonetic transcription?}
+\newblock In \emph{Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing}, pages 23431--23446.
 
 \bibitem[{Chen and Teufel(2024)}]{chen-teufel-2024-scansion}
 Yiwen Chen and Simone Teufel. 2024.
@@ -60,6 +65,11 @@ Lawrence Hubert and Phipps Arabie. 1985.
 Wenxiang Jiao, Wenxuan Wang, Jen-tse Huang, Xing Wang, Shuming Shi, and Zhaopeng Tu. 2023.
 \newblock Is {C}hat{GPT} a good translator? {Y}es with {GPT}-4 as the engine.
 \newblock \emph{arXiv preprint arXiv:2301.08745}.
+
+\bibitem[{Kim et~al.(2024)Kim, Jung, Jeong, and Nam}]{kim-etal-2024-kpop}
+Haven Kim, Jongmin Jung, Dasaem Jeong, and Juhan Nam. 2024.
+\newblock \href {https://aclanthology.org/2024.lrec-main.872/} {{K}-pop lyric translation: Dataset, analysis, and neural-modelling}.
+\newblock In \emph{Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024)}, pages 9974--9987.
 
 \bibitem[{Kim et~al.(2023)Kim, Watanabe, Goto, and Nam}]{kim-etal-2023-computational}
 Haven Kim, Kento Watanabe, Masataka Goto, and Juhan Nam. 2023.

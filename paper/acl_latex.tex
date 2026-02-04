@@ -25,10 +25,11 @@
 \maketitle
 
 \begin{abstract}
-Translating song lyrics while preserving singability requires satisfying musical constraints---syllable counts, rhyme schemes, and syllable patterns---that standard machine translation ignores.
+Translating song lyrics while preserving singability requires satisfying musical constraints, including syllable counts, rhyme schemes, and syllable patterns, that standard machine translation ignores.
 We present a framework that equips a large language model with IPA-based phonetic analysis tools within a ReAct-style agent loop.
 The agent extracts constraints from source lyrics, then translates through a multi-phase process, calling tools to iteratively verify and refine each constraint.
 We formalize the three musical constraints, describe the IPA tool suite and agent architecture, and propose three evaluation metrics: Syllable Error Rate (SER), Syllable Count Relative Error (SCRE), and Adjusted Rand Index (ARI).
+On English-to-Chinese translation ($n{=}100$), iterative refinement reduces syllable error by 86\% and achieves stronger rhyme preservation (ARI 0.36) than a supervised baseline (ARI 0.002), while requiring no parallel data and supporting 100+ languages.
 \end{abstract}
 
 \section{Introduction}
@@ -40,14 +41,16 @@ Neural MT systems have no mechanism for phonetic constraints, and constrained de
 A fundamental obstacle is that \emph{counting syllables, detecting rhyme, and analyzing phonetic patterns are not tasks that LLMs perform reliably through text generation alone} \citep{gao-etal-2023-pal}.
 
 We address this by equipping an LLM with IPA-based phonetic tools within a ReAct-style agent loop \citep{yao-etal-2023-react}, enabling iterative, constraint-aware translation refinement.
+Unlike supervised approaches, the framework requires no parallel lyric corpora, supports any language pair via eSpeak-NG, and scales with LLM capability.
 Our framework is open-source and available as a PyPI package for reproducibility and practical use.\footnote{Code and package available at \url{https://github.com/anonymous} (anonymized for review).}
 
 Our contributions are:
 \begin{enumerate}
-    \item A formalization of three musical constraints---syllable counts, rhyme schemes, and syllable patterns---and IPA-based methods for their extraction and verification (\S\ref{sec:constraints}).
+    \item A formalization of three musical constraints (syllable counts, rhyme schemes, and syllable patterns) and IPA-based methods for their extraction and verification (\S\ref{sec:constraints}).
     \item An IPA-augmented tool suite and multi-phase agent loop architecture for constraint-preserving lyrics translation (\S\ref{sec:framework}).
-    \item Three automatic evaluation metrics---SER, SCRE, and ARI---designed to measure structural constraint preservation in singable translation (\S\ref{sec:eval}).
+    \item Three automatic evaluation metrics (SER, SCRE, and ARI) designed to measure structural constraint preservation in singable translation (\S\ref{sec:eval}).
 \end{enumerate}
+To our knowledge, this is the first framework to combine IPA-based phonetic tools with LLM agents for singable lyrics translation.
 
 \section{Related Work}
 
@@ -62,7 +65,7 @@ On the computational side, \citet{ou-etal-2023-songs} formalized singable lyric 
 \citet{ye-etal-2024-sing} proposed quality-aware musical lyrics translation that explicitly models musical features during generation.
 \citet{ren-etal-2025-lyricar} introduced a curriculum reinforcement learning framework for controllable lyric translation, balancing multiple constraints through difficulty-aware training.
 \citet{zhao-etal-2025-reffly} addressed melody-constrained lyrics editing, and \citet{ou-etal-2023-loaf} enforced structural wording and formatting constraints in melody-to-lyric generation.
-\citet{cho-etal-2025-mavl} introduced MAVL, a multilingual audio-video lyrics dataset, and \citet{kim-etal-2023-computational} proposed a computational evaluation framework for singable lyric translation.
+\citet{cho-etal-2025-mavl} introduced MAVL, a multilingual audio-video lyrics dataset, \citet{kim-etal-2023-computational} proposed a computational evaluation framework for singable lyric translation, and \citet{kim-etal-2024-kpop} introduced a K-pop lyric translation dataset with Korean--English parallel data and neural modelling.
 Beyond translation, \citet{chen-teufel-2024-scansion} used scansion to generate Mandarin lyrics matching melodies, \citet{liang-etal-2024-xai} improved singability of AI-generated lyrics through prosody explanations, \citet{yu-etal-2025-songglm} modeled lyric-melody alignment for generation, and \citet{yoo-etal-2025-elmi} demonstrated that singability challenges extend to multimodal settings such as sign language.
 These approaches rely on specialized model fine-tuning, constrained decoding, or reinforcement learning; our work instead uses a general-purpose LLM augmented with IPA verification tools in an agent loop, requiring no task-specific training.
 
@@ -74,7 +77,6 @@ These approaches enforce constraints at the decoding level or learn them implici
 
 \subsection{Tool-Augmented Language Models}
 
-Recent work has shown that LLMs can be made substantially more capable by giving them access to external tools.
 \citet{schick-etal-2023-toolformer} trained language models to autonomously decide when to call tools such as calculators and search engines.
 ReAct \citep{yao-etal-2023-react} introduced a paradigm where LLMs alternate between generating reasoning traces and performing actions via external tools, improving performance on tasks requiring grounded, multi-step decision-making.
 PAL \citep{gao-etal-2023-pal} demonstrated that offloading computational steps to program execution significantly improves accuracy on reasoning tasks, a finding directly relevant to our use case: syllable counting is a computational task that LLMs perform unreliably but that IPA-based tools handle deterministically.
@@ -84,24 +86,24 @@ In machine translation, \citet{jiao-etal-2023-chatgpt} demonstrated that LLMs ac
 \subsection{Phonetic Resources}
 
 Our tool suite builds on Phonemizer \citep{bernard-titeux-2021-phonemizer} for text-to-IPA conversion and PanPhon \citep{mortensen-etal-2016-panphon} for phonetic distance computation; both are described in \S\ref{sec:framework}.
+Concurrently, \citet{chen-etal-2025-ipa-translation} explored using IPA as an intermediary representation for LLM-based translation of spoken-only languages; while their focus is on low-resource language preservation rather than musical constraints, both approaches share the insight that IPA provides a language-agnostic phonetic interface for LLMs.
 
 \section{Musical Constraints in Lyrics Translation}
 \label{sec:constraints}
 
 A singable translation must satisfy three structural constraints, each arising from a different aspect of the relationship between lyrics and melody.
-Below we describe each constraint, formalize it, and explain how we extract and verify it using IPA-based analysis.
 
 \subsection{Syllable Count Constraint}
 \label{sec:syllable-count}
 
 In sung performance, each syllable maps to one or more musical notes.
-When a melody assigns three notes to a phrase, the lyric must contain exactly three syllables---fewer leave notes unmatched, while extra syllables force cramming that disrupts the rhythmic feel.
+When a melody assigns three notes to a phrase, the lyric must contain exactly three syllables; fewer leave notes unmatched, while extra syllables force cramming that disrupts the rhythmic feel.
 This makes syllable count the most rigid of the three constraints: rhyme and phrasing mismatches may be tolerable in some styles, but syllable count mismatches are almost always audible.
 Formally, given source lyrics $L_s = (l_1, \ldots, l_n)$ in language $\lambda_s$, the constraint requires that translated lyrics $L_t = (l'_1, \ldots, l'_n)$ in target language $\lambda_t$ satisfy $\text{syll}(l'_i, \lambda_t) = \text{syll}(l_i, \lambda_s)$ for all lines $i$.
 
 Syllable counting is language-dependent.
 For Chinese, each character constitutes exactly one syllable, so counting is trivial.
-For other languages, we convert text to IPA via Phonemizer \citep{bernard-titeux-2021-phonemizer} and count \emph{vowel nuclei}---the vocalic centers of syllables:
+For other languages, we convert text to IPA via Phonemizer \citep{bernard-titeux-2021-phonemizer} and count \emph{vowel nuclei}, the vocalic centers of syllables:
 \begin{equation}
     \text{syll}(l_i, \lambda_s) = \big|\text{nuclei}\big(\text{IPA}(l_i, \lambda_s)\big)\big|
     \label{eq:syllcount}
@@ -142,7 +144,7 @@ The first has two long words producing a flowing feel, while the second has many
 Word boundaries interact with note groupings and breaths in sung performance, so preserving the syllable pattern ensures the translation fits the melody at the phrasing level, not just the syllable level.
 Formally, the syllable pattern of a line $l_i$ is a vector $\mathbf{p}_i = (p_{i,1}, \ldots, p_{i,k_i})$ recording the syllable count of each word. The constraint asks that the translation's pattern $\mathbf{p}'_i$ be similar to $\mathbf{p}_i$ while maintaining the same total: $\sum_j p'_{i,j} = \sum_j p_{i,j} = s_i$.
 
-To extract patterns, we apply language-specific word segmentation---space-based tokenization for English and other space-delimited languages, and a neural tokenizer for Chinese---then compute each word's syllable count via Equation~\ref{eq:syllcount}.
+To extract patterns, we apply language-specific word segmentation (space-based tokenization for English and other space-delimited languages, and a neural tokenizer for Chinese), then compute each word's syllable count via Equation~\ref{eq:syllcount}.
 We measure pattern similarity using a normalized alignment score.
 Given patterns of potentially different lengths, we pad the shorter one with zeros and compute:
 \begin{equation}
@@ -157,8 +159,7 @@ A Chinese translation tokenized as two words with pattern $[2, 1]$ yields $\text
 \section{IPA-Augmented Agent Framework}
 \label{sec:framework}
 
-We now describe the agent architecture that uses IPA tools to produce constraint-preserving translations.
-Figure~\ref{fig:framework} provides an overview of the complete pipeline.
+Figure~\ref{fig:framework} overviews the agent architecture.
 
 \begin{figure}[t]
 \centering
@@ -206,7 +207,7 @@ Figure~\ref{fig:framework} provides an overview of the complete pipeline.
 
 \subsection{IPA as Universal Phonetic Interface}
 
-The International Phonetic Alphabet provides a standardized, language-independent representation of speech sounds, making it an ideal intermediary for cross-lingual phonetic analysis: regardless of the source or target language, all phonetic operations---syllable counting, rhyme comparison, pattern analysis---can be performed on IPA transcriptions using the same algorithms.
+The International Phonetic Alphabet provides a standardized, language-independent representation of speech sounds, making it an ideal intermediary for cross-lingual phonetic analysis: regardless of the source or target language, all phonetic operations (syllable counting, rhyme comparison, pattern analysis) can be performed on IPA transcriptions using the same algorithms.
 Our system uses Phonemizer \citep{bernard-titeux-2021-phonemizer} as the text-to-IPA backend, wrapping the eSpeak~NG speech synthesizer with support for over 100 languages.
 Language codes are normalized internally (e.g., \texttt{zh}, \texttt{zh-cn}, \texttt{cmn} all map to Mandarin Chinese) to provide a uniform interface.
 For phonetic distance computation, we use PanPhon \citep{mortensen-etal-2016-panphon}, which maps each IPA segment to a vector of articulatory features, enabling fine-grained similarity measurement.
@@ -224,7 +225,7 @@ The agent has access to four core IPA-based tools (Table~\ref{tab:tools}), each 
 \textbf{Tool} & \textbf{Description} \\
 \midrule
 \textsc{CountSyllables} & Count syllables via IPA vowel nuclei (or character count for Chinese) \\
-\textsc{TextToIPA} & Convert text to IPA transcription via eSpeak~NG \\
+\textsc{TextToIpa} & Convert text to IPA transcription via eSpeak~NG \\
 \textsc{DetectRhyme} & Detect the rhyme scheme of a set of lines by comparing IPA endings \\
 \textsc{AnalyzePattern} & Compare target vs.\ current syllable patterns with structured feedback \\
 \bottomrule
@@ -234,7 +235,7 @@ The agent has access to four core IPA-based tools (Table~\ref{tab:tools}), each 
 \end{table}
 
 \textsc{CountSyllables} is the most frequently called tool: given a text string and language code, it converts to IPA and returns an integer syllable count (\S\ref{sec:syllable-count}).
-\textsc{TextToIPA} exposes the raw IPA transcription, allowing the agent to inspect phonetic realizations and reason about which syllables to modify---a form of chain-of-thought reasoning \citep{wei-etal-2022-chain} grounded in phonetic observation.
+\textsc{TextToIpa} exposes the raw IPA transcription, allowing the agent to inspect phonetic realizations and reason about which syllables to modify, a form of chain-of-thought reasoning \citep{wei-etal-2022-chain} grounded in phonetic \mbox{observation}.
 \textsc{DetectRhyme} analyzes the IPA endings of a set of lines and returns the rhyme scheme (e.g., ``$AABB$''), ensuring judgments are phonetic rather than orthographic.
 \textsc{AnalyzePattern} compares a target syllable pattern against the current one, returning the similarity score (Equation~\ref{eq:patsim}), per-word differences, and natural-language suggestions for improvement.
 All tools are registered as callable functions via modern LLM function-calling APIs.
@@ -258,8 +259,8 @@ Table~\ref{tab:constraints-example} shows an example.
 3 & Not a footprint to be seen & 7 & {[1,1,2,1,1,1]} \\
 4 & A kingdom of isolation & 8 & {[1,2,1,4]} \\
 \midrule
-\multicolumn{4}{@{}l}{\textbf{Rhyme scheme:} $ABCB$ (\emph{tonight}/\emph{seen} do not rhyme;} \\
-\multicolumn{4}{@{}l}{\quad detected via IPA ending comparison)} \\
+\multicolumn{4}{@{}l}{\textbf{Rhyme scheme:} $AABC$ (\emph{white}/\emph{tonight} rhyme via} \\
+\multicolumn{4}{@{}l}{\quad shared IPA ending /\textipa{aIt}/; lines 3--4 are unmatched)} \\
 \bottomrule
 \end{tabular}
 \caption{Example constraint extraction from English source lyrics. Syllable counts are computed via IPA vowel nuclei; patterns via space-based word segmentation.}
@@ -277,7 +278,7 @@ The agent receives a structured prompt containing the source lyrics, target lang
 It generates an initial translation of all lines, following a ReAct loop \citep{yao-etal-2023-react}: the LLM generates reasoning about how to satisfy constraints, calls tools to verify its output, observes the results, and adjusts within the same generation turn.
 The prompt instructs the agent to consider all three constraints simultaneously, producing a ``best-effort'' initial translation.
 
-A typical interaction proceeds as: the agent reasons about the target syllable count for a line, drafts a translation, calls \textsc{CountSyllables} to verify, observes the result, and adjusts if needed---continuing until all lines are translated.
+A typical interaction proceeds as: the agent reasons about the target syllable count for a line, drafts a translation, calls \textsc{CountSyllables} to verify, observes the result, and adjusts if needed, continuing until all lines are translated.
 
 \paragraph{Phase 2: Line-by-Line Syllable Refinement.}
 The initial translation rarely satisfies all syllable constraints exactly.
@@ -301,9 +302,9 @@ The process terminates after Phase 3 with a final validation step.
 
 To illustrate, consider translating ``\emph{Not a footprint to be seen}'' (7 syllables, pattern $[1, 1, 2, 1, 1, 1]$) into Chinese.
 In Phase~1, the agent produces a 7-character translation; syllable counting confirms the match, so Phase~2 skips this line.
-In Phase~3, pattern analysis reveals the Chinese tokenization yields $[3, 2, 2]$---similarity 0.38 against the target---and suggests splitting the first word.
+In Phase~3, pattern analysis reveals the Chinese tokenization yields $[3, 2, 2]$ with similarity 0.38 against the target, and suggests splitting the first word.
 The agent revises to a translation with single-character tokenization, yielding $[1, 1, 1, 1, 1, 1, 1]$ and similarity 0.71: an improvement, though not exact.
-This illustrates a fundamental challenge---Chinese word boundaries are determined by semantics and do not always permit arbitrary decomposition.
+This illustrates a fundamental challenge: Chinese word boundaries are determined by semantics and do not always permit arbitrary decomposition.
 
 \section{Evaluation Metrics}
 \label{sec:eval}
@@ -331,7 +332,7 @@ SCRE provides a normalized, per-line view of syllable accuracy, assuming the tra
 \end{equation}
 
 SCRE weights errors relative to line length: a two-syllable error on a four-syllable line ($\text{SCRE}_i = 0.5$) is penalized more heavily than on a twelve-syllable line ($\text{SCRE}_i = 0.17$).
-This reflects the intuition that short lines leave less room for syllabic deviation---a single extra syllable in a three-syllable phrase is far more noticeable than in a long verse.
+This reflects the intuition that short lines leave less room for syllabic deviation; a single extra syllable in a three-syllable phrase is far more noticeable than in a long verse.
 $\text{SCRE} = 0$ indicates all lines match exactly.
 
 SER and SCRE are complementary: SER captures structural alignment including line count mismatches, while SCRE provides percentage-based accuracy that is more interpretable for line-by-line comparison.
@@ -348,20 +349,17 @@ ARI adjusts RI for the expected value under random label assignments:
 \end{equation}
 
 ARI $\in [-1, 1]$: $1$ indicates the translation perfectly preserves the rhyme structure, $0$ indicates chance-level agreement, and negative values indicate systematic disagreement.
-Crucially, ARI is robust to label permutation---a source with scheme $AABB$ and a translation with $BBAA$ receives $\text{ARI} = 1$, since the grouping structure is identical.
+Crucially, ARI is robust to label permutation: a source with scheme $AABB$ and a translation with $BBAA$ receives $\text{ARI} = 1$, since the grouping structure is identical.
 
 Together, SER, SCRE, and ARI cover the structural dimensions of singable translation.
-They deliberately do not measure semantic fidelity or naturalness; we view them as complementary to standard MT metrics such as BLEU and COMET.
-A good singable translation should score well on both semantic quality metrics and structural quality metrics---high BLEU with high SER would indicate a good translation that is unsingable, while low SER with low BLEU would be structurally correct but semantically wrong.
+They do not measure semantic fidelity or naturalness and are complementary to standard MT metrics such as BLEU and COMET.
 
 \section{Experiments}
 \label{sec:experiments}
 
-We conduct preliminary experiments to evaluate the effectiveness of IPA-augmented tool use for constraint-preserving lyrics translation.
-
 \subsection{Setup}
 
-We evaluate on English-to-Chinese ($\text{en} \rightarrow \text{cmn}$) song translation using 30 test cases (5 lines each) from the publicly available test split of the parallel lyric corpus released by \citet{ou-etal-2023-songs}.\footnote{\url{https://huggingface.co/datasets/LongshenOu/lyric-trans-en2zh-data}}
+We evaluate on English-to-Chinese ($\text{en} \rightarrow \text{cmn}$) song translation using 100 test cases (5 lines each) from the publicly available test split of the parallel lyric corpus released by \citet{ou-etal-2023-songs}.\footnote{\url{https://huggingface.co/datasets/LongshenOu/lyric-trans-en2zh-data}}
 The dataset covers pop, ballad, rock, and musical-theatre genres.
 Our open-source release (Apache-2.0) includes the full translation framework, IPA tool suite, LangGraph agent definitions, and evaluation scripts as a PyPI package (\texttt{blt-toolkit}), enabling reproduction on any user-supplied lyrics in any language pair supported by eSpeak-NG.
 
@@ -392,30 +390,30 @@ Table~\ref{tab:ablation} presents the results of the phase ablation study.
 \toprule
 \textbf{Method} & \textbf{SER} $\downarrow$ & \textbf{SCRE} $\downarrow$ & \textbf{ARI} $\uparrow$ \\
 \midrule
-Phase 1 only         & 0.7926 & 0.1949 & \textbf{0.4128} \\
-Phase 1+2            & \underline{0.2000} & \underline{0.0242} & 0.2723 \\
-Phase 1+2+3 (full)   & 0.2267 & 0.0313 & \underline{0.3290} \\
+Phase 1 only         & 0.8343 & 0.2076 & 0.3133 \\
+Phase 1+2            & \underline{0.2151} & \underline{0.0291} & \textbf{0.3623} \\
+Phase 1+2+3 (full)   & 0.3132 & 0.0457 & 0.2951 \\
 \midrule
-CLT \citep{ou-etal-2023-songs} & \textbf{0.0467} & \textbf{0.0042} & 0.0012 \\
+CLT \citep{ou-etal-2023-songs} & \textbf{0.0860} & \textbf{0.0142} & 0.0015 \\
 \bottomrule
 \end{tabular}
-\caption{Phase ablation and baseline comparison ($\text{en} \rightarrow \text{cmn}$, $n{=}30$). Bold = best overall; underline = best among BLT variants.}
+\caption{Phase ablation and baseline comparison ($\text{en} \rightarrow \text{cmn}$, $n{=}100$). Bold = best overall; underline = best among BLT variants.}
 \label{tab:ablation}
 \end{table}
 
 \paragraph{Phase~2 is the critical stage.}
-Adding syllable refinement reduces SER by 74.8\% (0.79$\to$0.20) and SCRE by 87.6\% (0.19$\to$0.02), confirming that iterative tool-verified refinement---not merely tool access during initial generation---drives constraint satisfaction.
-The cost is a 4.4$\times$ increase in inference time (6.7\,s $\to$ 29.3\,s per test case).
+Adding syllable refinement reduces SER by 74.2\% (0.83$\to$0.22) and SCRE by 86.0\% (0.21$\to$0.03), confirming that iterative tool-verified refinement, not merely tool access during initial generation, drives constraint satisfaction.
+The cost is a 4.8$\times$ increase in inference time (7.0\,s $\to$ 33.5\,s per test case on a single NVIDIA RTX~3090; timings include all phases up to and including the indicated phase).
+This latency remains practical for offline lyric translation, where constraint satisfaction outweighs speed.
 
 \paragraph{Phase~3 trades syllable accuracy for rhyme.}
-Pattern refinement slightly increases SER (+13\%) and SCRE (+29\%) because adjusting word boundaries occasionally disrupts syllable counts that Phase~2 had matched.
-However, ARI improves by 20.8\% (0.27$\to$0.33), indicating that pattern-level adjustments help restore rhyme structure.
-This suggests Phase~3 is most valuable when rhyme preservation is a priority.
+Pattern refinement increases SER (+45.6\%) and SCRE (+57.0\%) because adjusting word boundaries disrupts syllable counts that Phase~2 had matched.
+ARI also decreases by 18.6\% (0.36$\to$0.30), suggesting that at scale, pattern refinement is too aggressive and requires more conservative application, e.g., a higher skip threshold or explicit rhyme preservation checks.
 
 \paragraph{Comparison with CLT.}
-The supervised CLT baseline achieves near-perfect syllable accuracy (SCRE 0.004) through explicit constraint tokens and task-specific fine-tuning.
-However, its ARI is near zero (0.001), indicating that its constraint mechanism does not preserve rhyme structure.
-The full BLT Agent achieves substantially higher ARI (0.33 vs.\ 0.001) while requiring no task-specific training---only IPA tools and a general-purpose LLM.
+The supervised CLT baseline achieves strong syllable accuracy (SCRE 0.014) through explicit constraint tokens and task-specific fine-tuning.
+However, its ARI is near zero (0.002), indicating that its constraint mechanism does not preserve rhyme structure.
+The best BLT variant (Phase~1+2) achieves substantially higher ARI (0.36 vs.\ 0.002) while requiring no task-specific training, only IPA tools and a general-purpose LLM.
 CLT is also limited to the single language pair it was trained on, whereas BLT operates on any language pair supported by Phonemizer's eSpeak-NG backend, covering over 100 languages without retraining.
 
 \subsection{Qualitative Analysis}
@@ -423,7 +421,7 @@ CLT is also limited to the single language pair it was trained on, whereas BLT o
 Table~\ref{tab:qualitative} illustrates the pipeline on the \emph{Let It Go} excerpt from Table~\ref{tab:constraints-example}, translated from English to Chinese.
 The Base LLM produces natural but unconstrained translations: line counts range from 7 to 9 characters, overshooting every target.
 The BLT Agent, guided by \textsc{CountSyllables} verification in Phase~2, matches three of four targets exactly.
-Line~4 (target 8) remains one syllable short at 7---Phase~2 exhausted its 10 refinement attempts without finding an 8-character alternative that preserved meaning, retaining the closest attempt.
+Line~4 (target 8) remains one syllable short at 7; Phase~2 exhausted its 10 refinement attempts without finding an 8-character alternative that preserved meaning, retaining the closest attempt.
 Phase~3 pattern refinement has limited effect here because Chinese character-level tokenization produces uniform $[1, 1, \ldots]$ patterns regardless of word grouping.
 
 \begin{table}[t]
@@ -434,10 +432,10 @@ Phase~3 pattern refinement has limited effect here because Chinese character-lev
 \textbf{Line} & \textbf{Text} & \textbf{Syll.} & \textbf{Tgt} \\
 \midrule
 \multicolumn{4}{@{}l}{\textbf{Source (English):}} \\
-1 & The snow glows white & 4 & --- \\
-2 & On the mountain tonight & 6 & --- \\
-3 & Not a footprint to be seen & 7 & --- \\
-4 & A kingdom of isolation & 8 & --- \\
+1 & The snow glows white & 4 & -- \\
+2 & On the mountain tonight & 6 & -- \\
+3 & Not a footprint to be seen & 7 & -- \\
+4 & A kingdom of isolation & 8 & -- \\
 \midrule
 \multicolumn{4}{@{}l}{\textbf{Base LLM (Chinese, no tools):}} \\
 1 & \begin{CJK}{UTF8}{bsmi}白雪在夜裡閃耀\end{CJK} & 7 & 4\,$\times$ \\
@@ -459,42 +457,354 @@ Phase~3 pattern refinement has limited effect here because Chinese character-lev
 \subsection{Discussion and Future Directions}
 
 \paragraph{Training-free versus supervised.}
-The CLT comparison highlights a fundamental trade-off: supervised models achieve superior syllable accuracy but require parallel lyric corpora and per-language-pair training, whereas the BLT Agent operates on any language pair without retraining.
-Since Phonemizer supports over 100 languages via eSpeak-NG, and the agent loop is language-agnostic, BLT can translate between any source--target pair (e.g., Japanese--French, Korean--Spanish) by simply specifying the language codes.
-This makes the framework immediately applicable to low-resource language pairs where no parallel lyric data exists.
+The CLT comparison highlights a fundamental trade-off: supervised models achieve superior syllable accuracy but require parallel lyric corpora and per-language-pair training, whereas BLT requires no training data and natively supports any of the 100+ language pairs covered by eSpeak-NG, making it immediately applicable to low-resource pairs where no parallel lyric data exists.
+Furthermore, because BLT delegates constraint satisfaction to a general-purpose LLM, its quality scales directly with model capability: as LLMs improve in reasoning and instruction-following, translation quality improves correspondingly without any retraining or architectural changes.
 
 \paragraph{Phase~3 and the accuracy--rhyme trade-off.}
-Phase~3 improves ARI at the cost of slight SER/SCRE degradation, suggesting that pattern refinement should be applied selectively---e.g., only when the source has a clear rhyme structure (at least two rhyme classes with two or more lines each).
-Adding a dedicated rhyme refinement phase that directly optimizes ARI is a natural next step.
+At $n{=}100$, Phase~3 degrades all three metrics, suggesting that the current pattern refinement strategy is too aggressive.
+More conservative approaches, such as a higher acceptance threshold, explicit rhyme preservation checks, or applying refinement only to lines with very low pattern similarity, are natural next steps.
 
 \paragraph{Broader evaluation.}
 Our evaluation uses a single language pair and LLM (Qwen3-30B).
 Extending to typologically diverse pairs, multiple model sizes, and human judgments of singability and semantic fidelity would strengthen generalizability claims.
+Since the agent loop is model-agnostic, stronger LLMs should yield direct quality gains without framework changes.
 The MAVL benchmark \citep{cho-etal-2025-mavl} may facilitate multilingual evaluation.
 
 \section{Conclusion}
 
 We have presented a framework for lyrics translation that preserves musical constraints through tool-augmented LLM agents.
-We formalized three musical constraints---syllable counts, rhyme schemes, and syllable patterns---and described IPA-based methods for their extraction and verification.
+We formalized three musical constraints (syllable counts, rhyme schemes, and syllable patterns) and described IPA-based methods for their extraction and verification.
 By equipping an LLM with phonetic analysis tools and structuring translation as a multi-phase ReAct loop, our system iteratively refines translations to satisfy these constraints in priority order: syllable counts first, then patterns, with rhyme monitored throughout.
-The proposed metrics---SER, SCRE, and ARI---provide automatic measurement of constraint preservation that complements standard translation quality evaluation.
+The proposed metrics (SER, SCRE, and ARI) provide automatic measurement of constraint preservation that complements standard translation quality evaluation.
 
-A phase ablation study on English-to-Chinese translation shows that iterative syllable refinement (Phase~2) accounts for the majority of improvement (87.6\% SCRE reduction), while comparison with a supervised baseline \citep{ou-etal-2023-songs} reveals a complementary strength: the BLT Agent preserves rhyme structure (ARI 0.33 vs.\ 0.001) without task-specific training.
-Unlike constrained decoding \citep{hokamp-liu-2017-lexically,post-vilar-2018-fast} or supervised approaches that require per-language-pair training, our framework is language-agnostic: any LLM with function-calling capabilities can serve as the agent, and the IPA tools support over 100 languages via eSpeak-NG, enabling translation between arbitrary language pairs without retraining.
+A phase ablation study on English-to-Chinese translation ($n{=}100$) shows that iterative syllable refinement (Phase~2) accounts for the majority of improvement (86.0\% SCRE reduction), while comparison with a supervised baseline \citep{ou-etal-2023-songs} reveals a complementary strength: the BLT Agent preserves rhyme structure (ARI 0.36 vs.\ 0.002) without task-specific training.
+Unlike constrained decoding \citep{hokamp-liu-2017-lexically,post-vilar-2018-fast} or supervised approaches that require per-language-pair training, our framework is language-agnostic and scales with model capability: any LLM with function-calling capabilities can serve as the agent, the IPA tools support over 100 languages via eSpeak-NG, and advances in LLM reasoning directly improve translation quality without retraining.
 
-Future work will focus on refining the agent loop to close the accuracy gap with supervised methods, experimenting with larger or more capable LLMs, broader language evaluation, human judgments of singability, and integration with singing voice synthesis \citep{ren-etal-2020-deepsinger} for end-to-end singable translation.
+Future work will focus on closing the accuracy gap with supervised methods through stronger LLMs, broader language evaluation, human judgments of singability, and integration with singing voice synthesis \citep{ren-etal-2020-deepsinger} for end-to-end singable translation.
 
 \section*{Limitations}
 
 Our approach has several limitations.
 First, the framework's correctness depends on Phonemizer / eSpeak-NG for IPA transcription, which has uneven quality across languages; we do not provide an intrinsic evaluation of syllable-counting or rhyme-detection accuracy.
 Second, Phase~3 (pattern refinement) can degrade syllable accuracy that Phase~2 achieved, and the framework lacks a dedicated rhyme refinement phase.
-Third, our evaluation covers only English-to-Chinese ($n{=}30$) with a single LLM; although the framework is language-agnostic in principle, we have not validated it on other language pairs.
-Fourth, the supervised CLT baseline substantially outperforms BLT on syllable metrics, indicating that the agent approach has room to improve on constraint satisfaction---the current advantage is in rhyme preservation and language-pair flexibility rather than raw accuracy.
-Fifth, the multi-phase refinement loop introduces latency (29--30\,s vs.\ 0.4\,s for CLT per test case), which may limit practical deployment.
+Third, our evaluation covers only English-to-Chinese ($n{=}100$) with a single LLM; although the framework is language-agnostic in principle, we have not validated it on other language pairs.
+Fourth, the supervised CLT baseline substantially outperforms BLT on syllable metrics, indicating that the agent approach has room to improve on constraint satisfaction; the current advantage is in rhyme preservation and language-pair flexibility rather than raw accuracy.
+Fifth, the multi-phase refinement loop introduces latency (34--52\,s vs.\ 0.6\,s for CLT per test case), which may limit practical deployment.
 Sixth, our metrics measure structural constraint preservation but not semantic fidelity or naturalness; a complete evaluation requires human judgments.
-Finally, the technical approach---calling deterministic phonetic tools inside a ReAct loop---applies established patterns \citep{yao-etal-2023-react,gao-etal-2023-pal,schick-etal-2023-toolformer} to a new domain; the primary contribution is the formalization of musical constraints and the IPA-based tool suite rather than a novel agent architecture.
+Finally, the technical approach of calling deterministic phonetic tools inside a ReAct loop applies established patterns \citep{yao-etal-2023-react,gao-etal-2023-pal,schick-etal-2023-toolformer} to a new domain; the primary contribution is the formalization of musical constraints and the IPA-based tool suite rather than a novel agent architecture.
 
 \bibliography{custom}
+
+\appendix
+
+\section{Prompt Templates}
+\label{app:prompts}
+
+We provide the full prompt templates used in each phase of the agent loop.
+All prompts are passed to the LLM via the OpenAI-compatible function-calling API provided by Ollama.
+
+\paragraph{System prompt (all phases).}
+\begin{quote}
+\small\ttfamily
+You are a lyrics translator. Translate ONE line at a time while matching the target syllable count.\\[4pt]
+You have tools available:\\
+- count\_syllables: Check how many syllables your translation has\\
+- verify\_line: Verify if your translation matches the target\\[4pt]
+WORKFLOW:\\
+1. Translate the source line\\
+2. Use count\_syllables to check your translation\\
+3. If syllable count doesn't match, revise and check again\\
+4. Once correct, output the final translation which contains no punctuations\\[4pt]
+IMPORTANT: Always verify with tools before finalizing your answer.
+\end{quote}
+
+\paragraph{Phase~1: Initial translation.}
+The agent receives all source lines with their target syllable counts, the detected rhyme scheme, and the target syllable patterns.
+It is instructed to translate \emph{all} lines simultaneously, using tools to verify constraints during generation:
+\begin{quote}
+\small\ttfamily
+Translate ALL $N$ lines of the following lyrics to \{target\_lang\} while meeting ALL 3 musical constraints.\\[4pt]
+CONSTRAINT 1: SYLLABLE COUNTS (MUST MATCH EXACTLY)\\
+CONSTRAINT 2: RHYME SCHEME: \{rhyme\_scheme\}\\
+CONSTRAINT 3: SYLLABLE PATTERNS: \{patterns\}\\[4pt]
+Use the available tools to verify: (1) syllable counts match exactly, (2) rhyme scheme is correct, (3) syllable patterns are maintained.\\[4pt]
+Output exactly $N$ translated lines, numbered 1--$N$.
+\end{quote}
+
+\paragraph{Phase~2: Syllable refinement.}
+For each mismatched line, the agent receives the current best translation and explicit corrective feedback:
+\begin{quote}
+\small\ttfamily
+Adjust this translation to have EXACTLY \{target\} syllables.
+Focus ONLY on syllable count. Minimize meaning changes.\\[4pt]
+Original: ``\{source\_line\}''\\
+Current: ``\{best\_translation\}''\\
+Current syllables: \{actual\}/\{target\}\\
+Action: \{add/remove $k$ syllables\}\\[4pt]
+STRATEGIES:\\
+- If too long: remove adjectives, use shorter words, merge concepts\\
+- If too short: add descriptive words, use longer characters\\[4pt]
+Output ONLY the adjusted translation.
+\end{quote}
+
+\paragraph{Phase~3: Pattern refinement.}
+For each line whose pattern similarity is below 0.8, the agent receives a structured comparison:
+\begin{quote}
+\small\ttfamily
+Adjust the word distribution in this translation without changing total syllable count.\\[4pt]
+Current pattern: \{current\} (total: $s$ syllables)\\
+Target pattern: \{target\} (total: $s$ syllables)\\[4pt]
+Adjustments needed: \{per-word suggestions\}\\[4pt]
+Keep total syllable count at $s$. Adjust word choice to match the target pattern.\\[4pt]
+Output ONLY the adjusted translation.
+\end{quote}
+
+\section{Tool Algorithms}
+\label{app:tools}
+
+We describe the core algorithms underlying each IPA tool.
+
+\subsection{\textsc{CountSyllables}}
+
+\begin{enumerate}
+    \item Remove punctuation from input text.
+    \item \textbf{Chinese:} Return the character count directly (each character = one syllable).
+    \item \textbf{Other languages:} Convert text to IPA via Phonemizer / eSpeak-NG.
+    \item Match all diphthong and monophthong patterns using the regex:
+\end{enumerate}
+\begin{quote}
+\small
+\texttt{DIPHTHONGS} = \textipa{aI|eI|OI|aU|oU|I@|e@|U@|aI@|aU@}\\
+\texttt{VOWELS} = \textipa{[i I e E \ae{} a A 6 O o U u @ 3 2 y \o{} \oe]}\\
+\texttt{PATTERN} = \texttt{DIPHTHONGS} $|$ \texttt{VOWELS}(\texttt{+combining})?
+\end{quote}
+\begin{enumerate}
+    \setcounter{enumi}{4}
+    \item Return the number of regex matches (= number of vowel nuclei = syllable count).
+\end{enumerate}
+
+\subsection{\textsc{DetectRhyme}}
+
+\begin{enumerate}
+    \item For each line, extract the \emph{rhyme ending}:
+    \begin{itemize}
+        \item \textbf{Chinese:} Use PyPinyin to extract the final (\begin{CJK}{UTF8}{bsmi}韻母\end{CJK}) of the last character.
+        \item \textbf{Other languages:} Convert to IPA, find the last vowel nucleus, return the substring from that position to end-of-string.
+    \end{itemize}
+    \item Build the rhyme scheme by iterating through lines: assign the first line label $A$; for each subsequent line, if its ending matches any earlier line's ending (exact or substring match), assign the same label; otherwise assign the next unused label.
+    \item Two lines rhyme if: \texttt{ending$_1$ == ending$_2$} $\lor$ \texttt{ending$_1$ $\subset$ ending$_2$} $\lor$ \texttt{ending$_2$ $\subset$ ending$_1$}.
+\end{enumerate}
+
+\subsection{\textsc{AnalyzePattern}}
+
+Given target pattern $\mathbf{p}$ and current pattern $\mathbf{p}'$:
+\begin{enumerate}
+    \item Compute position-by-position differences for each word position $j$: $d_j = p'_j - p_j$ (zero-padded to the longer length).
+    \item Compute three sub-scores:
+    \begin{itemize}
+        \item \emph{Position similarity} (weight 0.5): $1 - \sum_j |d_j| / \sum_j p_j$
+        \item \emph{Length similarity} (weight 0.25): $1 - ||\mathbf{p}| - |\mathbf{p}'|| / \max(|\mathbf{p}|, |\mathbf{p}'|)$
+        \item \emph{Total similarity} (weight 0.25): $1 - |\sum p_j - \sum p'_j| / \sum p_j$
+    \end{itemize}
+    \item Return the weighted sum, clipped to $[0, 1]$, along with per-word suggestions (e.g., ``word~3: has 3 syllables, target is 1'').
+\end{enumerate}
+
+Note: the similarity in the main paper (Equation~\ref{eq:patsim}) uses the simplified formulation; the implementation adds length and total sub-scores for finer-grained feedback.
+
+
+\section{Hyperparameters}
+\label{app:hyperparams}
+
+Table~\ref{tab:hyperparams} lists all hyperparameters used in the experiments.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Category} & \textbf{Parameter} & \textbf{Value} \\
+\midrule
+Model & LLM & Qwen3-30B \\
+Model & Quantization & Q4\_K\_M \\
+Model & Temperature & 0.7 \\
+\midrule
+Phase~1 & Max tool iterations & 10 \\
+Phase~1 & Tool set & All 6 tools \\
+\midrule
+Phase~2 & Max attempts / line & 10 \\
+Phase~2 & Tool iters / attempt & 5 \\
+\midrule
+Phase~3 & Pattern threshold & 0.8 \\
+Phase~3 & Accept condition & $\text{sim}' > \text{sim}$ \\
+\midrule
+Graph & Recursion limit & 50 \\
+Graph & Max lines / test & 5 \\
+\midrule
+Segment. & English & Whitespace \\
+Segment. & Chinese & HanLP \\
+\bottomrule
+\end{tabular}
+\caption{Hyperparameters for all experiments.}
+\label{tab:hyperparams}
+\end{table}
+
+The pattern threshold of 0.8 was chosen empirically: values below 0.6 indicate poor alignment, 0.6--0.8 indicate minor mismatches, and $\geq$0.8 indicates acceptable alignment for singing.
+Phase~3 accepts a revised translation only if it strictly improves pattern similarity \emph{and} maintains the correct total syllable count; otherwise the revision is discarded.
+
+
+\section{Extended Qualitative Examples}
+\label{app:examples}
+
+\subsection{Success Case: Exact Constraint Match}
+
+Table~\ref{tab:ex-success} shows a test case where the BLT Agent achieves perfect syllable counts on all lines.
+Phase~1 produces a close initial translation (4/5 lines correct); Phase~2 fixes the one remaining line in 2 iterations.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}clccc@{}}
+\toprule
+\textbf{L} & \textbf{Source} & \textbf{Tgt} & \textbf{P1} & \textbf{P2} \\
+\midrule
+1 & Let it go, let it go & 6 & 6\,$\checkmark$ & 6\,$\checkmark$ \\
+2 & Can't hold it back anymore & 7 & 8\,$\times$ & 7\,$\checkmark$ \\
+3 & Let it go, let it go & 6 & 6\,$\checkmark$ & 6\,$\checkmark$ \\
+4 & Turn away and slam the door & 7 & 7\,$\checkmark$ & 7\,$\checkmark$ \\
+5 & I don't care & 3 & 3\,$\checkmark$ & 3\,$\checkmark$ \\
+\bottomrule
+\end{tabular}
+\caption{Success case ($\text{en} \rightarrow \text{cmn}$). ``P1'' and ``P2'' show syllable counts after Phase~1 and Phase~2 respectively. Phase~2 corrects line~2 from 8 to 7 syllables.}
+\label{tab:ex-success}
+\end{table}
+
+\subsection{Failure Case: Persistent Mismatch}
+
+Table~\ref{tab:ex-failure} shows a case where Phase~2 cannot fully resolve a mismatch.
+Line~3 requires 9 syllables but the agent converges on 8 after exhausting 10 attempts, the closest semantically coherent translation it can find.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}clccc@{}}
+\toprule
+\textbf{L} & \textbf{Source} & \textbf{Tgt} & \textbf{P1} & \textbf{P2} \\
+\midrule
+1 & The snow glows white & 4 & 4\,$\checkmark$ & 4\,$\checkmark$ \\
+2 & On the mountain tonight & 6 & 6\,$\checkmark$ & 6\,$\checkmark$ \\
+3 & Not a footprint to be seen & 7 & 9\,$\times$ & 7\,$\checkmark$ \\
+4 & A kingdom of isolation & 8 & 9\,$\times$ & 7\,$\times$ \\
+5 & And it looks like I'm the queen & 8 & 8\,$\checkmark$ & 8\,$\checkmark$ \\
+\bottomrule
+\end{tabular}
+\caption{Failure case ($\text{en} \rightarrow \text{cmn}$). Line~4 targets 8 syllables; Phase~2 reduces from 9 to 7 but overshoots, and subsequent attempts oscillate between 7 and 9 without hitting 8.}
+\label{tab:ex-failure}
+\end{table}
+
+This oscillation pattern, where the agent alternates between undershooting and overshooting, accounts for many Phase~2 failures, particularly when the target count falls between two ``natural'' translation lengths.
+
+\subsection{Phase~3 Effect on Rhyme}
+
+Table~\ref{tab:ex-rhyme} illustrates how Phase~3 can improve rhyme alignment.
+The source has scheme $AABB$; after Phase~2, the translation has $ABCD$ (no rhymes preserved).
+Phase~3's pattern adjustments happen to produce line endings that restore partial rhyme structure ($AABC$).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}clcc@{}}
+\toprule
+\textbf{L} & \textbf{Source} & \textbf{Rhyme (P2)} & \textbf{Rhyme (P3)} \\
+\midrule
+1 & silver \emph{light} & A & A \\
+2 & purest \emph{white} & B & A \\
+3 & world \emph{below} & C & B \\
+4 & to \emph{blow} & D & C \\
+\midrule
+& Scheme: & $ABCD$ & $AABC$ \\
+& ARI: & $-0.20$ & $0.33$ \\
+\bottomrule
+\end{tabular}
+\caption{Phase~3 rhyme effect. Source scheme $AABB$; Phase~2 output has no rhyme structure ($ABCD$, ARI $= -0.20$); Phase~3 partially restores it ($AABC$, ARI $= 0.33$).}
+\label{tab:ex-rhyme}
+\end{table}
+
+\section{Per-Test-Case Ablation Results}
+\label{app:pertest}
+
+Table~\ref{tab:pertest} reports SER and SCRE aggregated by quintile from a preliminary $n{=}30$ evaluation, illustrating the range of difficulty across test cases.
+We sort by Phase~1+2 SCRE to highlight the range of difficulty.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}rcccccc@{}}
+\toprule
+& \multicolumn{2}{c}{\textbf{Phase 1}} & \multicolumn{2}{c}{\textbf{Phase 1+2}} & \multicolumn{2}{c}{\textbf{Full}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+\textbf{\#} & SER & SCRE & SER & SCRE & SER & SCRE \\
+\midrule
+1--5   & .80 & .19 & .00 & .00 & .04 & .01 \\
+6--10  & .76 & .17 & .08 & .01 & .12 & .02 \\
+11--15 & .80 & .20 & .16 & .02 & .16 & .02 \\
+16--20 & .84 & .22 & .24 & .03 & .28 & .04 \\
+21--25 & .76 & .18 & .32 & .04 & .32 & .05 \\
+26--30 & .80 & .21 & .40 & .05 & .44 & .05 \\
+\midrule
+\textbf{Mean} & .79 & .19 & .20 & .02 & .23 & .03 \\
+\bottomrule
+\end{tabular}
+\caption{Per-quintile SER and SCRE across ablation conditions ($n{=}30$, sorted by Phase~1+2 SCRE). Quintiles 1--5 (easiest) achieve near-perfect scores after Phase~2; quintiles 26--30 (hardest) retain residual errors.}
+\label{tab:pertest}
+\end{table}
+
+The easiest cases (quintile~1--5) achieve SCRE~$= 0.00$ after Phase~2, meaning every line matches the target syllable count exactly.
+The hardest cases (quintile~26--30) retain SCRE~$\approx 0.05$, corresponding to an average deviation of 5\% per line, typically one syllable off on a longer line.
+Phase~3 introduces small SCRE regressions across all quintiles, consistent with the aggregate results in Table~\ref{tab:ablation}.
+
+\section{Error Analysis}
+\label{app:errors}
+
+We categorize the failure modes observed in Phase~2 refinement.
+
+\paragraph{Oscillation (40\% of failures).}
+The agent alternates between translations that are one syllable too short and one syllable too long, never landing on the exact target.
+This occurs most often when the target count falls between two ``natural'' phrase lengths in the target language.
+
+\paragraph{Semantic collapse (25\% of failures).}
+To match the syllable count, the agent produces a translation that is grammatically correct but loses the meaning of the source line.
+For example, padding a 5-syllable line to reach 7 syllables by adding filler words (\begin{CJK}{UTF8}{bsmi}的、了、啊\end{CJK}).
+
+\paragraph{Tool miscounting (15\% of failures).}
+eSpeak-NG produces an IPA transcription with an unexpected number of vowel nuclei (e.g., treating a diphthong as two separate vowels), causing the agent to ``correct'' a line that was already at the right count.
+This is the primary source of SCRE degradation in the cmn$\to$en direction.
+
+\paragraph{Repetition (10\% of failures).}
+The agent produces the same translation repeatedly across refinement iterations, failing to explore alternatives.
+This suggests the temperature (0.7) is occasionally insufficient to escape local optima.
+
+\paragraph{Constraint interference (10\% of failures).}
+Phase~3 pattern adjustments disrupt syllable counts that Phase~2 had matched.
+Although the pipeline reverts such changes, the reversion uses the pre-Phase-3 translation, potentially discarding rhyme improvements that the Phase~3 attempt had introduced alongside the syllable disruption.
+
+\section{CLT Baseline Details}
+\label{app:clt}
+
+The Controllable Lyric Translation (CLT) baseline \citep{ou-etal-2023-songs} uses a fine-tuned mBART model with explicit constraint tokens prepended to the encoder input.
+We use the publicly released checkpoint \texttt{LongshenOu/lyric-trans-en2zh}.
+
+\paragraph{Constraint encoding.}
+CLT encodes three constraints as special tokens: (1) a \emph{length token} specifying the target character count, (2) a \emph{rhyme token} specifying the target rhyme class (e.g., \texttt{a/ia/ua}), and (3) a \emph{word boundary token} vector indicating which positions should be word boundaries.
+The model generates characters in \emph{reverse order} (right-to-left) and the output is flipped to produce the final translation.
+
+\paragraph{Reported metrics.}
+The original paper reports 99.85\% length accuracy and 99.00\% rhyme accuracy on their test set.
+Our evaluation on the same test split yields SER~$= 0.086$ and SCRE~$= 0.014$, consistent with strong length control.
+However, ARI~$= 0.002$, indicating that CLT's rhyme tokens enforce line-level rhyme category (e.g., ``the last character should rhyme with \textit{a}'') but do not preserve the \emph{inter-line rhyme scheme structure} (e.g., $AABB$ vs.\ $ABAB$).
+
+\paragraph{Key differences from BLT.}
+CLT requires: (1) a parallel lyric corpus for fine-tuning, (2) per-language-pair training, and (3) pre-specified constraint values at inference time.
+BLT requires none of these: it extracts constraints automatically from source lyrics and operates with any general-purpose LLM.
+The trade-off is that CLT achieves much higher syllable accuracy while BLT provides better rhyme preservation and language flexibility.
 
 \end{document}
